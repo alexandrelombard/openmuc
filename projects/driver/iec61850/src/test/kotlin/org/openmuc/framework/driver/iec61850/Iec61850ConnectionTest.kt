@@ -21,8 +21,8 @@
 package org.openmuc.framework.driver.iec61850
 
 import com.beanit.iec61850bean.*
-import org.junit.Assert
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.openmuc.framework.data.*
@@ -85,20 +85,20 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
     
     """.trimIndent()
             )
-            Assert.assertEquals("BYTE_ARRAY", testChannelScanList[i]!!.valueType.toString())
+            Assertions.assertEquals("BYTE_ARRAY", testChannelScanList[i]!!.valueType.toString())
         }
-        Assert.assertEquals("LONG", testChannelScanList!![23]!!.valueType.toString())
-        Assert.assertEquals("BOOLEAN", testChannelScanList[24]!!.valueType.toString())
-        Assert.assertEquals("FLOAT", testChannelScanList[25]!!.valueType.toString())
-        Assert.assertEquals("DOUBLE", testChannelScanList[26]!!.valueType.toString())
-        Assert.assertEquals("BYTE", testChannelScanList[27]!!.valueType.toString())
-        Assert.assertEquals("SHORT", testChannelScanList[28]!!.valueType.toString())
-        Assert.assertEquals("SHORT", testChannelScanList[29]!!.valueType.toString())
-        Assert.assertEquals("INTEGER", testChannelScanList[30]!!.valueType.toString())
-        Assert.assertEquals("INTEGER", testChannelScanList[31]!!.valueType.toString())
-        Assert.assertEquals("LONG", testChannelScanList[32]!!.valueType.toString())
-        Assert.assertEquals("LONG", testChannelScanList[33]!!.valueType.toString())
-        Assert.assertEquals("BYTE_ARRAY", testChannelScanList[34]!!.valueType.toString())
+        Assertions.assertEquals("LONG", testChannelScanList!![23]!!.valueType.toString())
+        Assertions.assertEquals("BOOLEAN", testChannelScanList[24]!!.valueType.toString())
+        Assertions.assertEquals("FLOAT", testChannelScanList[25]!!.valueType.toString())
+        Assertions.assertEquals("DOUBLE", testChannelScanList[26]!!.valueType.toString())
+        Assertions.assertEquals("BYTE", testChannelScanList[27]!!.valueType.toString())
+        Assertions.assertEquals("SHORT", testChannelScanList[28]!!.valueType.toString())
+        Assertions.assertEquals("SHORT", testChannelScanList[29]!!.valueType.toString())
+        Assertions.assertEquals("INTEGER", testChannelScanList[30]!!.valueType.toString())
+        Assertions.assertEquals("INTEGER", testChannelScanList[31]!!.valueType.toString())
+        Assertions.assertEquals("LONG", testChannelScanList[32]!!.valueType.toString())
+        Assertions.assertEquals("LONG", testChannelScanList[33]!!.valueType.toString())
+        Assertions.assertEquals("BYTE_ARRAY", testChannelScanList[34]!!.valueType.toString())
     }
 
     @Test
@@ -138,14 +138,14 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
     
     """.trimIndent()
         )
-        Assert.assertEquals("[64]", testRecordContainers[0]!!.record!!.value.toString())
+        Assertions.assertEquals("[64]", testRecordContainers[0]!!.record!!.value.toString())
         print(
             """
     recordContainer:${testRecordContainers[0]!!.record}
     
     """.trimIndent()
         )
-        Assert.assertEquals("[64]", testRecordContainers[0]!!.record!!.value.toString())
+        Assertions.assertEquals("[64]", testRecordContainers[0]!!.record!!.value.toString())
     }
 
     @Test
@@ -201,9 +201,9 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
             )
         }
         testIec61850Connection.read(testRecordContainers, null, "")
-        Assert.assertEquals("[68]", testRecordContainers[14]!!.record!!.value.toString())
-        Assert.assertEquals("12.5", testRecordContainers[25]!!.record!!.value.toString())
-        Assert.assertEquals("true", testRecordContainers[24]!!.record!!.value.toString())
+        Assertions.assertEquals("[68]", testRecordContainers[14]!!.record!!.value.toString())
+        Assertions.assertEquals("12.5", testRecordContainers[25]!!.record!!.value.toString())
+        Assertions.assertEquals("true", testRecordContainers[24]!!.record!!.value.toString())
     }
 
     @AfterEach
@@ -256,7 +256,7 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
 
         override var channelHandle: Any?
             get() = null
-            set(handle) {}
+            set(_) {}
     }
 
     companion object {

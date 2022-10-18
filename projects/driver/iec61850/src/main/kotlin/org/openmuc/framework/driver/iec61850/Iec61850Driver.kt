@@ -23,7 +23,7 @@ package org.openmuc.framework.driver.iec61850
 import com.beanit.iec61850bean.*
 import org.openmuc.framework.config.*
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.openmuc.framework.driver.spi.ChannelValueContainer
 import org.osgi.service.component.annotations.Component
 import org.slf4j.LoggerFactory
 import java.io.IOException

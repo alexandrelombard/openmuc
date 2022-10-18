@@ -27,7 +27,7 @@ interface ChannelRecordContainer : ReadRecordContainer {
     val channelAddress: String?
     var channelHandle: Any?
 
-    override var record: Record
+    override var record: Record?
 
     fun copy(): ChannelRecordContainer?
 }

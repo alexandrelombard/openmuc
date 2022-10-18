@@ -170,7 +170,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
         }
         if (fcModelNode is BasicDataAttribute) {
             val receiveTime = System.currentTimeMillis()
-            setRecord(container, fcModelNode as BasicDataAttribute?, receiveTime)
+            setRecord(container, fcModelNode as BasicDataAttribute, receiveTime)
         } else {
             val sb = StringBuilder("")
             for (bda in fcModelNode!!.basicDataAttributes) {
@@ -241,7 +241,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
         val receiveTime = System.currentTimeMillis()
         for (container in containers!!) {
             if (container!!.channelHandle != null) {
-                setRecord(container, container.channelHandle as BasicDataAttribute?, receiveTime)
+                setRecord(container, container.channelHandle as BasicDataAttribute, receiveTime)
             } else {
                 container.record = Record(Flag.DRIVER_ERROR_CHANNEL_NOT_PART_OF_SAMPLING_GROUP)
             }
@@ -892,16 +892,16 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
         }
     }
 
-    private fun setRecord(container: ChannelRecordContainer?, bda: BasicDataAttribute?, receiveTime: Long) {
+    private fun setRecord(container: ChannelRecordContainer, bda: BasicDataAttribute, receiveTime: Long) {
         try {
-            container!!.record = BdaTypes.valueOf(bda!!.basicType.toString()).setRecord(bda, receiveTime)
+            container.record = BdaTypes.valueOf(bda.basicType.toString()).setRecord(bda, receiveTime)
         } catch (e: IllegalArgumentException) {
-            throw IllegalStateException("unknown BasicType received: " + bda!!.basicType)
+            throw IllegalStateException("unknown BasicType received: " + bda.basicType)
         }
     }
 
-    private fun setRecord(container: ChannelRecordContainer?, stringValue: String, receiveTime: Long) {
-        container!!.record = Record(ByteArrayValue(stringValue.toByteArray(), true), receiveTime)
+    private fun setRecord(container: ChannelRecordContainer, stringValue: String, receiveTime: Long) {
+        container.record = Record(ByteArrayValue(stringValue.toByteArray(), true), receiveTime)
     }
 
     private fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
