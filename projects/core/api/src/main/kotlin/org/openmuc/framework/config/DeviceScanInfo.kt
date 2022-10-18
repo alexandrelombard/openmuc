@@ -24,13 +24,13 @@ package org.openmuc.framework.config
  * Class holding the information of a scanned device.
  *
  */
-class DeviceScanInfo(id: String?, deviceAddress: String?, settings: String?, description: String?) {
+class DeviceScanInfo(id: String, deviceAddress: String, settings: String, description: String) {
     /**
      * Gets the ID. The ID is generated out of interface + device address. Special chars are omitted.
      *
      * @return the id
      */
-    val id: String? = null
+    val id: String
 
     /**
      * Gets the device address
@@ -44,41 +44,32 @@ class DeviceScanInfo(id: String?, deviceAddress: String?, settings: String?, des
      *
      * @return the settings
      */
-    val settings: String? = null
+    val settings: String
 
     /**
      * Gets the description.
      *
      * @return the description
      */
-    val description: String? = null
+    val description: String
 
-    constructor(deviceAddress: String?, settings: String?, description: String?) : this(
+    constructor(deviceAddress: String, settings: String, description: String) : this(
         "",
         deviceAddress,
         settings,
         description
-    ) {
-    }
+    )
 
     init {
         requireNotNull(deviceAddress) { "deviceAddress must not be null." }
-        if (id == null || id.isEmpty()) {
+        if (id.isEmpty()) {
             this.id = deviceAddress.replace("[^a-zA-Z0-9]+".toRegex(), "")
         } else {
             this.id = id
         }
         this.deviceAddress = deviceAddress
-        if (settings == null) {
-            this.settings = ""
-        } else {
-            this.settings = settings
-        }
-        if (description == null) {
-            this.description = ""
-        } else {
-            this.description = description
-        }
+        this.settings = settings
+        this.description = description
     }
 
     override fun toString(): String {

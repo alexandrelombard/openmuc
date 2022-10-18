@@ -35,7 +35,7 @@ import java.net.InetAddress
 import javax.naming.ConfigurationException
 
 class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListener {
-    var port = TestHelper.getAvailablePort()
+    var port = TestHelper.availablePort
     var host = "127.0.0.1"
     var clientSap = ClientSap()
     var serverSap: ServerSap? = null
@@ -71,7 +71,8 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
     )
     fun testScanForChannels() {
         println("Attempting to connect to server $host on port $port")
-        clientAssociation = clientSap.associate(InetAddress.getByName(host), port, null, this)
+        val clientAssociation = clientSap.associate(InetAddress.getByName(host), port, null, this)
+        this.clientAssociation = clientAssociation
         val serverModel = SclParser.parse("src/test/resources/testOpenmuc.icd")[0]
         clientAssociation.setServerModel(serverModel)
         getAllBdas(serverModel, clientAssociation)
@@ -113,7 +114,8 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
     )
     fun testRead() {
         println("Attempting to connect to server $host on port $port")
-        clientAssociation = clientSap.associate(InetAddress.getByName(host), port, null, this)
+        val clientAssociation = clientSap.associate(InetAddress.getByName(host), port, null, this)
+        this.clientAssociation = clientAssociation
         val serverModel = SclParser.parse("src/test/resources/testOpenmuc.icd")[0]
         clientAssociation.setServerModel(serverModel)
         getAllBdas(serverModel, clientAssociation)
@@ -159,7 +161,8 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
     )
     fun testWrite() {
         println("Attempting to connect to server $host on port $port")
-        clientAssociation = clientSap.associate(InetAddress.getByName(host), port, null, this)
+        val clientAssociation = clientSap.associate(InetAddress.getByName(host), port, null, this)
+        this.clientAssociation = clientAssociation
         val serverModel = SclParser.parse("src/test/resources/testOpenmuc.icd")[0]
         clientAssociation.setServerModel(serverModel)
         getAllBdas(serverModel, clientAssociation)
@@ -218,7 +221,7 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
         }
     }
 
-    override fun write(bdas: List<BasicDataAttribute>): List<ServiceError> {
+    override fun write(bdas: List<BasicDataAttribute>): List<ServiceError>? {
         // TODO Auto-generated method stub
         return null
     }
@@ -237,18 +240,10 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
 
     class ChannelRecordContainerImpl(override val channelAddress: String) : ChannelRecordContainer {
         override var channelHandle: Any? = null
-        private override var record: Record? = null
-
-        override fun getRecord(): Record? {
-            return record
-        }
+        override var record: Record? = null
 
         override val channel: Channel?
             get() = null
-
-        override fun setRecord(record: Record?) {
-            this.record = record
-        }
 
         override fun copy(): ChannelRecordContainer? {
             return null

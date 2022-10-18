@@ -26,6 +26,8 @@ import org.openmuc.framework.dataaccess.ReadRecordContainer
 interface ChannelRecordContainer : ReadRecordContainer {
     val channelAddress: String?
     var channelHandle: Any?
-    fun setRecord(record: Record?)
+
+    override var record: Record
+
     fun copy(): ChannelRecordContainer?
 }

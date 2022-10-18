@@ -30,13 +30,13 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.rules.ExpectedException
 import org.openmuc.framework.config.ArgumentSyntaxException
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.Record
 import org.openmuc.framework.driver.spi.Connection
 import org.openmuc.framework.driver.spi.ConnectionException
 import java.io.IOException
 
 class Iec61850DriverTest : Thread(), ServerEventListener {
-    var port = TestHelper.getAvailablePort()
+    var port = TestHelper.availablePort
     var host = "127.0.0.1"
     var clientSap = ClientSap()
     var serverSap: ServerSap? = null
@@ -176,7 +176,7 @@ class Iec61850DriverTest : Thread(), ServerEventListener {
         println("IED Server stopped")
     }
 
-    override fun write(bdas: List<BasicDataAttribute>): List<ServiceError> {
+    override fun write(bdas: List<BasicDataAttribute>): List<ServiceError>? {
         // TODO Auto-generated method stub
         return null
     }
