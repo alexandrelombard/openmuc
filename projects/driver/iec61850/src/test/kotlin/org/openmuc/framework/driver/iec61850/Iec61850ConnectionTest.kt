@@ -81,13 +81,13 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
         for (i in 14..22) {
             print(
                 """
-    ${testChannelScanList!![i]!!.channelAddress}
+    ${testChannelScanList[i]!!.channelAddress}
     
     """.trimIndent()
             )
             Assertions.assertEquals("BYTE_ARRAY", testChannelScanList[i]!!.valueType.toString())
         }
-        Assertions.assertEquals("LONG", testChannelScanList!![23]!!.valueType.toString())
+        Assertions.assertEquals("LONG", testChannelScanList[23]!!.valueType.toString())
         Assertions.assertEquals("BOOLEAN", testChannelScanList[24]!!.valueType.toString())
         Assertions.assertEquals("FLOAT", testChannelScanList[25]!!.valueType.toString())
         Assertions.assertEquals("DOUBLE", testChannelScanList[26]!!.valueType.toString())
