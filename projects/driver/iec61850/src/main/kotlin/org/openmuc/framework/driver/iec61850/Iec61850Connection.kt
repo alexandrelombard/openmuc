@@ -113,7 +113,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
         while (modelNodesToBeWritten.size > 0) {
             fillRequestedNodes(fcNodesToBeRequested, modelNodesToBeWritten, serverModel)
         }
-        for (fcModelNode in fcNodesToBeRequested) {
+        for (modelNode in fcNodesToBeRequested) {
+            var fcModelNode = modelNode
             try {
                 if (fcModelNode!!.fc.toString() == "CO") {
                     logger.info("writing CO model node")
