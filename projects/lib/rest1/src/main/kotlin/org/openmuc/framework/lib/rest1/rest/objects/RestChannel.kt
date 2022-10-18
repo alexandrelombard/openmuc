@@ -18,38 +18,12 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.rest1.rest.objects;
+package org.openmuc.framework.lib.rest1.rest.objects
 
-import org.openmuc.framework.data.ValueType;
+import org.openmuc.framework.data.ValueType
 
-public class RestChannel {
-
-    private String id;
-    private ValueType valueType;
-    private RestRecord record;
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public ValueType getValueType() {
-        return valueType;
-    }
-
-    public void setValueType(ValueType valueType) {
-        this.valueType = valueType;
-    }
-
-    public RestRecord getRecord() {
-        return record;
-    }
-
-    public void setRecord(RestRecord record) {
-        this.record = record;
-    }
-
+class RestChannel {
+    var id: String? = null
+    var valueType: ValueType? = null
+    var record: RestRecord? = null
 }

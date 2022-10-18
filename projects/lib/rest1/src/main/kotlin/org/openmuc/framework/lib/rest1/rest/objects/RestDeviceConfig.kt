@@ -18,74 +18,20 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.rest1.rest.objects;
+package org.openmuc.framework.lib.rest1.rest.objects
 
-public class RestDeviceConfig {
-
-    private String id;
-    private String description = null;
-    private String deviceAddress = null;
-    private String settings = null;
-    private Integer samplingTimeout = null;
-    private Integer connectRetryInterval = null;
-    private Boolean disabled = null;
-
+class RestDeviceConfig {
     // Device device = null;
+    var id: String? = null
+    var description: String? = null
+    var deviceAddress: String? = null
+    var settings: String? = null
+    var samplingTimeout: Int? = null
+    var connectRetryInterval: Int? = null
+    var disabled: Boolean? = null
+        private set
 
-    public String getId() {
-        return id;
+    fun isDisabled(disabled: Boolean?) {
+        this.disabled = disabled
     }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getDeviceAddress() {
-        return deviceAddress;
-    }
-
-    public void setDeviceAddress(String deviceAddress) {
-        this.deviceAddress = deviceAddress;
-    }
-
-    public String getSettings() {
-        return settings;
-    }
-
-    public void setSettings(String settings) {
-        this.settings = settings;
-    }
-
-    public Integer getSamplingTimeout() {
-        return samplingTimeout;
-    }
-
-    public void setSamplingTimeout(Integer samplingTimeout) {
-        this.samplingTimeout = samplingTimeout;
-    }
-
-    public Integer getConnectRetryInterval() {
-        return connectRetryInterval;
-    }
-
-    public void setConnectRetryInterval(Integer connectRetryInterval) {
-        this.connectRetryInterval = connectRetryInterval;
-    }
-
-    public Boolean getDisabled() {
-        return disabled;
-    }
-
-    public void isDisabled(Boolean disabled) {
-        this.disabled = disabled;
-    }
-
 }

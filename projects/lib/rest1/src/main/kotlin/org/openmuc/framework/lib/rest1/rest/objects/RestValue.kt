@@ -18,18 +18,8 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.rest1.rest.objects;
+package org.openmuc.framework.lib.rest1.rest.objects
 
-public class RestValue {
-
-    private Object value;
-
-    public Object getValue() {
-        return value;
-    }
-
-    public void setValue(Object value) {
-        this.value = value;
-    }
-
+class RestValue {
+    var value: Any? = null
 }

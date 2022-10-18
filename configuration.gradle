@@ -164,7 +164,7 @@ tasks.withType(Tar) {
         }
 
         from("./build/") {
-            include "settings.gradle"
+            include "settings.gradle.kts"
         }
     }
 

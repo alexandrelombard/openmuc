@@ -18,20 +18,11 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.snmp.implementation;
+package org.openmuc.framework.driver.snmp.implementation
 
-public class SnmpTimeoutException extends Exception {
+class SnmpTimeoutException(override val message: String) : Exception() {
 
-    private static final long serialVersionUID = 1493311619722487397L;
-    private final String message;
-
-    public SnmpTimeoutException(String message) {
-        this.message = message;
+    companion object {
+        private const val serialVersionUID = 1493311619722487397L
     }
-
-    @Override
-    public String getMessage() {
-        return message;
-    }
-
 }

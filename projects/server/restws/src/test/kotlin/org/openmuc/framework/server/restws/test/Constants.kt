@@ -18,23 +18,22 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws.test;
+package org.openmuc.framework.server.restws.test
 
-import org.openmuc.framework.data.Flag;
+import org.openmuc.framework.data.Flag
 
-public final class Constants {
-
-    public static final double DOUBLE_VALUE = 3.2415;
-    public static final float FLOAT_VALUE = 3.2415f;
-    public static final int INTEGER_VALUE = 10513;
-    public static final int LONG_VALUE = 12345678;
-    public static final short SHORT_VALUE = 1234;
-    public static final byte BYTE_VALUE = 123;
-    public static final boolean BOOLEAN_VALUE = true;
-    public static final byte[] BYTE_ARRAY_VALUE = { 0, 1, 9, 10, 15, 16, 17, 127, -127, -81, -16, -1 };
-    public static final String STRING_VALUE = "TestString";
-    public static final Flag TEST_FLAG = Flag.VALID;
-    public static final long TIMESTAMP = 1417783028138l;
-    public static final String JSON_OBJECT_BEGIN = "{";
-    public static final String JSON_OBJECT_END = "}";
+object Constants {
+    const val DOUBLE_VALUE = 3.2415
+    const val FLOAT_VALUE = 3.2415f
+    const val INTEGER_VALUE = 10513
+    const val LONG_VALUE = 12345678
+    const val SHORT_VALUE: Short = 1234
+    const val BYTE_VALUE: Byte = 123
+    const val BOOLEAN_VALUE = true
+    val BYTE_ARRAY_VALUE = byteArrayOf(0, 1, 9, 10, 15, 16, 17, 127, -127, -81, -16, -1)
+    const val STRING_VALUE = "TestString"
+    val TEST_FLAG = Flag.VALID
+    const val TIMESTAMP = 1417783028138L
+    const val JSON_OBJECT_BEGIN = "{"
+    const val JSON_OBJECT_END = "}"
 }

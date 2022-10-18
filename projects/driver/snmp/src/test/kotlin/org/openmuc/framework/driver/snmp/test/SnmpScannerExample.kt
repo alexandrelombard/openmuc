@@ -18,62 +18,54 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.snmp.test;
+package org.openmuc.framework.driver.snmp.test
 
-import org.openmuc.framework.config.ArgumentSyntaxException;
-import org.openmuc.framework.config.DeviceScanInfo;
-import org.openmuc.framework.config.ScanException;
-import org.openmuc.framework.config.ScanInterruptedException;
-import org.openmuc.framework.driver.snmp.SnmpDriver;
-import org.openmuc.framework.driver.snmp.SnmpDriver.SnmpDriverScanSettingVariableNames;
-import org.openmuc.framework.driver.snmp.SnmpDriver.SnmpDriverSettingVariableNames;
-import org.openmuc.framework.driver.spi.DriverDeviceScanListener;
+import org.openmuc.framework.config.ArgumentSyntaxException
+import org.openmuc.framework.config.DeviceScanInfo
+import org.openmuc.framework.config.ScanException
+import org.openmuc.framework.config.ScanInterruptedException
+import org.openmuc.framework.driver.snmp.SnmpDriver
+import org.openmuc.framework.driver.snmp.SnmpDriver.SnmpDriverScanSettingVariableNames
+import org.openmuc.framework.driver.snmp.SnmpDriver.SnmpDriverSettingVariableNames
+import org.openmuc.framework.driver.spi.DriverDeviceScanListener
 
-public class SnmpScannerExample {
-
+object SnmpScannerExample {
     /**
      * @param args
      */
-    public static void main(String[] args) {
-
-        SnmpDriver myDriver = new SnmpDriver();
-        String settings = SnmpDriverSettingVariableNames.AUTHENTICATIONPASSPHRASE + "=adminadmin:"
+    @JvmStatic
+    fun main(args: Array<String>) {
+        val myDriver = SnmpDriver()
+        val settings = (SnmpDriverSettingVariableNames.AUTHENTICATIONPASSPHRASE.toString() + "=adminadmin:"
                 + SnmpDriverScanSettingVariableNames.STARTIP + "=192.168.1.0:"
-                + SnmpDriverScanSettingVariableNames.ENDIP + "=192.168.10.0";
+                + SnmpDriverScanSettingVariableNames.ENDIP + "=192.168.10.0")
 
-        class TestListener implements DriverDeviceScanListener {
-
-            @Override
-            public void scanProgressUpdate(int progress) {
+        class TestListener : DriverDeviceScanListener {
+            override fun scanProgressUpdate(progress: Int) {}
+            override fun deviceFound(device: DeviceScanInfo?) {
+                println("-----------------------------")
+                println("New device found: ")
+                println("Address: " + device!!.deviceAddress)
+                println("Description: " + device.description)
+                println("-----------------------------")
             }
-
-            @Override
-            public void deviceFound(DeviceScanInfo device) {
-                System.out.println("-----------------------------");
-                System.out.println("New device found: ");
-                System.out.println("Address: " + device.getDeviceAddress());
-                System.out.println("Description: " + device.getDescription());
-                System.out.println("-----------------------------");
-            }
-
         }
-        TestListener listener = new TestListener();
-        try {
-            myDriver.scanForDevices(settings, listener);
-            Thread.sleep(100);
-        } catch (InterruptedException iex) {
-            System.out.println("Request cancelled: " + iex.getMessage());
 
-        } catch (ArgumentSyntaxException e) {
+        val listener = TestListener()
+        try {
+            myDriver.scanForDevices(settings, listener)
+            Thread.sleep(100)
+        } catch (iex: InterruptedException) {
+            println("Request cancelled: " + iex.message)
+        } catch (e: ArgumentSyntaxException) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (ScanException e) {
+            e.printStackTrace()
+        } catch (e: ScanException) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (ScanInterruptedException e) {
+            e.printStackTrace()
+        } catch (e: ScanInterruptedException) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            e.printStackTrace()
         }
     }
-
 }

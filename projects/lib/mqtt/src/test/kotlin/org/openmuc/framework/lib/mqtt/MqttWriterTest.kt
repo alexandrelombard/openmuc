@@ -18,131 +18,128 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.mqtt
 
-package org.openmuc.framework.lib.mqtt;
+import com.hivemq.client.internal.mqtt.MqttClientConfig
+import com.hivemq.client.mqtt.lifecycle.*
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.mockito.ArgumentMatchers
+import org.mockito.Mockito
+import org.mockito.invocation.InvocationOnMock
+import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.stubbing.Answer
+import org.openmuc.framework.lib.mqtt.MqttConnection
+import java.io.File
+import java.io.IOException
+import java.nio.file.FileSystems
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.FileSystems;
-
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.stubbing.Answer;
-
-import com.hivemq.client.internal.mqtt.MqttClientConfig;
-import com.hivemq.client.mqtt.lifecycle.MqttClientConnectedListener;
-import com.hivemq.client.mqtt.lifecycle.MqttClientDisconnectedContext;
-import com.hivemq.client.mqtt.lifecycle.MqttClientDisconnectedListener;
-import com.hivemq.client.mqtt.lifecycle.MqttClientReconnector;
-import com.hivemq.client.mqtt.lifecycle.MqttDisconnectSource;
-
-@ExtendWith(MockitoExtension.class)
-public class MqttWriterTest {
-
-    private static final String DIRECTORY = "/tmp/openmuc/mqtt_writer_test";
-    private static MqttClientConnectedListener connectedListener;
-    private static MqttClientDisconnectedListener disconnectedListener;
-    private MqttWriter mqttWriter;
-
+@ExtendWith(MockitoExtension::class)
+class MqttWriterTest {
+    private var mqttWriter: MqttWriter? = null
     @BeforeEach
-    void setup() {
-        MqttConnection connection = mock(MqttConnection.class);
-
-        doAnswer((Answer<Void>) invocation -> {
-            connectedListener = invocation.getArgument(0);
-            return null;
-        }).when(connection).addConnectedListener(any(MqttClientConnectedListener.class));
-
-        doAnswer((Answer<Void>) invocation -> {
-            disconnectedListener = invocation.getArgument(0);
-            return null;
-        }).when(connection).addDisconnectedListener(any(MqttClientDisconnectedListener.class));
-
-        when(connection.getSettings())
-                .thenReturn(new MqttSettings("localhost", 1883, null, null, false, 1, 1, 2, 5000, 10, DIRECTORY));
-
-        mqttWriter = new MqttWriterStub(connection);
-        connectedListener.onConnected(() -> null);
-    }
-
-    @AfterAll
-    static void cleanUp() {
-        deleteDirectory(FileSystems.getDefault().getPath(DIRECTORY).toFile());
-    }
-
-    private static void deleteDirectory(File directory) {
-        if (!directory.exists()) {
-            return;
-        }
-        for (File child : directory.listFiles()) {
-            if (child.isDirectory()) {
-                deleteDirectory(child);
-            }
-            else {
-                child.delete();
-            }
-        }
-        directory.delete();
+    fun setup() {
+        val connection = Mockito.mock(MqttConnection::class.java)
+        Mockito.doAnswer(Answer<Void?> { invocation: InvocationOnMock ->
+            connectedListener = invocation.getArgument(0)
+            null
+        }).`when`(connection).addConnectedListener(
+            ArgumentMatchers.any(
+                MqttClientConnectedListener::class.java
+            )
+        )
+        Mockito.doAnswer(Answer<Void?> { invocation: InvocationOnMock ->
+            disconnectedListener = invocation.getArgument(0)
+            null
+        }).`when`(connection).addDisconnectedListener(
+            ArgumentMatchers.any(
+                MqttClientDisconnectedListener::class.java
+            )
+        )
+        Mockito.`when`(connection.settings)
+            .thenReturn(MqttSettings("localhost", 1883, null, null, false, 1, 1, 2, 5000, 10, DIRECTORY))
+        mqttWriter = MqttWriterStub(connection)
+        connectedListener!!.onConnected(MqttClientConnectedContext { null })
     }
 
     @Test
-    void testWriteWithReconnectionAndSimulatedDisconnection() throws IOException, InterruptedException {
-        MqttClientDisconnectedContext disconnectedContext = mock(MqttClientDisconnectedContext.class);
-        MqttClientReconnector reconnector = mock(MqttClientReconnector.class);
-        when(reconnector.isReconnect()).thenReturn(true);
-        MqttClientConfig config = mock(MqttClientConfig.class);
-        when(config.getServerHost()).thenReturn("test");
-        Throwable cause = mock(Throwable.class);
-        when(cause.getMessage()).thenReturn("test");
-        MqttDisconnectSource source = MqttDisconnectSource.USER;
-        when(disconnectedContext.getReconnector()).thenReturn(reconnector);
-        when(disconnectedContext.getClientConfig()).thenReturn(config);
-        when(disconnectedContext.getCause()).thenReturn(cause);
-        when(disconnectedContext.getSource()).thenReturn(source);
-        disconnectedListener.onDisconnected(disconnectedContext);
-
-        String topic = "topic1";
-
-        File file = FileSystems.getDefault().getPath(DIRECTORY, "topic1", "buffer.0.log").toFile();
-        File file1 = FileSystems.getDefault().getPath(DIRECTORY, "topic1", "buffer.1.log").toFile();
-
-        String message300bytes = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula "
+    @Throws(IOException::class, InterruptedException::class)
+    fun testWriteWithReconnectionAndSimulatedDisconnection() {
+        val disconnectedContext = Mockito.mock(
+            MqttClientDisconnectedContext::class.java
+        )
+        val reconnector = Mockito.mock(
+            MqttClientReconnector::class.java
+        )
+        Mockito.`when`(reconnector.isReconnect).thenReturn(true)
+        val config = Mockito.mock(
+            MqttClientConfig::class.java
+        )
+        Mockito.`when`(config.serverHost).thenReturn("test")
+        val cause = Mockito.mock(Throwable::class.java)
+        Mockito.`when`(cause.message).thenReturn("test")
+        val source = MqttDisconnectSource.USER
+        Mockito.`when`(disconnectedContext.reconnector).thenReturn(reconnector)
+        Mockito.`when`(disconnectedContext.clientConfig).thenReturn(config)
+        Mockito.`when`(disconnectedContext.cause).thenReturn(cause)
+        Mockito.`when`(disconnectedContext.source).thenReturn(source)
+        disconnectedListener!!.onDisconnected(disconnectedContext)
+        val topic = "topic1"
+        val file = FileSystems.getDefault().getPath(DIRECTORY, "topic1", "buffer.0.log").toFile()
+        val file1 = FileSystems.getDefault().getPath(DIRECTORY, "topic1", "buffer.1.log").toFile()
+        val message300bytes = ("Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula "
                 + "eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur "
                 + "ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat"
-                + " massa quis enim. Donec.";
-
-        mqttWriter.write(topic, message300bytes.getBytes()); // 300
-        mqttWriter.write(topic, message300bytes.getBytes()); // 600
-        mqttWriter.write(topic, message300bytes.getBytes()); // 900
+                + " massa quis enim. Donec.")
+        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 300
+        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 600
+        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 900
         // buffer limit not yet reached
         // assertFalse(file.exists() || file1.exists());
-        mqttWriter.write(topic, message300bytes.getBytes()); // 1200 > 1024 write to file => 0
+        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 1200 > 1024 write to file => 0
         // buffer limit reached, first file written
-        assertTrue(file.exists() && !file1.exists());
-        mqttWriter.write(topic, message300bytes.getBytes()); // 300
-        mqttWriter.write(topic, message300bytes.getBytes()); // 600
-        mqttWriter.write(topic, message300bytes.getBytes()); // 900
-        mqttWriter.write(topic, message300bytes.getBytes()); // 1200 > 1024 write to file
+        Assertions.assertTrue(file.exists() && !file1.exists())
+        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 300
+        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 600
+        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 900
+        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 1200 > 1024 write to file
         // buffer limit reached, second file written
-        assertTrue(file.exists() && file1.exists());
+        Assertions.assertTrue(file.exists() && file1.exists())
 
         // simulate connection
-        connectedListener.onConnected(() -> null);
+        connectedListener!!.onConnected(MqttClientConnectedContext { null })
 
         // wait for recovery thread to terminate
-        Thread.sleep(1000);
+        Thread.sleep(1000)
 
         // files should be emptied and therefore removed
-        assertFalse(file.exists() || file1.exists());
+        Assertions.assertFalse(file.exists() || file1.exists())
+    }
+
+    companion object {
+        private const val DIRECTORY = "/tmp/openmuc/mqtt_writer_test"
+        private var connectedListener: MqttClientConnectedListener? = null
+        private var disconnectedListener: MqttClientDisconnectedListener? = null
+        @AfterAll
+        fun cleanUp() {
+            deleteDirectory(FileSystems.getDefault().getPath(DIRECTORY).toFile())
+        }
+
+        private fun deleteDirectory(directory: File) {
+            if (!directory.exists()) {
+                return
+            }
+            for (child in directory.listFiles()) {
+                if (child.isDirectory) {
+                    deleteDirectory(child)
+                } else {
+                    child.delete()
+                }
+            }
+            directory.delete()
+        }
     }
 }

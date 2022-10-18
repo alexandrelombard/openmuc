@@ -18,19 +18,6 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.modbus.rtu;
+package org.openmuc.framework.driver.modbus.rtu
 
-public class ModbusConfigurationException extends Exception {
-
-    private final String message;
-
-    public ModbusConfigurationException(String message) {
-        this.message = message;
-    }
-
-    @Override
-    public String getMessage() {
-        return message;
-    }
-
-}
+class ModbusConfigurationException(override val message: String) : Exception()

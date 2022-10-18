@@ -18,53 +18,38 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.rest1.rest.objects;
+package org.openmuc.framework.lib.rest1.rest.objects
 
-import com.google.gson.annotations.SerializedName;
+import com.google.gson.annotations.SerializedName
+import org.openmuc.framework.data.Record.value
 
-public class RestUserConfig {
+class RestUserConfig {
+    var id: String? = null
+        private set
 
-    private String id;
     @SerializedName("password")
-    private String pass;
+    var password: String? = null
+        private set
+
     @SerializedName("oldPassword")
-    private String oldPasswd;
-    private String[] groups;
-    private String description;
+    val oldPassword: String? = null
+    private var groups: Array<String>?
+    var description: String? = null
+        private set
 
-    protected RestUserConfig() {
+    protected constructor() {}
+    constructor(id: String?) {
+        this.id = id
+        password = "*****"
+        groups = arrayOf("")
+        description = ""
     }
 
-    public RestUserConfig(String id) {
-        this.id = id;
-        this.pass = "*****";
-        this.groups = new String[] { "" };
-        this.description = "";
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getPassword() {
-        return pass;
-    }
-
-    public String getOldPassword() {
-        return oldPasswd;
-    }
-
-    public String[] getGroups() {
-        if (groups != null) {
-            return groups.clone();
-        }
-        else {
-            return new String[] {};
+    fun getGroups(): Array<String> {
+        return if (groups != null) {
+            groups!!.clone()
+        } else {
+            arrayOf()
         }
     }
-
-    public String getDescription() {
-        return description;
-    }
-
 }

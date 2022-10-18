@@ -18,198 +18,112 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.mqtt
 
-package org.openmuc.framework.lib.mqtt;
-
-public class MqttSettings {
-    private final String host;
-    private final int port;
-    private final String username;
-    private final String password;
-    private final boolean ssl;
-    private final long maxBufferSize;
-    private final long maxFileSize;
-    private final int maxFileCount;
-    private final int connectionRetryInterval;
-    private final int connectionAliveInterval;
-    private final String persistenceDirectory;
-    private final String lastWillTopic;
-    private final byte[] lastWillPayload;
-    private final boolean lastWillAlways;
-    private final String firstWillTopic;
-    private final byte[] firstWillPayload;
-    private final int recoveryChunkSize;
-    private final int recoveryDelay;
-    private final boolean webSocket;
-
-    public MqttSettings(String host, int port, String username, String password, boolean ssl, long maxBufferSize,
-            long maxFileSize, int maxFileCount, int connectionRetryInterval, int connectionAliveInterval,
-            String persistenceDirectory) {
-        this(host, port, username, password, ssl, maxBufferSize, maxFileSize, maxFileCount, connectionRetryInterval,
-                connectionAliveInterval, persistenceDirectory, "", "".getBytes(), false, "", "".getBytes(), false);
-    }
-
-    public MqttSettings(String host, int port, String username, String password, boolean ssl, long maxBufferSize,
-            long maxFileSize, int maxFileCount, int connectionRetryInterval, int connectionAliveInterval,
-            String persistenceDirectory, boolean webSocket) {
-        this(host, port, username, password, ssl, maxBufferSize, maxFileSize, maxFileCount, connectionRetryInterval,
-                connectionAliveInterval, persistenceDirectory, "", "".getBytes(), false, "", "".getBytes(), webSocket);
-    }
-
-    public MqttSettings(String host, int port, String username, String password, boolean ssl, long maxBufferSize,
-            long maxFileSize, int maxFileCount, int connectionRetryInterval, int connectionAliveInterval,
-            String persistenceDirectory, String lastWillTopic, byte[] lastWillPayload, boolean lastWillAlways,
-            String firstWillTopic, byte[] firstWillPayload, boolean webSocket) {
-        this(host, port, username, password, ssl, maxBufferSize, maxFileSize, maxFileCount, connectionRetryInterval,
-                connectionAliveInterval, persistenceDirectory, lastWillTopic, lastWillPayload, lastWillAlways,
-                firstWillTopic, firstWillPayload, 0, 0, webSocket);
-    }
-
-    public MqttSettings(String host, int port, String username, String password, boolean ssl, long maxBufferSize,
-            long maxFileSize, int maxFileCount, int connectionRetryInterval, int connectionAliveInterval,
-            String persistenceDirectory, String lastWillTopic, byte[] lastWillPayload, boolean lastWillAlways,
-            String firstWillTopic, byte[] firstWillPayload, int recoveryChunkSize, int recoveryDelay,
-            boolean webSocket) {
-        this.host = host;
-        this.port = port;
-        this.username = username;
-        this.password = password;
-        this.ssl = ssl;
-        this.webSocket = webSocket;
-        this.maxBufferSize = maxBufferSize;
-        this.maxFileSize = maxFileSize;
-        this.maxFileCount = maxFileCount;
-        this.connectionRetryInterval = connectionRetryInterval;
-        this.connectionAliveInterval = connectionAliveInterval;
-        this.persistenceDirectory = persistenceDirectory;
-        this.lastWillTopic = lastWillTopic;
-        this.lastWillPayload = lastWillPayload;
-        this.lastWillAlways = lastWillAlways;
-        this.firstWillTopic = firstWillTopic;
-        this.firstWillPayload = firstWillPayload;
-        this.recoveryChunkSize = recoveryChunkSize;
-        this.recoveryDelay = recoveryDelay;
-    }
-
-    public String getHost() {
-        return host;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public boolean isSsl() {
-        return ssl;
-    }
-
+class MqttSettings(
+    val host: String?,
+    val port: Int,
+    val username: String?,
+    val password: String,
+    val isSsl: Boolean,
     /**
      * @return maximum buffer size in Kibibytes
      */
-    public long getMaxBufferSize() {
-        return maxBufferSize;
-    }
-
+    val maxBufferSize: Long,
     /**
      * @return maximum file buffer size in Kibibytes
      */
-    public long getMaxFileSize() {
-        return maxFileSize;
+    val maxFileSize: Long,
+    val maxFileCount: Int,
+    private val connectionRetryInterval: Int,
+    val connectionAliveInterval: Int,
+    val persistenceDirectory: String?,
+    val lastWillTopic: String,
+    val lastWillPayload: ByteArray,
+    private val lastWillAlways: Boolean,
+    val firstWillTopic: String,
+    val firstWillPayload: ByteArray?,
+    val recoveryChunkSize: Int,
+    val recoveryDelay: Int,
+    val isWebSocket: Boolean
+) {
+
+    constructor(
+        host: String?, port: Int, username: String?, password: String, ssl: Boolean, maxBufferSize: Long,
+        maxFileSize: Long, maxFileCount: Int, connectionRetryInterval: Int, connectionAliveInterval: Int,
+        persistenceDirectory: String?, webSocket: Boolean
+    ) : this(
+        host, port, username, password, ssl, maxBufferSize, maxFileSize, maxFileCount, connectionRetryInterval,
+        connectionAliveInterval, persistenceDirectory, "", "".toByteArray(), false, "", "".toByteArray(), webSocket
+    ) {
     }
 
-    public int getMaxFileCount() {
-        return maxFileCount;
+    @JvmOverloads
+    constructor(
+        host: String?,
+        port: Int,
+        username: String?,
+        password: String,
+        ssl: Boolean,
+        maxBufferSize: Long,
+        maxFileSize: Long,
+        maxFileCount: Int,
+        connectionRetryInterval: Int,
+        connectionAliveInterval: Int,
+        persistenceDirectory: String?,
+        lastWillTopic: String = "",
+        lastWillPayload: ByteArray = "".toByteArray(),
+        lastWillAlways: Boolean = false,
+        firstWillTopic: String = "",
+        firstWillPayload: ByteArray? = "".toByteArray(),
+        webSocket: Boolean = false
+    ) : this(
+        host, port, username, password, ssl, maxBufferSize, maxFileSize, maxFileCount, connectionRetryInterval,
+        connectionAliveInterval, persistenceDirectory, lastWillTopic, lastWillPayload, lastWillAlways,
+        firstWillTopic, firstWillPayload, 0, 0, webSocket
+    ) {
     }
 
-    public long getConnectionRetryInterval() {
-        return connectionRetryInterval;
+    fun getConnectionRetryInterval(): Long {
+        return connectionRetryInterval.toLong()
     }
 
-    public int getConnectionAliveInterval() {
-        return connectionAliveInterval;
+    val isLastWillSet: Boolean
+        get() = lastWillTopic != "" && lastWillPayload.size != 0
+
+    fun isLastWillAlways(): Boolean {
+        return lastWillAlways && isLastWillSet
     }
 
-    public String getPersistenceDirectory() {
-        return persistenceDirectory;
-    }
-
-    public String getLastWillTopic() {
-        return lastWillTopic;
-    }
-
-    public byte[] getLastWillPayload() {
-        return lastWillPayload;
-    }
-
-    public boolean isLastWillSet() {
-        return !lastWillTopic.equals("") && lastWillPayload.length != 0;
-    }
-
-    public boolean isLastWillAlways() {
-        return lastWillAlways && isLastWillSet();
-    }
-
-    public String getFirstWillTopic() {
-        return firstWillTopic;
-    }
-
-    public byte[] getFirstWillPayload() {
-        return firstWillPayload;
-    }
-
-    public boolean isFirstWillSet() {
-        return !firstWillTopic.equals("") && lastWillPayload.length != 0;
-    }
-
-    public boolean isRecoveryLimitSet() {
-        return recoveryChunkSize > 0 && recoveryDelay > 0;
-    }
-
-    public int getRecoveryChunkSize() {
-        return recoveryChunkSize;
-    }
-
-    public int getRecoveryDelay() {
-        return recoveryDelay;
-    }
-
-    public boolean isWebSocket() {
-        return webSocket;
-    }
+    val isFirstWillSet: Boolean
+        get() = firstWillTopic != "" && lastWillPayload.size != 0
+    val isRecoveryLimitSet: Boolean
+        get() = recoveryChunkSize > 0 && recoveryDelay > 0
 
     /**
      * Returns a string of all settings, always uses '*****' as password string.
      */
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("host=").append(getHost()).append("\n");
-        sb.append("port=").append(getPort()).append("\n");
-        sb.append("username=").append(getUsername()).append("\n");
-        sb.append("password=").append("*****").append("\n");
-        sb.append("ssl=").append(isSsl()).append("\n");
-        sb.append("webSocket=").append(isWebSocket());
-        sb.append("persistenceDirectory=").append(getPersistenceDirectory()).append("\n");
-        sb.append("maxBufferSize=").append(getMaxBufferSize()).append("\n");
-        sb.append("maxFileCount=").append(getMaxFileCount()).append("\n");
-        sb.append("maxFileSize=").append(getMaxFileSize()).append("\n");
-        sb.append("connectionRetryInterval=").append(getConnectionRetryInterval()).append("\n");
-        sb.append("connectionAliveInterval=").append(getConnectionAliveInterval()).append("\n");
-        sb.append("lastWillTopic=").append(getLastWillTopic()).append("\n");
-        sb.append("lastWillPayload=").append(new String(getLastWillPayload())).append("\n");
-        sb.append("lastWillAlways=").append(isLastWillAlways()).append("\n");
-        sb.append("firstWillTopic=").append(getFirstWillTopic()).append("\n");
-        sb.append("firstWillPayload=").append(new String(getFirstWillPayload()));
-        sb.append("recoveryChunkSize=").append(getRecoveryChunkSize()).append("\n");
-        sb.append("recoveryDelay=").append(getRecoveryDelay()).append("\n");
-        return sb.toString();
+    override fun toString(): String {
+        val sb = StringBuilder()
+        sb.append("host=").append(host).append("\n")
+        sb.append("port=").append(port).append("\n")
+        sb.append("username=").append(username).append("\n")
+        sb.append("password=").append("*****").append("\n")
+        sb.append("ssl=").append(isSsl).append("\n")
+        sb.append("webSocket=").append(isWebSocket)
+        sb.append("persistenceDirectory=").append(persistenceDirectory).append("\n")
+        sb.append("maxBufferSize=").append(maxBufferSize).append("\n")
+        sb.append("maxFileCount=").append(maxFileCount).append("\n")
+        sb.append("maxFileSize=").append(maxFileSize).append("\n")
+        sb.append("connectionRetryInterval=").append(getConnectionRetryInterval()).append("\n")
+        sb.append("connectionAliveInterval=").append(connectionAliveInterval).append("\n")
+        sb.append("lastWillTopic=").append(lastWillTopic).append("\n")
+        sb.append("lastWillPayload=").append(String(lastWillPayload)).append("\n")
+        sb.append("lastWillAlways=").append(isLastWillAlways()).append("\n")
+        sb.append("firstWillTopic=").append(firstWillTopic).append("\n")
+        sb.append("firstWillPayload=").append(String(firstWillPayload!!))
+        sb.append("recoveryChunkSize=").append(recoveryChunkSize).append("\n")
+        sb.append("recoveryDelay=").append(recoveryDelay).append("\n")
+        return sb.toString()
     }
 }

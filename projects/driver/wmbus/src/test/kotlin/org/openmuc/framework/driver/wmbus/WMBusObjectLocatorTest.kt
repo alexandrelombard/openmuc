@@ -18,11 +18,9 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.wmbus;
+package org.openmuc.framework.driver.wmbus
 
-public class WMBusObjectLocatorTest {
-
-    // @Test
+class WMBusObjectLocatorTest { // @Test
     // public void mbusStyle() {
     // MBusObjectLocator locator = new MBusObjectLocator("mbus:04/943a");
     //

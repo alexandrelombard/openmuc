@@ -18,22 +18,18 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.webui.dataexporter;
+package org.openmuc.framework.webui.dataexporter
 
-import org.openmuc.framework.webui.spi.WebUiPluginService;
-import org.osgi.service.component.annotations.Component;
+import org.openmuc.framework.webui.spi.WebUiPluginService
+import org.osgi.service.component.annotations.Component
 
-@Component(service = WebUiPluginService.class)
-public final class DataExporter extends WebUiPluginService {
-
-    @Override
-    public String getAlias() {
-        return "dataexporter";
+@Component(service = [WebUiPluginService::class])
+class DataExporter : WebUiPluginService() {
+    override fun getAlias(): String {
+        return "dataexporter"
     }
 
-    @Override
-    public String getName() {
-        return "Data Exporter";
+    override fun getName(): String {
+        return "Data Exporter"
     }
-
 }

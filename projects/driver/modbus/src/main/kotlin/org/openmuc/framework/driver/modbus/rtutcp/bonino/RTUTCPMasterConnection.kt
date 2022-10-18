@@ -1,216 +1,182 @@
-package org.openmuc.framework.driver.modbus.rtutcp.bonino;
+package org.openmuc.framework.driver.modbus.rtutcp.bonino
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.Socket;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ghgande.j2mod.modbus.Modbus;
-import com.ghgande.j2mod.modbus.io.ModbusTransport;
+import com.ghgande.j2mod.modbus.Modbus
+import com.ghgande.j2mod.modbus.io.ModbusTransport
+import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import java.net.InetAddress
+import java.net.Socket
 
 /**
  * @author bonino
- * 
- *         https://github.com/dog-gateway/jamod-rtu-over-tcp
- * 
+ *
+ * https://github.com/dog-gateway/jamod-rtu-over-tcp
  */
-public class RTUTCPMasterConnection implements MasterConnection {
+class RTUTCPMasterConnection// store the IP address of the destination
 
-    private static final Logger logger = LoggerFactory.getLogger(RTUTCPMasterConnection.class);
-
-    // the log identifier
-    public static final String logId = "[RTUTCPMasterConnection]: ";
-
+// store the port of the destination
+/**
+ * Constructs an [RTUTCPMasterConnection] instance with a given destination address and port. It permits to
+ * handle Modbus RTU over TCP connections in a way similar to standard Modbus/TCP connections
+ *
+ * @param adr
+ * the destination IP addres as an [InetAddress] instance.
+ * @param port
+ * the port to which connect on the destination address.
+ */(
+    /**
+     * Returns the destination [InetAddress] of this [RTUTCPMasterConnection].
+     *
+     * @return the destination address as InetAddress.
+     */ // getAddress
+    // the ip address of the remote slave
+    private var slaveIPAddress: InetAddress,
+    /**
+     * Returns the destination port of this [RTUTCPMasterConnection].
+     *
+     * @return the port number as an `int`.
+     */ // getPort
+    // the port to which connect on the remote slave
+    var address: Int
+) : MasterConnection {
     // the socket upon which sending/receiveing Modbus RTU data
-    private Socket socket;
+    private var socket: Socket? = null
 
     // the timeout for the socket
-    private int socketTimeout = Modbus.DEFAULT_TIMEOUT;
-
-    // a flag for detecting if the connection is up or not
-    private boolean connected;
-
-    // the ip address of the remote slave
-    private InetAddress slaveIPAddress;
-
-    // the port to which connect on the remote slave
-    private int slaveIPPort;
-
-    // private int retries = Modbus.DEFAULT_RETRIES;
-
-    // the RTU over TCP transport
-    private ModbusRTUTCPTransport modbusRTUTCPTransport;
+    private var socketTimeout = Modbus.DEFAULT_TIMEOUT
 
     /**
-     * Constructs an {@link RTUTCPMasterConnection} instance with a given destination address and port. It permits to
-     * handle Modbus RTU over TCP connections in a way similar to standard Modbus/TCP connections
-     * 
-     * @param adr
-     *            the destination IP addres as an {@link InetAddress} instance.
-     * @param port
-     *            the port to which connect on the destination address.
-     */
-    public RTUTCPMasterConnection(InetAddress adr, int port) {
-        // store the IP address of the destination
-        this.slaveIPAddress = adr;
-
-        // store the port of the destination
-        this.slaveIPPort = port;
-    }
+     * Tests if this [RTUTCPMasterConnection] is active or not.
+     *
+     * @return `true` if connected, `false` otherwise.
+     */ // isConnected
+    // a flag for detecting if the connection is up or not
+    override var isConnected = false
+        private set
+    /**
+     * Sets the destination port of this [RTUTCPMasterConnection].
+     *
+     * @param address
+     * the port number as `int`.
+     */ // setPort
+    /**
+     * Sets the destination [InetAddress] of this [RTUTCPMasterConnection].
+     *
+     * @param slaveIPAddress
+     * the destination address as [InetAddress].
+     */ // setAddress
+    // private int retries = Modbus.DEFAULT_RETRIES;
+    // the RTU over TCP transport
+    private var modbusRTUTCPTransport: ModbusRTUTCPTransport? = null
 
     /**
      * Opens the RTU over TCP connection represented by this object.
-     * 
+     *
      * @throws Exception
-     *             if the connection cannot be open (e.g., due to a network failure).
+     * if the connection cannot be open (e.g., due to a network failure).
      */
-    @Override
-    public synchronized void connect() throws Exception {
+    @Synchronized
+    @Throws(Exception::class)
+    override fun connect() {
         // if not connected, try to connect
-        if (!this.connected) {
+        if (!isConnected) {
             // handle debug...(TODO: logging?)
-
-            logger.info("connecting...");
+            logger.info("connecting...")
 
             // create a socket towards the remote slave
-            this.socket = new Socket(this.slaveIPAddress, this.slaveIPPort);
+            socket = Socket(slaveIPAddress, address)
 
             // set the socket timeout
-            setTimeout(this.socketTimeout);
+            timeout = socketTimeout
 
             // prepare the RTU over TCP transport to handle communications
-            prepareTransport();
+            prepareTransport()
 
             // set the connected flag at true
-            connected = true;
-
-            logger.info("successfully connected");
+            isConnected = true
+            logger.info("successfully connected")
         }
-    }// connect
+    } // connect
 
     /**
      * Closes the RTU over TCP connection represented by this object.
      */
-    @Override
-    public void close() {
+    override fun close() {
         // if connected... disconnect, otherwise do nothing
-        if (this.connected) {
+        if (isConnected) {
             // try closing the transport...
             try {
-                this.modbusRTUTCPTransport.close();
-            } catch (IOException e) {
-                logger.error("error while closing the connection, cause:", e);
+                modbusRTUTCPTransport!!.close()
+            } catch (e: IOException) {
+                logger.error("error while closing the connection, cause:", e)
             }
 
             // if everything is fine, set the connected flag at false
-            this.connected = false;
+            isConnected = false
         }
-    }// close
+    } // close
 
     /**
      * Returns the ModbusTransport associated with this TCPMasterConnection.
-     * 
+     *
      * @return the connection's ModbusTransport.
-     */
-    public ModbusTransport getModbusTransport() {
-        return this.modbusRTUTCPTransport;
-    }// getModbusTransport
+     */ // getModbusTransport
+    val modbusTransport: ModbusTransport?
+        get() = modbusRTUTCPTransport
 
     /**
-     * Prepares the associated {@link ModbusTransport} of this {@link RTUTCPMasterConnection} for use.
-     * 
+     * Prepares the associated [ModbusTransport] of this [RTUTCPMasterConnection] for use.
+     *
      * @throws IOException
-     *             if an I/O related error occurs.
+     * if an I/O related error occurs.
      */
-    private void prepareTransport() throws IOException {
+    @Throws(IOException::class)
+    private fun prepareTransport() {
         // if the modbus transport is not available, create it
-        if (this.modbusRTUTCPTransport == null) {
+        if (modbusRTUTCPTransport == null) {
             // create the transport
-            this.modbusRTUTCPTransport = new ModbusRTUTCPTransport(socket);
-        }
-        else {
+            modbusRTUTCPTransport = ModbusRTUTCPTransport(socket)
+        } else {
             // just update the transport socket
-            this.modbusRTUTCPTransport.setSocket(socket);
+            modbusRTUTCPTransport!!.setSocket(socket)
         }
-    }// prepareIO
+    } // prepareIO// TODO: handle?
+    // setReceiveTimeout
+// store the current socket timeout
 
+    // set the timeout on the socket, if available
     /**
-     * Returns the timeout for this {@link RTUTCPMasterConnection}.
-     * 
-     * @return the timeout as an <code>int</code> value.
-     */
-    public int getTimeout() {
-        return this.socketTimeout;
-    }// getReceiveTimeout
-
-    /**
-     * Sets the timeout for this {@link RTUTCPMasterConnection}.
-     * 
+     * Sets the timeout for this [RTUTCPMasterConnection].
+     *
      * @param timeout
-     *            the timeout as an <code>int</code>.
+     * the timeout as an `int`.
      */
-    public void setTimeout(int timeout) {
-        // store the current socket timeout
-        this.socketTimeout = timeout;
+    /**
+     * Returns the timeout for this [RTUTCPMasterConnection].
+     *
+     * @return the timeout as an `int` value.
+     */ // getReceiveTimeout
+    var timeout: Int
+        get() = socketTimeout
+        set(timeout) {
+            // store the current socket timeout
+            socketTimeout = timeout
 
-        // set the timeout on the socket, if available
-        if (this.socket != null) {
-            try {
-                this.socket.setSoTimeout(socketTimeout);
-            } catch (IOException ex) {
-                // TODO: handle?
+            // set the timeout on the socket, if available
+            if (socket != null) {
+                try {
+                    socket!!.soTimeout = socketTimeout
+                } catch (ex: IOException) {
+                    // TODO: handle?
+                }
             }
         }
-    }// setReceiveTimeout
 
-    /**
-     * Returns the destination port of this {@link RTUTCPMasterConnection}.
-     * 
-     * @return the port number as an <code>int</code>.
-     */
-    public int getPort() {
-        return this.slaveIPPort;
-    }// getPort
+    companion object {
+        private val logger = LoggerFactory.getLogger(RTUTCPMasterConnection::class.java)
 
-    /**
-     * Sets the destination port of this {@link RTUTCPMasterConnection}.
-     * 
-     * @param port
-     *            the port number as <code>int</code>.
-     */
-    public void setPort(int port) {
-        this.slaveIPPort = port;
-    }// setPort
-
-    /**
-     * Returns the destination {@link InetAddress} of this {@link RTUTCPMasterConnection}.
-     * 
-     * @return the destination address as InetAddress.
-     */
-    public InetAddress getAddress() {
-        return this.slaveIPAddress;
-    }// getAddress
-
-    /**
-     * Sets the destination {@link InetAddress} of this {@link RTUTCPMasterConnection}.
-     * 
-     * @param adr
-     *            the destination address as {@link InetAddress}.
-     */
-    public void setAddress(InetAddress adr) {
-        this.slaveIPAddress = adr;
-    }// setAddress
-
-    /**
-     * Tests if this {@link RTUTCPMasterConnection} is active or not.
-     * 
-     * @return <code>true</code> if connected, <code>false</code> otherwise.
-     */
-    @Override
-    public boolean isConnected() {
-        return connected;
-    }// isConnected
-
+        // the log identifier
+        const val logId = "[RTUTCPMasterConnection]: "
+    }
 }

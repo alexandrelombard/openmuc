@@ -1,7 +1,11 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+}
 def projectName = "OpenMUC App - Simple Demo"
 
 dependencies {
     implementation project(':openmuc-core-api')
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
 
 jar {
@@ -16,5 +20,18 @@ publishing {
                 description = "A simple demo app for the OpenMUC framework."
             }
         }
+    }
+}
+repositories {
+    mavenCentral()
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 }

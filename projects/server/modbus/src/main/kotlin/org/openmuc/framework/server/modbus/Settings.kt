@@ -18,25 +18,44 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.modbus;
+package org.openmuc.framework.server.modbus
 
-import org.openmuc.framework.lib.osgi.config.GenericSettings;
-import org.openmuc.framework.lib.osgi.config.ServiceProperty;
+import org.openmuc.framework.lib.osgi.config.GenericSettings
+import org.openmuc.framework.lib.osgi.config.ServiceProperty
 
-class Settings extends GenericSettings {
-    static final String PORT = "port";
-    static final String ADDRESS = "address";
-    static final String UNITID = "unitId";
-    static final String TYPE = "type";
-    static final String POOLSIZE = "poolsize";
+internal class Settings : GenericSettings() {
+    init {
+        properties[PORT] =
+            ServiceProperty(PORT, "Port to listen on", "502", false)
+        properties[ADDRESS] = ServiceProperty(
+            ADDRESS,
+            "IP address to listen on",
+            "127.0.0.1",
+            false
+        )
+        properties[UNITID] = ServiceProperty(
+            UNITID,
+            "UnitId of the slave",
+            "15",
+            false
+        )
+        properties[POOLSIZE] = ServiceProperty(
+            POOLSIZE,
+            "Listener thread pool size, only has affects with TCP and RTUTCP", "3", false
+        )
+        properties[TYPE] = ServiceProperty(
+            TYPE,
+            "Connection type, could be TCP, RTUTCP or UDP",
+            "tcp",
+            false
+        )
+    }
 
-    Settings() {
-        super();
-        properties.put(PORT, new ServiceProperty(PORT, "Port to listen on", "502", false));
-        properties.put(ADDRESS, new ServiceProperty(ADDRESS, "IP address to listen on", "127.0.0.1", false));
-        properties.put(UNITID, new ServiceProperty(UNITID, "UnitId of the slave", "15", false));
-        properties.put(POOLSIZE, new ServiceProperty(POOLSIZE,
-                "Listener thread pool size, only has affects with TCP and RTUTCP", "3", false));
-        properties.put(TYPE, new ServiceProperty(TYPE, "Connection type, could be TCP, RTUTCP or UDP", "tcp", false));
+    companion object {
+        const val PORT = "port"
+        const val ADDRESS = "address"
+        const val UNITID = "unitId"
+        const val TYPE = "type"
+        const val POOLSIZE = "poolsize"
     }
 }

@@ -18,123 +18,101 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.amqp
 
-package org.openmuc.framework.lib.amqp;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.rabbitmq.client.DeliverCallback;
-import com.rabbitmq.client.GetResponse;
+import com.rabbitmq.client.*
+import org.openmuc.framework.lib.amqp.AmqpConnection
+import org.slf4j.LoggerFactory
+import java.io.IOException
 
 /**
  * Gets (reads) messages from an AmqpConnection
  */
-public class AmqpReader {
-    private final Logger logger = LoggerFactory.getLogger(AmqpReader.class);
-    private final AmqpConnection connection;
-    private final List<Listener> listeners = new ArrayList<>();
+class AmqpReader(connection: AmqpConnection) {
+    private val logger = LoggerFactory.getLogger(AmqpReader::class.java)
+    private val connection: AmqpConnection
+    private val listeners: MutableList<Listener> = ArrayList()
 
     /**
      * @param connection
-     *            an instance of {@link AmqpConnection}
+     * an instance of [AmqpConnection]
      */
-    public AmqpReader(AmqpConnection connection) {
-        connection.addReader(this);
-        this.connection = connection;
+    init {
+        connection.addReader(this)
+        this.connection = connection
     }
 
     /**
      * get a message from the specified queue
      *
      * @param queue
-     *            the queue from which to pull a message
+     * the queue from which to pull a message
      * @return byte array containing the received message, null if no message was received
      */
-    public byte[] read(String queue) {
+    fun read(queue: String?): ByteArray? {
         try {
-            connection.declareQueue(queue);
-        } catch (IOException e) {
-            logger.error("Declaring queue failed: {}", e.getMessage());
-            return null;
+            connection.declareQueue(queue)
+        } catch (e: IOException) {
+            logger.error("Declaring queue failed: {}", e.message)
+            return null
         }
-
-        GetResponse response;
-        try {
-            response = connection.getRabbitMqChannel().basicGet(queue, true);
-        } catch (IOException e) {
-            logger.error("Could not receive message: {}", e.getMessage());
-            return null;
+        val response: GetResponse?
+        response = try {
+            connection.rabbitMqChannel.basicGet(queue, true)
+        } catch (e: IOException) {
+            logger.error("Could not receive message: {}", e.message)
+            return null
         }
-
         if (response == null) {
             // no message received, queue empty
-            return null;
+            return null
         }
-
-        if (logger.isTraceEnabled()) {
-            logger.trace("message on queue {} received, payload: {}", queue, new String(response.getBody()));
+        if (logger.isTraceEnabled) {
+            logger.trace("message on queue {} received, payload: {}", queue, String(response.body))
         }
-
-        return response.getBody();
+        return response.body
     }
 
     /**
-     * get messages from specified queues and send them to the specified {@link AmqpMessageListener}
+     * get messages from specified queues and send them to the specified [AmqpMessageListener]
      *
      * @param queues
-     *            String collection with queues to receive messages via push
+     * String collection with queues to receive messages via push
      * @param listener
-     *            received messages are sent to this listener
+     * received messages are sent to this listener
      */
-    public void listen(Collection<String> queues, AmqpMessageListener listener) {
-        listeners.add(new Listener(queues, listener));
-        for (String queue : queues) {
-            DeliverCallback deliverCallback = (consumerTag, message) -> {
-                listener.newMessage(queue, message.getBody());
-                if (logger.isTraceEnabled()) {
-                    logger.trace("message on queue {} received, payload: {}", queue, new String(message.getBody()));
+    fun listen(queues: Collection<String>, listener: AmqpMessageListener) {
+        listeners.add(Listener(queues, listener))
+        for (queue in queues) {
+            val deliverCallback = DeliverCallback { consumerTag: String?, message: Delivery ->
+                listener.newMessage(queue, message.body)
+                if (logger.isTraceEnabled) {
+                    logger.trace("message on queue {} received, payload: {}", queue, String(message.body))
                 }
-            };
-
-            if (connection.isConnected()) {
+            }
+            if (connection.isConnected) {
                 try {
-                    connection.declareQueue(queue);
-                } catch (IOException e) {
-                    logger.error("Declaring queue failed: {}", e.getMessage());
-                    continue;
+                    connection.declareQueue(queue)
+                } catch (e: IOException) {
+                    logger.error("Declaring queue failed: {}", e.message)
+                    continue
                 }
-
                 try {
-                    connection.getRabbitMqChannel().basicConsume(queue, true, deliverCallback, consumerTag -> {
-                    });
-                } catch (IOException e) {
-                    logger.error("Could not subscribe for messages: {}", e.getMessage());
+                    connection.rabbitMqChannel.basicConsume(queue, true, deliverCallback) { consumerTag: String? -> }
+                } catch (e: IOException) {
+                    logger.error("Could not subscribe for messages: {}", e.message)
                 }
             }
         }
     }
 
-    void resubscribe() {
-        List<Listener> listenersCopy = new ArrayList<>(listeners);
-        listeners.clear();
-        for (Listener listener : listenersCopy) {
-            listen(listener.queues, listener.listener);
+    fun resubscribe() {
+        val listenersCopy: List<Listener> = ArrayList(listeners)
+        listeners.clear()
+        for (listener in listenersCopy) {
+            listen(listener.queues, listener.listener)
         }
     }
 
-    private static class Listener {
-        private final Collection<String> queues;
-        private final AmqpMessageListener listener;
-
-        private Listener(Collection<String> queues, AmqpMessageListener listener) {
-            this.queues = queues;
-            this.listener = listener;
-        }
-    }
+    private class Listener(val queues: Collection<String>, val listener: AmqpMessageListener)
 }

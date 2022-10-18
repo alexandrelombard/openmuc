@@ -18,129 +18,111 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.osgi.deployment
 
-package org.openmuc.framework.lib.osgi.deployment;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Dictionary;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Map;
-
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.Constants;
-import org.osgi.framework.InvalidSyntaxException;
-import org.osgi.framework.ServiceEvent;
-import org.osgi.framework.ServiceListener;
-import org.osgi.framework.ServiceReference;
-import org.osgi.framework.ServiceRegistration;
-import org.osgi.service.cm.Configuration;
-import org.osgi.service.cm.ConfigurationAdmin;
-import org.osgi.service.cm.ManagedService;
-import org.slf4j.LoggerFactory;
-
-import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.Logger
+import org.osgi.framework.*
+import org.osgi.service.cm.ConfigurationAdmin
+import org.osgi.service.cm.ManagedService
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import java.util.*
 
 /**
  * This class provides some methods to ease the dynamic handling of OSGi services. It capsules routines of the OSGi
  * service management to make the handling more convenient for the developer. This class provides methods to register
  * own services to the OSGi environment and methods to subscribe to existing services.
  */
-public class RegistrationHandler implements ServiceListener {
-
-    private final BundleContext context;
-    private final List<ServiceRegistration<?>> registrations;
-    private final Logger logger = (Logger) LoggerFactory.getLogger(this.getClass());
-    private final Map<String, ServiceAccess> subscribedServices;
-    private final Map<String, ServiceAccess> subscribedServiceEvents;
-    private final List<String> filterEntries;
-    private final String FELIX_FILE_INSTALL_KEY = "felix.fileinstall.filename";
-    private ConfigurationAdmin configurationAdmin;
+class RegistrationHandler(private val context: BundleContext) : ServiceListener {
+    private val registrations: MutableList<ServiceRegistration<*>>
+    private val logger = LoggerFactory.getLogger(this.javaClass) as Logger
+    private val subscribedServices: MutableMap<String, ServiceAccess>
+    private val subscribedServiceEvents: MutableMap<String, ServiceAccess>
+    private val filterEntries: MutableList<String>
+    private val FELIX_FILE_INSTALL_KEY = "felix.fileinstall.filename"
+    private var configurationAdmin: ConfigurationAdmin? = null
 
     /**
      * Constructor
      *
      * @param context
-     *            BundleContext of your OSGi component which is typically provided in the activate method of your
-     *            component.
+     * BundleContext of your OSGi component which is typically provided in the activate method of your
+     * component.
      */
-    public RegistrationHandler(BundleContext context) {
-        this.context = context;
-        registrations = new ArrayList<>();
-        subscribedServices = new HashMap<>();
-        subscribedServiceEvents = new HashMap<>();
-        filterEntries = new ArrayList<>();
-        subscribeForService(ConfigurationAdmin.class.getName(),
-                instance -> configurationAdmin = (ConfigurationAdmin) instance);
-
+    init {
+        registrations = ArrayList()
+        subscribedServices = HashMap()
+        subscribedServiceEvents = HashMap()
+        filterEntries = ArrayList()
+        subscribeForService(
+            ConfigurationAdmin::class.java.name
+        ) { instance: Any? -> configurationAdmin = instance as ConfigurationAdmin? }
     }
 
     /**
      * Provides the given service within the OSGi environment.
      *
      * @param serviceName
-     *            Name of the service to provide. Typically "MyService.class.getName()" This class must implement the
-     *            interface org.osgi.service.cm.ManagedService.
+     * Name of the service to provide. Typically "MyService.class.getName()" This class must implement the
+     * interface org.osgi.service.cm.ManagedService.
      * @param serviceInstance
-     *            Instance of the service
+     * Instance of the service
      * @param pid
-     *            Persistence Id. Typically package path + class name e.g. "my.package.path.myClass"
+     * Persistence Id. Typically package path + class name e.g. "my.package.path.myClass"
      */
-    public void provideInFramework(String serviceName, Object serviceInstance, String pid) {
-        Dictionary<String, Object> properties = buildProperties(pid);
-
-        ServiceRegistration<?> newRegistration = context.registerService(serviceName, serviceInstance, properties);
-        ServiceRegistration<?> newManagedService = context.registerService(ManagedService.class.getName(),
-                serviceInstance, properties);
-        updateConfigDatabaseWithGivenDictionary(properties);
-
-        registrations.add(newRegistration);
-        registrations.add(newManagedService);
+    fun provideInFramework(serviceName: String?, serviceInstance: Any?, pid: String) {
+        val properties = buildProperties(pid)
+        val newRegistration = context.registerService(serviceName, serviceInstance, properties)
+        val newManagedService = context.registerService(
+            ManagedService::class.java.name,
+            serviceInstance, properties
+        )
+        updateConfigDatabaseWithGivenDictionary(properties)
+        registrations.add(newRegistration)
+        registrations.add(newManagedService)
     }
 
-    public void provideInFrameworkWithoutManagedService(String serviceName, Object serviceInstance, String pid) {
-        Dictionary<String, Object> properties = buildProperties(pid);
-        ServiceRegistration<?> newRegistration = context.registerService(serviceName, serviceInstance, properties);
-        updateConfigDatabaseWithGivenDictionary(properties);
-        registrations.add(newRegistration);
+    fun provideInFrameworkWithoutManagedService(serviceName: String?, serviceInstance: Any?, pid: String) {
+        val properties = buildProperties(pid)
+        val newRegistration = context.registerService(serviceName, serviceInstance, properties)
+        updateConfigDatabaseWithGivenDictionary(properties)
+        registrations.add(newRegistration)
     }
 
-    public void provideInFrameworkAsManagedService(Object serviceInstance, String pid) {
-        Dictionary<String, Object> properties = buildProperties(pid);
-
-        ServiceRegistration<?> newManagedService = context.registerService(ManagedService.class.getName(),
-                serviceInstance, properties);
-        updateConfigDatabaseWithGivenDictionary(properties);
-
-        registrations.add(newManagedService);
+    fun provideInFrameworkAsManagedService(serviceInstance: Any?, pid: String) {
+        val properties = buildProperties(pid)
+        val newManagedService = context.registerService(
+            ManagedService::class.java.name,
+            serviceInstance, properties
+        )
+        updateConfigDatabaseWithGivenDictionary(properties)
+        registrations.add(newManagedService)
     }
 
-    public void provideInFrameworkWithoutConfiguration(String serviceName, Object serviceInstance) {
-        ServiceRegistration<?> newRegistration = context.registerService(serviceName, serviceInstance, null);
-
-        registrations.add(newRegistration);
+    fun provideInFrameworkWithoutConfiguration(serviceName: String?, serviceInstance: Any?) {
+        val newRegistration = context.registerService(serviceName, serviceInstance, null)
+        registrations.add(newRegistration)
     }
 
     /**
-     * Provides the given service within the OSGi environment with initial properties. <br>
-     * <b>NOTE:</b> This method can be used at early development stage when no deployment package exists. Later on the
+     * Provides the given service within the OSGi environment with initial properties. <br></br>
+     * **NOTE:** This method can be used at early development stage when no deployment package exists. Later on the
      * service would get the properties via the ManagedService interface.
      *
      * @param serviceName
-     *            Name of the service to provide. Typically "MyService.class.getName()"
+     * Name of the service to provide. Typically "MyService.class.getName()"
      * @param serviceInstance
-     *            Instance of the service
+     * Instance of the service
      * @param properties
-     *            The properties for this service.
+     * The properties for this service.
      */
-    public void provideWithInitProperties(String serviceName, Object serviceInstance,
-            Dictionary<String, Object> properties) {
-
-        ServiceRegistration<?> newRegistration = context.registerService(serviceName, serviceInstance, properties);
-        updateConfigDatabaseWithGivenDictionary(properties);
-        registrations.add(newRegistration);
+    fun provideWithInitProperties(
+        serviceName: String?, serviceInstance: Any?,
+        properties: Dictionary<String, Any>
+    ) {
+        val newRegistration = context.registerService(serviceName, serviceInstance, properties)
+        updateConfigDatabaseWithGivenDictionary(properties)
+        registrations.add(newRegistration)
     }
 
     /**
@@ -148,102 +130,95 @@ public class RegistrationHandler implements ServiceListener {
      * "Constants.SERVICE_PID" as key and service pid as value.
      *
      * @param properties
-     *            dictionary with updated properties and service pid
+     * dictionary with updated properties and service pid
      */
-    public void updateConfigDatabaseWithGivenDictionary(Dictionary<String, Object> properties) {
-        String pid = null;
+    fun updateConfigDatabaseWithGivenDictionary(properties: Dictionary<String, Any>) {
+        var pid: String? = null
         try {
-            pid = (String) properties.get(Constants.SERVICE_PID);
-            Configuration newConfig = configurationAdmin.getConfiguration(pid);
-
-            Dictionary<String, ?> existingProperties = newConfig.getProperties();
+            pid = properties[Constants.SERVICE_PID] as String
+            val newConfig = configurationAdmin!!.getConfiguration(pid)
+            val existingProperties: Dictionary<String, *>? = newConfig.properties
             if (existingProperties != null) {
-                String fileName = (String) existingProperties.get(FELIX_FILE_INSTALL_KEY);
+                val fileName = existingProperties[FELIX_FILE_INSTALL_KEY] as String
                 if (fileName != null) {
-                    properties.put(FELIX_FILE_INSTALL_KEY, fileName);
+                    properties.put(FELIX_FILE_INSTALL_KEY, fileName)
                 }
             }
-
-            newConfig.update(properties);
-        } catch (IOException e) {
-            logger.error("Config for {} can not been built\n{}", pid, e.getMessage());
+            newConfig.update(properties)
+        } catch (e: IOException) {
+            logger.error("Config for {} can not been built\n{}", pid, e.message)
         }
     }
 
     /**
      * Unregisters all provided services
      */
-    public void removeAllProvidedServices() {
-        for (ServiceRegistration<?> registration : registrations) {
-            registration.unregister();
+    fun removeAllProvidedServices() {
+        for (registration in registrations) {
+            registration.unregister()
         }
-        context.removeServiceListener(this);
+        context.removeServiceListener(this)
     }
 
     /**
      * Subscribe for a service.
      *
      * @param serviceName
-     *            Name of the service. Typically "MyService.class.getName(). This class must implement the interface
-     *            org.osgi.service.cm.ManagedService.
+     * Name of the service. Typically "MyService.class.getName(). This class must implement the interface
+     * org.osgi.service.cm.ManagedService.
      * @param access
-     *            ServicAccess instance
+     * ServicAccess instance
      */
-    public void subscribeForService(String serviceName, ServiceAccess access) {
-        subscribedServices.put(serviceName, access);
-        filterEntries.add(serviceName);
-        updateServiceListener();
-        updateNow();
+    fun subscribeForService(serviceName: String, access: ServiceAccess) {
+        subscribedServices[serviceName] = access
+        filterEntries.add(serviceName)
+        updateServiceListener()
+        updateNow()
     }
 
-    public void subscribeForServiceServiceEvent(String serviceName, ServiceAccess access) {
-        subscribedServiceEvents.put(serviceName, access);
-        filterEntries.add(serviceName);
-        updateServiceListener();
-        updateNow();
+    fun subscribeForServiceServiceEvent(serviceName: String, access: ServiceAccess) {
+        subscribedServiceEvents[serviceName] = access
+        filterEntries.add(serviceName)
+        updateServiceListener()
+        updateNow()
     }
 
-    private Dictionary<String, Object> buildProperties(String pid) {
-        Dictionary<String, Object> properties = new Hashtable<>();
-        properties.put(Constants.SERVICE_PID, pid);
-        String felixFileDir = System.getProperty("felix.fileinstall.dir");
-        properties.put(FELIX_FILE_INSTALL_KEY, felixFileDir);
-
-        return properties;
+    private fun buildProperties(pid: String): Dictionary<String, Any> {
+        val properties: Dictionary<String, Any> = Hashtable()
+        properties.put(Constants.SERVICE_PID, pid)
+        val felixFileDir = System.getProperty("felix.fileinstall.dir")
+        properties.put(FELIX_FILE_INSTALL_KEY, felixFileDir)
+        return properties
     }
 
-    private void updateServiceListener() {
-        context.removeServiceListener(this);
-        String serviceFilter = createFilter();
+    private fun updateServiceListener() {
+        context.removeServiceListener(this)
+        val serviceFilter = createFilter()
         try {
-            context.addServiceListener(this, serviceFilter);
-        } catch (InvalidSyntaxException e) {
-            logger.error("Service listener can't be added to framework", e);
+            context.addServiceListener(this, serviceFilter)
+        } catch (e: InvalidSyntaxException) {
+            logger.error("Service listener can't be added to framework", e)
         }
     }
 
-    private String createFilter() {
-        StringBuilder builder = new StringBuilder();
-
-        builder.append("( |");
-        for (String serviceName : filterEntries) {
-            builder.append("(" + Constants.OBJECTCLASS + "=" + serviceName + ") ");
+    private fun createFilter(): String {
+        val builder = StringBuilder()
+        builder.append("( |")
+        for (serviceName in filterEntries) {
+            builder.append("(" + Constants.OBJECTCLASS + "=" + serviceName + ") ")
         }
-
-        builder.append(" ) ");
-        return builder.toString();
+        builder.append(" ) ")
+        return builder.toString()
     }
 
-    private void updateNow() {
-        for (String serviceName : subscribedServices.keySet()) {
-            ServiceReference<?> serviceRef = context.getServiceReference(serviceName);
-            ServiceAccess access = subscribedServices.get(serviceName);
-
+    private fun updateNow() {
+        for (serviceName in subscribedServices.keys) {
+            val serviceRef = context.getServiceReference(serviceName)
+            val access = subscribedServices[serviceName]
             if (serviceRef == null) {
-                access.setService(null);
-            }
-            else {
-                access.setService(context.getService(serviceRef));
+                access!!.setService(null)
+            } else {
+                access!!.setService(context.getService(serviceRef))
             }
         }
     }
@@ -252,36 +227,26 @@ public class RegistrationHandler implements ServiceListener {
      * Internal method! Must not be used by the user of RegistrationHandler class. (Note: Due to the implementation of
      * ServiceListener this method must be public)
      */
-    @Override
-    public void serviceChanged(ServiceEvent event) {
-        serviceServiceEventSubscribers(event);
-        serveServiceSubscribers(event);
+    override fun serviceChanged(event: ServiceEvent) {
+        serviceServiceEventSubscribers(event)
+        serveServiceSubscribers(event)
     }
 
-    private void serviceServiceEventSubscribers(ServiceEvent event) {
-        String changedServiceClass = ((String[]) event.getServiceReference().getProperty("objectClass"))[0];
-        ServiceAccess access = subscribedServiceEvents.get(changedServiceClass);
-
-        if (access != null) {
-            access.setService(event);
-        }
+    private fun serviceServiceEventSubscribers(event: ServiceEvent) {
+        val changedServiceClass = (event.serviceReference.getProperty("objectClass") as Array<String>)[0]
+        val access = subscribedServiceEvents[changedServiceClass]
+        access?.setService(event)
     }
 
-    private void serveServiceSubscribers(ServiceEvent event) {
-        String changedServiceClass = ((String[]) event.getServiceReference().getProperty("objectClass"))[0];
-        logger.debug("service changed for class " + changedServiceClass);
-        ServiceAccess access = subscribedServices.get(changedServiceClass);
-
-        if (access == null) {
-            return;
+    private fun serveServiceSubscribers(event: ServiceEvent) {
+        val changedServiceClass = (event.serviceReference.getProperty("objectClass") as Array<String>)[0]
+        logger.debug("service changed for class $changedServiceClass")
+        val access = subscribedServices[changedServiceClass] ?: return
+        if (event.type == ServiceEvent.UNREGISTERING) {
+            access.setService(null)
+            return
         }
-
-        if (event.getType() == ServiceEvent.UNREGISTERING) {
-            access.setService(null);
-            return;
-        }
-
-        ServiceReference<?> serviceRef = context.getServiceReference(changedServiceClass);
-        access.setService(context.getService(serviceRef));
+        val serviceRef = context.getServiceReference(changedServiceClass)
+        access.setService(context.getService(serviceRef))
     }
 }

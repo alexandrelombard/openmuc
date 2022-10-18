@@ -18,36 +18,28 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.mqtt
 
-package org.openmuc.framework.lib.mqtt;
-
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Queue;
-
-import org.openmuc.framework.lib.filePersistence.FilePersistence;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmuc.framework.lib.filePersistence.FilePersistence
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import java.util.*
 
 /**
- * Buffer handler with RAM buffer and managed {@link FilePersistence}
+ * Buffer handler with RAM buffer and managed [FilePersistence]
  */
-public class MqttBufferHandler {
-
-    private static final Logger logger = LoggerFactory.getLogger(MqttBufferHandler.class);
-
-    private final Queue<MessageTuple> buffer = new LinkedList<>();
-    private final long maxBufferSizeBytes;
-    private long currentBufferSize = 0L;
-    private final int maxFileCount;
-    private final FilePersistence filePersistence;
+class MqttBufferHandler(maxBufferSizeKb: Long, maxFileCount: Int, maxFileSizeKb: Long, persistenceDirectory: String?) {
+    private val buffer: Queue<MessageTuple> = LinkedList()
+    private val maxBufferSizeBytes: Long
+    private var currentBufferSize = 0L
+    private val maxFileCount: Int
+    private var filePersistence: FilePersistence? = null
 
     /**
      * Initializes buffers with specified properties.
      *
-     * <br>
-     * <br>
+     * <br></br>
+     * <br></br>
      * <table border="1" style="text-align: center">
      * <caption>Behaviour summary</caption>
      * <tr>
@@ -56,180 +48,180 @@ public class MqttBufferHandler {
      * <th>maxFileSizeKb</th>
      * <th>RAM buffer</th>
      * <th>File buffer</th>
-     * </tr>
+    </tr> *
      * <tr>
      * <td>0</td>
      * <td>0</td>
      * <td>0</td>
      * <td>Disabled</td>
      * <td>Disabled</td>
-     * </tr>
+    </tr> *
      * <tr>
      * <td>0</td>
      * <td>0</td>
      * <td>&#62;0</td>
      * <td>Disabled</td>
      * <td>Disabled</td>
-     * </tr>
+    </tr> *
      * <tr>
      * <td>0</td>
      * <td>&#62;0</td>
      * <td>0</td>
      * <td>Disabled</td>
      * <td>Disabled</td>
-     * </tr>
+    </tr> *
      * <tr>
      * <td>0</td>
      * <td>&#62;0</td>
      * <td>&#62;0</td>
      * <td>Disabled</td>
      * <td>Enabled</td>
-     * </tr>
+    </tr> *
      * <tr>
      * <td>&#62;0</td>
      * <td>0</td>
      * <td>0</td>
      * <td>Enabled</td>
      * <td>Disabled</td>
-     * </tr>
+    </tr> *
      * <tr>
      * <td>&#62;0</td>
      * <td>0</td>
      * <td>&#62;0</td>
      * <td>Enabled</td>
      * <td>Disabled</td>
-     * </tr>
+    </tr> *
      * <tr>
      * <td>&#62;0</td>
      * <td>&#62;0</td>
      * <td>0</td>
      * <td>Enabled</td>
      * <td>Disabled</td>
-     * </tr>
+    </tr> *
      * <tr>
      * <td>&#62;0</td>
      * <td>&#62;0</td>
      * <td>&#62;0</td>
      * <td>Enabled</td>
      * <td>Enabled</td>
-     * </tr>
-     * </table>
+    </tr> *
+    </table> *
      *
      * @param maxBufferSizeKb
-     *            maximum RAM buffer size in KiB
+     * maximum RAM buffer size in KiB
      * @param maxFileCount
-     *            maximum file count used per buffer by {@link FilePersistence}
+     * maximum file count used per buffer by [FilePersistence]
      * @param maxFileSizeKb
-     *            maximum file size used per file by {@link FilePersistence}
+     * maximum file size used per file by [FilePersistence]
      * @param persistenceDirectory
-     *            directory in which {@link FilePersistence} stores buffers
+     * directory in which [FilePersistence] stores buffers
      */
-    public MqttBufferHandler(long maxBufferSizeKb, int maxFileCount, long maxFileSizeKb, String persistenceDirectory) {
-        maxBufferSizeBytes = maxBufferSizeKb * 1024;
-        this.maxFileCount = maxFileCount;
-
-        if (isFileBufferEnabled()) {
-            filePersistence = new FilePersistence(persistenceDirectory, maxFileCount, maxFileSizeKb);
-        }
-        else {
-            filePersistence = null;
+    init {
+        maxBufferSizeBytes = maxBufferSizeKb * 1024
+        this.maxFileCount = maxFileCount
+        filePersistence = if (isFileBufferEnabled) {
+            FilePersistence(persistenceDirectory, maxFileCount, maxFileSizeKb)
+        } else {
+            null
         }
     }
 
-    private boolean isFileBufferEnabled() {
-        return maxFileCount > 0 && maxBufferSizeBytes > 0;
-    }
+    private val isFileBufferEnabled: Boolean
+        private get() = maxFileCount > 0 && maxBufferSizeBytes > 0
 
-    public void add(String topic, byte[] message) {
-
+    fun add(topic: String?, message: ByteArray?) {
         if (isBufferTooFull(message)) {
-            handleFull(topic, message);
-        }
-        else {
-            synchronized (buffer) {
-                buffer.add(new MessageTuple(topic, message));
-                currentBufferSize += message.length;
+            handleFull(topic, message)
+        } else {
+            synchronized(buffer) {
+                buffer.add(MessageTuple(topic, message))
+                currentBufferSize += message!!.size.toLong()
             }
-
-            if (logger.isTraceEnabled()) {
-                logger.trace("maxBufferSize = {}, currentBufferSize = {}, messageSize = {}", maxBufferSizeBytes,
-                        currentBufferSize, message.length);
+            if (logger.isTraceEnabled) {
+                logger.trace(
+                    "maxBufferSize = {}, currentBufferSize = {}, messageSize = {}", maxBufferSizeBytes,
+                    currentBufferSize, message!!.size
+                )
             }
         }
-
     }
 
-    private boolean isBufferTooFull(byte[] message) {
-        return currentBufferSize + message.length > maxBufferSizeBytes;
+    private fun isBufferTooFull(message: ByteArray?): Boolean {
+        return currentBufferSize + message!!.size > maxBufferSizeBytes
     }
 
-    private void handleFull(String topic, byte[] message) {
-        if (isFileBufferEnabled()) {
-            addToFilePersistence();
-            add(topic, message);
-        }
-        else if (message.length <= maxBufferSizeBytes) {
-            removeNextMessage();
-            add(topic, message);
+    private fun handleFull(topic: String?, message: ByteArray?) {
+        if (isFileBufferEnabled) {
+            addToFilePersistence()
+            add(topic, message)
+        } else if (message!!.size <= maxBufferSizeBytes) {
+            removeNextMessage()
+            add(topic, message)
         }
     }
 
-    private void addToFilePersistence() {
-        logger.debug("move buffered messages from RAM to file");
+    private fun addToFilePersistence() {
+        logger.debug("move buffered messages from RAM to file")
         while (!buffer.isEmpty()) {
-            MessageTuple messageTuple = removeNextMessage();
-            writeBufferToFile(messageTuple);
+            val messageTuple = removeNextMessage()
+            writeBufferToFile(messageTuple)
         }
-        currentBufferSize = 0;
+        currentBufferSize = 0
     }
 
-    private void writeBufferToFile(MessageTuple messageTuple) {
+    private fun writeBufferToFile(messageTuple: MessageTuple) {
         try {
-            synchronized (filePersistence) {
-                filePersistence.writeBufferToFile(messageTuple.topic, messageTuple.message);
+            synchronized(filePersistence!!) {
+                filePersistence!!.writeBufferToFile(
+                    messageTuple.topic!!,
+                    messageTuple.message!!
+                )
             }
-        } catch (IOException e) {
-            logger.error(e.getMessage());
+        } catch (e: IOException) {
+            logger.error(e.message)
         }
     }
 
-    public boolean isEmpty() {
-        return buffer.isEmpty();
-    }
+    val isEmpty: Boolean
+        get() = buffer.isEmpty()
 
-    public MessageTuple removeNextMessage() {
-        MessageTuple removedMessage;
-        synchronized (buffer) {
-            removedMessage = buffer.remove();
-            currentBufferSize -= removedMessage.message.length;
+    fun removeNextMessage(): MessageTuple {
+        var removedMessage: MessageTuple
+        synchronized(buffer) {
+            removedMessage = buffer.remove()
+            currentBufferSize -= removedMessage.message!!.size.toLong()
         }
-        return removedMessage;
+        return removedMessage
     }
 
-    public String[] getBuffers() {
-        String[] buffers;
-        if (isFileBufferEnabled()) {
-            buffers = filePersistence.getBuffers();
+    val buffers: Array<String>
+        get() {
+            val buffers: Array<String>
+            buffers = if (isFileBufferEnabled) {
+                filePersistence!!.buffers
+            } else {
+                arrayOf()
+            }
+            return buffers
         }
-        else {
-            buffers = new String[] {};
-        }
-        return buffers;
+
+    fun getMessageIterator(buffer: String?): Iterator<MessageTuple> {
+        return MqttBufferMessageIterator(buffer, filePersistence)
     }
 
-    public Iterator<MessageTuple> getMessageIterator(String buffer) {
-        return new MqttBufferMessageIterator(buffer, filePersistence);
-    }
-
-    public void persist() {
-        if (isFileBufferEnabled()) {
+    fun persist() {
+        if (isFileBufferEnabled) {
             try {
-                filePersistence.restructure();
-                addToFilePersistence();
-            } catch (IOException e) {
-                logger.error("Buffer file restructuring error: {}", e.getMessage());
-                e.printStackTrace();
+                filePersistence!!.restructure()
+                addToFilePersistence()
+            } catch (e: IOException) {
+                logger.error("Buffer file restructuring error: {}", e.message)
+                e.printStackTrace()
             }
         }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(MqttBufferHandler::class.java)
     }
 }

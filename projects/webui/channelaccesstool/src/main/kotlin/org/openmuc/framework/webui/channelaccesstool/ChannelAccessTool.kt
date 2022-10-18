@@ -18,22 +18,18 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.webui.channelaccesstool;
+package org.openmuc.framework.webui.channelaccesstool
 
-import org.openmuc.framework.webui.spi.WebUiPluginService;
-import org.osgi.service.component.annotations.Component;
+import org.openmuc.framework.webui.spi.WebUiPluginService
+import org.osgi.service.component.annotations.Component
 
-@Component(service = WebUiPluginService.class)
-public final class ChannelAccessTool extends WebUiPluginService {
-
-    @Override
-    public String getAlias() {
-        return "channelaccesstool";
+@Component(service = [WebUiPluginService::class])
+class ChannelAccessTool : WebUiPluginService() {
+    override fun getAlias(): String {
+        return "channelaccesstool"
     }
 
-    @Override
-    public String getName() {
-        return "Channel Access Tool";
+    override fun getName(): String {
+        return "Channel Access Tool"
     }
-
 }

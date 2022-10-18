@@ -18,43 +18,40 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.server.modbus
 
-package org.openmuc.framework.server.modbus;
-
-import java.io.IOException;
-
-import org.openmuc.framework.lib.osgi.deployment.RegistrationHandler;
-import org.openmuc.framework.server.spi.ServerService;
-import org.osgi.framework.BundleContext;
-import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Deactivate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.lib.osgi.deployment.RegistrationHandler
+import org.openmuc.framework.server.spi.ServerService
+import org.osgi.framework.BundleContext
+import org.osgi.service.component.annotations.Activate
+import org.osgi.service.component.annotations.Component
+import org.osgi.service.component.annotations.Deactivate
+import org.slf4j.LoggerFactory
+import java.io.IOException
 
 @Component
-public class ModbusComponent {
-
-    private static Logger logger = LoggerFactory.getLogger(ModbusComponent.class);
-    private ModbusServer modbusServer;
-    private RegistrationHandler registrationHandler;
-
+class ModbusComponent {
+    private var modbusServer: ModbusServer? = null
+    private var registrationHandler: RegistrationHandler? = null
     @Activate
-    protected void activate(BundleContext context) throws IOException {
-        logger.info("Activating Modbus Server");
-        modbusServer = new ModbusServer();
-
-        registrationHandler = new RegistrationHandler(context);
-        String pid = ModbusServer.class.getName();
-        registrationHandler.provideInFramework(ServerService.class.getName(), modbusServer, pid);
-
+    @Throws(IOException::class)
+    protected fun activate(context: BundleContext?) {
+        logger.info("Activating Modbus Server")
+        modbusServer = ModbusServer()
+        registrationHandler = RegistrationHandler(context!!)
+        val pid = ModbusServer::class.java.name
+        registrationHandler!!.provideInFramework(ServerService::class.java.name, modbusServer, pid)
     }
 
     @Deactivate
-    protected void deactivate(BundleContext context) {
-        logger.info("Deactivating Modbus Server");
-        modbusServer.shutdown();
-        registrationHandler.removeAllProvidedServices();
+    protected fun deactivate(context: BundleContext?) {
+        logger.info("Deactivating Modbus Server")
+        modbusServer!!.shutdown()
+        registrationHandler!!.removeAllProvidedServices()
     }
 
+    companion object {
+        private val logger = LoggerFactory.getLogger(ModbusComponent::class.java)
+    }
 }

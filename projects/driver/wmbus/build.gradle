@@ -1,3 +1,6 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+}
 def projectName = "OpenMUC Driver - wM-Bus"
 def projectDescription = "M-Bus wireless driver for the OpenMUC framework."
 
@@ -13,6 +16,7 @@ dependencies {
     embed group: 'org.openmuc', name: 'jmbus', version: jmbusversion
 
     implementation 'commons-codec:commons-codec:1.15'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
 
 jar {
@@ -33,5 +37,18 @@ publishing {
                 description = projectDescription
             }
         }
+    }
+}
+repositories {
+    mavenCentral()
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 }

@@ -18,132 +18,140 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.osgi.config
 
-package org.openmuc.framework.lib.osgi.config;
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import java.io.File
+import java.util.*
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.io.File;
-import java.util.Dictionary;
-import java.util.Hashtable;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-class PropertyHandlerTest {
-
-    private final String URL = "url";
-    private final String USER = "user";
-    private final String PASSWORD = "password";
-    private final String pid = "org.openmuc.framework.MyService";
-    private final String propertyDir = "properties/";
-    private File loadDir;
-    private Dictionary<String, String> changedDic;
-    private Dictionary<String, String> defaultDic;
-    private Settings settings;
-
+internal class PropertyHandlerTest {
+    private val URL = "url"
+    private val USER = "user"
+    private val PASSWORD = "password"
+    private val pid = "org.openmuc.framework.MyService"
+    private val propertyDir = "properties/"
+    private var loadDir: File? = null
+    private var changedDic = hashMapOf<String, String>()
+    private var defaultDic = hashMapOf<String, String>()
+    private var settings: Settings? = null
     @BeforeEach
-    void initProperties() {
-        System.setProperty("felix.fileinstall.dir", propertyDir);
-        loadDir = new File(propertyDir);
-        loadDir.mkdir();
-        settings = new Settings();
+    fun initProperties() {
+        System.setProperty("felix.fileinstall.dir", propertyDir)
+        loadDir = File(propertyDir)
+        loadDir!!.mkdir()
+        settings = Settings()
     }
 
     @BeforeEach
-    void initChangedDic() {
-        changedDic = new Hashtable<>();
-        changedDic.put(URL, "postgres");
-        changedDic.put(USER, "openbug");
-        changedDic.put(PASSWORD, "openmuc");
+    fun initChangedDic() {
+        changedDic = hashMapOf()
+        changedDic[URL] = "postgres"
+        changedDic[USER] = "openbug"
+        changedDic[PASSWORD] = "openmuc"
     }
 
     @BeforeEach
-    void initDefaultDic() {
-        defaultDic = new Hashtable<>();
-        defaultDic.put(URL, "jdbc:h2");
-        defaultDic.put(USER, "openmuc");
-        defaultDic.put(PASSWORD, "openmuc");
+    fun initDefaultDic() {
+        defaultDic = hashMapOf()
+        defaultDic[URL] = "jdbc:h2"
+        defaultDic[USER] = "openmuc"
+        defaultDic[PASSWORD] = "openmuc"
     }
 
     @AfterEach
-    void cleanUp() {
-        loadDir.delete();
+    fun cleanUp() {
+        loadDir!!.delete()
     }
 
     @Test
-    void throwExceptionIfPropertyInDicIsMissing() {
-        changedDic = new Hashtable<>();
-        PropertyHandler propertyHandler = new PropertyHandler(settings, pid);
-        changedDic.put(URL, "postgres");
-        changedDic.put(USER, "openbug");
-        DictionaryPreprocessor dict = new DictionaryPreprocessor(changedDic);
-        assertThrows(ServicePropertyException.class, () -> propertyHandler.processConfig(dict));
+    fun throwExceptionIfPropertyInDicIsMissing() {
+        changedDic = hashMapOf()
+        val propertyHandler = PropertyHandler(
+            settings!!, pid
+        )
+        changedDic[URL] = "postgres"
+        changedDic[USER] = "openbug"
+        val dict = DictionaryPreprocessor(changedDic)
+        Assertions.assertThrows(ServicePropertyException::class.java) { propertyHandler.processConfig(dict) }
+    }
+
+    @get:Throws(ServicePropertyException::class)
+    @get:Test
+    val isDefaultAfterStartWithChangedConfig_false: Unit
+        get() {
+            val propertyHandler = PropertyHandler(
+                settings!!, pid
+            )
+            val config = DictionaryPreprocessor(changedDic)
+            propertyHandler.processConfig(config)
+            Assertions.assertFalse(propertyHandler.isDefaultConfig)
+        }
+
+    @Test
+    @Throws(ServicePropertyException::class)
+    fun configChangedAfterStartWithChangedConfig_true() {
+        val propertyHandler = PropertyHandler(
+            settings!!, pid
+        )
+        val config = DictionaryPreprocessor(changedDic)
+        propertyHandler.processConfig(config)
+        Assertions.assertTrue(propertyHandler.configChanged())
+    }
+
+    @get:Throws(ServicePropertyException::class)
+    @get:Test
+    val isDefaultAfterStartWithDefaultConfig_true: Unit
+        get() {
+            val propertyHandler = PropertyHandler(
+                settings!!, pid
+            )
+            val config = DictionaryPreprocessor(defaultDic)
+            propertyHandler.processConfig(config)
+            Assertions.assertTrue(propertyHandler.isDefaultConfig)
+        }
+
+    @Test
+    @Throws(ServicePropertyException::class)
+    fun configChangedAfterStartWithDefaultConfig_false() {
+        val propertyHandler = PropertyHandler(
+            settings!!, pid
+        )
+        val config = DictionaryPreprocessor(defaultDic)
+        propertyHandler.processConfig(config)
+        Assertions.assertFalse(propertyHandler.configChanged())
     }
 
     @Test
-    void isDefaultAfterStartWithChangedConfig_false() throws ServicePropertyException {
-        PropertyHandler propertyHandler = new PropertyHandler(settings, pid);
-        DictionaryPreprocessor config = new DictionaryPreprocessor(changedDic);
-        propertyHandler.processConfig(config);
-        assertFalse(propertyHandler.isDefaultConfig());
+    fun toStringDoesNotShowPassword() {
+        val propertyHandler = PropertyHandler(
+            settings!!, pid
+        )
+        val config = DictionaryPreprocessor(defaultDic)
+        Assertions.assertTrue(!propertyHandler.toString().contains("password=openmuc"))
+        Assertions.assertTrue(propertyHandler.toString().contains("password=*****"))
     }
 
     @Test
-    void configChangedAfterStartWithChangedConfig_true() throws ServicePropertyException {
-        PropertyHandler propertyHandler = new PropertyHandler(settings, pid);
-        DictionaryPreprocessor config = new DictionaryPreprocessor(changedDic);
-        propertyHandler.processConfig(config);
-        assertTrue(propertyHandler.configChanged());
+    fun noMoreNullPointerExceptions() {
+        val propertyHandler = PropertyHandler(
+            settings!!, pid
+        )
+        val config = DictionaryPreprocessor(defaultDic)
+        Assertions.assertFalse(propertyHandler.hasValueForKey("thisDoesNotExist"))
+        Assertions.assertThrows(IllegalArgumentException::class.java) { propertyHandler.getBoolean("thisDoesNotExist") }
+        Assertions.assertThrows(IllegalArgumentException::class.java) { propertyHandler.getDouble("thisDoesNotExist") }
+        Assertions.assertThrows(IllegalArgumentException::class.java) { propertyHandler.getInt("thisDoesNotExist") }
+        Assertions.assertThrows(IllegalArgumentException::class.java) { propertyHandler.getString("thisDoesNotExist") }
     }
 
-    @Test
-    void isDefaultAfterStartWithDefaultConfig_true() throws ServicePropertyException {
-        PropertyHandler propertyHandler = new PropertyHandler(settings, pid);
-        DictionaryPreprocessor config = new DictionaryPreprocessor(defaultDic);
-        propertyHandler.processConfig(config);
-        assertTrue(propertyHandler.isDefaultConfig());
-    }
-
-    @Test
-    void configChangedAfterStartWithDefaultConfig_false() throws ServicePropertyException {
-        PropertyHandler propertyHandler = new PropertyHandler(settings, pid);
-        DictionaryPreprocessor config = new DictionaryPreprocessor(defaultDic);
-        propertyHandler.processConfig(config);
-        assertFalse(propertyHandler.configChanged());
-    }
-
-    @Test
-    void toStringDoesNotShowPassword() {
-        PropertyHandler propertyHandler = new PropertyHandler(settings, pid);
-        DictionaryPreprocessor config = new DictionaryPreprocessor(defaultDic);
-
-        assertTrue(!propertyHandler.toString().contains("password=openmuc"));
-        assertTrue(propertyHandler.toString().contains("password=*****"));
-    }
-
-    @Test
-    void noMoreNullPointerExceptions() {
-        PropertyHandler propertyHandler = new PropertyHandler(settings, pid);
-        DictionaryPreprocessor config = new DictionaryPreprocessor(defaultDic);
-        assertFalse(propertyHandler.hasValueForKey("thisDoesNotExist"));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> propertyHandler.getBoolean("thisDoesNotExist"));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> propertyHandler.getDouble("thisDoesNotExist"));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> propertyHandler.getInt("thisDoesNotExist"));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> propertyHandler.getString("thisDoesNotExist"));
-    }
-
-    class Settings extends GenericSettings {
-        public Settings() {
-            super();
-            properties.put(URL, new ServiceProperty(URL, "URL of the used database", "jdbc:h2", true));
-            properties.put(USER, new ServiceProperty(USER, "User of the used database", "openmuc", true));
-            properties.put(PASSWORD, new ServiceProperty(PASSWORD, "Password for the database user", "openmuc", true));
+    internal inner class Settings : GenericSettings() {
+        init {
+            properties[URL] = ServiceProperty(URL, "URL of the used database", "jdbc:h2", true)
+            properties[USER] = ServiceProperty(USER, "User of the used database", "openmuc", true)
+            properties[PASSWORD] = ServiceProperty(PASSWORD, "Password for the database user", "openmuc", true)
         }
     }
-
 }

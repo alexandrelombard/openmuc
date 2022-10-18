@@ -18,34 +18,19 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.mqtt
 
-package org.openmuc.framework.lib.mqtt;
+import org.openmuc.framework.lib.filePersistence.FilePersistence
 
-import java.util.Iterator;
-
-import org.openmuc.framework.lib.filePersistence.FilePersistence;
-
-public class MqttBufferMessageIterator implements Iterator<MessageTuple> {
-
-    private final FilePersistence filePersistence;
-    private final String buffer;
-
-    public MqttBufferMessageIterator(String buffer, FilePersistence filePersistence) {
-        this.buffer = buffer;
-        this.filePersistence = filePersistence;
+class MqttBufferMessageIterator(private val buffer: String?, private val filePersistence: FilePersistence?) :
+    MutableIterator<MessageTuple> {
+    override fun hasNext(): Boolean {
+        return filePersistence!!.fileExistsFor(buffer)
     }
 
-    @Override
-    public boolean hasNext() {
-        return filePersistence.fileExistsFor(buffer);
-    }
-
-    @Override
-    public MessageTuple next() {
-        byte[] message;
-        synchronized (filePersistence) {
-            message = filePersistence.getMessage(buffer);
-        }
-        return new MessageTuple(buffer, message);
+    override fun next(): MessageTuple {
+        var message: ByteArray
+        synchronized(filePersistence!!) { message = filePersistence.getMessage(buffer!!) }
+        return MessageTuple(buffer, message)
     }
 }

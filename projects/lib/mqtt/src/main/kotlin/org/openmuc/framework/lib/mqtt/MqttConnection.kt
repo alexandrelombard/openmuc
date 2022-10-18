@@ -18,221 +18,203 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.mqtt
 
-package org.openmuc.framework.lib.mqtt;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.openmuc.framework.security.SslManagerInterface;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.hivemq.client.mqtt.MqttClientSslConfig;
-import com.hivemq.client.mqtt.lifecycle.MqttClientConnectedListener;
-import com.hivemq.client.mqtt.lifecycle.MqttClientDisconnectedListener;
-import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient;
-import com.hivemq.client.mqtt.mqtt3.Mqtt3Client;
-import com.hivemq.client.mqtt.mqtt3.Mqtt3ClientBuilder;
-import com.hivemq.client.mqtt.mqtt3.message.connect.Mqtt3Connect;
-import com.hivemq.client.mqtt.mqtt3.message.connect.Mqtt3ConnectBuilder;
+import com.hivemq.client.mqtt.MqttClientSslConfig
+import com.hivemq.client.mqtt.lifecycle.MqttClientConnectedListener
+import com.hivemq.client.mqtt.lifecycle.MqttClientDisconnectedContext
+import com.hivemq.client.mqtt.lifecycle.MqttClientDisconnectedListener
+import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient
+import com.hivemq.client.mqtt.mqtt3.Mqtt3Client
+import com.hivemq.client.mqtt.mqtt3.Mqtt3ClientBuilder
+import com.hivemq.client.mqtt.mqtt3.message.connect.Mqtt3Connect
+import com.hivemq.client.mqtt.mqtt3.message.connect.connack.Mqtt3ConnAck
+import com.hivemq.client.mqtt.mqtt3.message.publish.Mqtt3Publish
+import org.openmuc.framework.lib.mqtt.MqttSettings
+import org.openmuc.framework.security.SslConfigChangeListener
+import org.openmuc.framework.security.SslManagerInterface
+import org.slf4j.LoggerFactory
+import java.time.LocalDateTime
+import java.util.*
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Represents a connection to a MQTT broker
  */
-public class MqttConnection {
-    private static final Logger logger = LoggerFactory.getLogger(MqttConnection.class);
-    private final MqttSettings settings;
-    private final AtomicBoolean cancelReconnect = new AtomicBoolean(false);
-
-    private final List<MqttClientConnectedListener> connectedListeners = new ArrayList<>();
-    private final List<MqttClientDisconnectedListener> disconnectedListeners = new ArrayList<>();
-
-    private boolean sslReady = false;
-
-    private Mqtt3ClientBuilder clientBuilder;
-    private Mqtt3AsyncClient client;
-
-    private SslManagerInterface sslManager = null;
+class MqttConnection(
+    /**
+     * @return the settings [MqttSettings] this connection was constructed with
+     */
+    val settings: MqttSettings
+) {
+    private val cancelReconnect = AtomicBoolean(false)
+    private val connectedListeners: MutableList<MqttClientConnectedListener> = ArrayList()
+    private val disconnectedListeners: MutableList<MqttClientDisconnectedListener> = ArrayList()
+    private var sslReady = false
+    private var clientBuilder: Mqtt3ClientBuilder?
+    var client: Mqtt3AsyncClient
+        private set
+    private var sslManager: SslManagerInterface? = null
 
     /**
      * A connection to a MQTT broker
      *
      * @param settings
-     *            connection details {@link MqttSettings}
+     * connection details [MqttSettings]
      */
-    public MqttConnection(MqttSettings settings) {
-        this.settings = settings;
-        clientBuilder = getClientBuilder();
-        client = buildClient();
+    init {
+        clientBuilder = getClientBuilder()
+        client = buildClient()
     }
 
-    public boolean isReady() {
-        if (settings.isSsl()) {
-            return sslReady;
+    val isReady: Boolean
+        get() = if (settings.isSsl) {
+            sslReady
+        } else true
+
+    private fun sslUpdate() {
+        logger.warn("SSL configuration changed, reconnecting.")
+        cancelReconnect.set(true)
+        sslReady = true
+        client.disconnect().whenComplete { ack: Void?, e: Throwable? ->
+            clientBuilder!!.sslConfig(sslConfig)
+            clientBuilder!!.identifier(UUID.randomUUID().toString())
+            connect()
         }
-        return true;
     }
 
-    private void sslUpdate() {
-        logger.warn("SSL configuration changed, reconnecting.");
-        cancelReconnect.set(true);
-        sslReady = true;
-        client.disconnect().whenComplete((ack, e) -> {
-            clientBuilder.sslConfig(getSslConfig());
-            clientBuilder.identifier(UUID.randomUUID().toString());
-            connect();
-        });
-    }
-
-    private Mqtt3Connect getConnect() {
-        Mqtt3ConnectBuilder connectBuilder = Mqtt3Connect.builder();
-        connectBuilder.keepAlive(settings.getConnectionAliveInterval());
-        if (settings.isLastWillSet()) {
-            connectBuilder.willPublish()
-                    .topic(settings.getLastWillTopic())
-                    .payload(settings.getLastWillPayload())
-                    .applyWillPublish();
+    private val connect: Mqtt3Connect
+        private get() {
+            val connectBuilder = Mqtt3Connect.builder()
+            connectBuilder.keepAlive(settings.connectionAliveInterval)
+            if (settings.isLastWillSet) {
+                connectBuilder.willPublish()
+                    .topic(settings.lastWillTopic)
+                    .payload(settings.lastWillPayload)
+                    .applyWillPublish()
+            }
+            if (settings.username != null) {
+                connectBuilder.simpleAuth()
+                    .username(settings.username)
+                    .password(settings.password.toByteArray())
+                    .applySimpleAuth()
+            }
+            return connectBuilder.build()
         }
-        if (settings.getUsername() != null) {
-            connectBuilder.simpleAuth()
-                    .username(settings.getUsername())
-                    .password(settings.getPassword().getBytes())
-                    .applySimpleAuth();
-        }
-        return connectBuilder.build();
-    }
 
     /**
      * Connect to the MQTT broker
      */
-    public void connect() {
-        client = buildClient();
-        String uuid = client.getConfig().getClientIdentifier().toString();
-        LocalDateTime time = LocalDateTime.now();
-        client.connect(getConnect()).whenComplete((ack, e) -> {
-            if (e != null && uuid.equals(client.getConfig().getClientIdentifier().toString())) {
-                logger.error("Error with connection initiated at {}: {}", time, e.getMessage());
+    fun connect() {
+        client = buildClient()
+        val uuid = client.config.clientIdentifier.toString()
+        val time = LocalDateTime.now()
+        client.connect(connect).whenComplete { ack: Mqtt3ConnAck?, e: Throwable? ->
+            if (e != null && uuid == client.config.clientIdentifier.toString()) {
+                logger.error("Error with connection initiated at {}: {}", time, e.message)
             }
-        });
+        }
     }
 
     /**
      * Disconnect from the MQTT broker
      */
-    public void disconnect() {
-        if (settings.isLastWillAlways()) {
+    fun disconnect() {
+        if (settings.isLastWillAlways) {
             client.publishWith()
-                    .topic(settings.getLastWillTopic())
-                    .payload(settings.getLastWillPayload())
-                    .send()
-                    .whenComplete((publish, e) -> {
-                        client.disconnect();
-                    });
-        }
-        else {
-            client.disconnect();
+                .topic(settings.lastWillTopic)
+                .payload(settings.lastWillPayload)
+                .send()
+                .whenComplete { publish: Mqtt3Publish?, e: Throwable? -> client.disconnect() }
+        } else {
+            client.disconnect()
         }
     }
 
-    void addConnectedListener(MqttClientConnectedListener listener) {
+    fun addConnectedListener(listener: MqttClientConnectedListener) {
         if (clientBuilder == null) {
-            connectedListeners.add(listener);
-        }
-        else {
-            clientBuilder.addConnectedListener(listener);
+            connectedListeners.add(listener)
+        } else {
+            clientBuilder!!.addConnectedListener(listener)
             if (!connectedListeners.contains(listener)) {
-                connectedListeners.add(listener);
+                connectedListeners.add(listener)
             }
         }
     }
 
-    void addDisconnectedListener(MqttClientDisconnectedListener listener) {
+    fun addDisconnectedListener(listener: MqttClientDisconnectedListener) {
         if (clientBuilder == null) {
-            disconnectedListeners.add(listener);
-        }
-        else {
-            clientBuilder.addDisconnectedListener(listener);
+            disconnectedListeners.add(listener)
+        } else {
+            clientBuilder!!.addDisconnectedListener(listener)
             if (!disconnectedListeners.contains(listener)) {
-                disconnectedListeners.add(listener);
+                disconnectedListeners.add(listener)
             }
         }
     }
 
-    Mqtt3AsyncClient getClient() {
-        return client;
+    private fun getClientBuilder(): Mqtt3ClientBuilder {
+        val clientBuilder = Mqtt3Client.builder()
+            .identifier(UUID.randomUUID().toString())
+            .automaticReconnect()
+            .initialDelay(settings.connectionRetryInterval, TimeUnit.SECONDS)
+            .maxDelay(settings.connectionRetryInterval, TimeUnit.SECONDS)
+            .applyAutomaticReconnect()
+            .serverHost(settings.host)
+            .serverPort(settings.port)
+        if (settings.isSsl && sslManager != null) {
+            clientBuilder.sslConfig(sslConfig)
+        }
+        if (settings.isWebSocket) {
+            clientBuilder.webSocketWithDefaultConfig()
+        }
+        return clientBuilder
     }
 
-    /**
-     * @return the settings {@link MqttSettings} this connection was constructed with
-     */
-    public MqttSettings getSettings() {
-        return settings;
+    private val sslConfig: MqttClientSslConfig
+        private get() = MqttClientSslConfig.builder()
+            .keyManagerFactory(sslManager!!.keyManagerFactory)
+            .trustManagerFactory(sslManager!!.trustManagerFactory)
+            .handshakeTimeout(10, TimeUnit.SECONDS)
+            .build()
+
+    private fun buildClient(): Mqtt3AsyncClient {
+        return clientBuilder!!.buildAsync()
     }
 
-    private Mqtt3ClientBuilder getClientBuilder() {
-        Mqtt3ClientBuilder clientBuilder = Mqtt3Client.builder()
-                .identifier(UUID.randomUUID().toString())
-                .automaticReconnect()
-                .initialDelay(settings.getConnectionRetryInterval(), TimeUnit.SECONDS)
-                .maxDelay(settings.getConnectionRetryInterval(), TimeUnit.SECONDS)
-                .applyAutomaticReconnect()
-                .serverHost(settings.getHost())
-                .serverPort(settings.getPort());
-        if (settings.isSsl() && sslManager != null) {
-            clientBuilder.sslConfig(getSslConfig());
+    fun setSslManager(instance: SslManagerInterface?) {
+        if (!settings.isSsl) {
+            return
         }
-        if (settings.isWebSocket()) {
-            clientBuilder.webSocketWithDefaultConfig();
+        sslManager = instance
+        clientBuilder = getClientBuilder()
+        for (listener in connectedListeners) {
+            addConnectedListener(listener)
         }
-        return clientBuilder;
-    }
-
-    private MqttClientSslConfig getSslConfig() {
-        return MqttClientSslConfig.builder()
-                .keyManagerFactory(sslManager.getKeyManagerFactory())
-                .trustManagerFactory(sslManager.getTrustManagerFactory())
-                .handshakeTimeout(10, TimeUnit.SECONDS)
-                .build();
-    }
-
-    private Mqtt3AsyncClient buildClient() {
-        return clientBuilder.buildAsync();
-    }
-
-    public void setSslManager(SslManagerInterface instance) {
-        if (!settings.isSsl()) {
-            return;
+        connectedListeners.clear()
+        for (listener in disconnectedListeners) {
+            addDisconnectedListener(listener)
         }
-        sslManager = instance;
-        clientBuilder = getClientBuilder();
-        for (MqttClientConnectedListener listener : connectedListeners) {
-            addConnectedListener(listener);
-        }
-        connectedListeners.clear();
-        for (MqttClientDisconnectedListener listener : disconnectedListeners) {
-            addDisconnectedListener(listener);
-        }
-        disconnectedListeners.clear();
-        sslManager.listenForConfigChange(this::sslUpdate);
-        addDisconnectedListener(context -> {
+        disconnectedListeners.clear()
+        sslManager!!.listenForConfigChange(SslConfigChangeListener { sslUpdate() })
+        addDisconnectedListener { context: MqttClientDisconnectedContext ->
             if (cancelReconnect.getAndSet(false)) {
-                context.getReconnector().reconnect(false);
+                context.reconnector.reconnect(false)
+            } else if (context.reconnector.attempts >= 3) {
+                logger.debug("Renewing client")
+                context.reconnector.reconnect(false)
+                clientBuilder!!.identifier(UUID.randomUUID().toString())
+                connect()
             }
-            else if (context.getReconnector().getAttempts() >= 3) {
-                logger.debug("Renewing client");
-                context.getReconnector().reconnect(false);
-                clientBuilder.identifier(UUID.randomUUID().toString());
-                connect();
-            }
-        });
-        client = buildClient();
-        if (sslManager.isLoaded()) {
-            sslReady = true;
         }
+        client = buildClient()
+        if (sslManager!!.isLoaded) {
+            sslReady = true
+        }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(MqttConnection::class.java)
     }
 }

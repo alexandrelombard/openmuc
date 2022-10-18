@@ -18,425 +18,380 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws.servlets;
+package org.openmuc.framework.server.restws.servlets
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import com.google.gson.JsonElement
+import org.openmuc.framework.config.ChannelConfig
+import org.openmuc.framework.config.DriverInfo
+import org.openmuc.framework.dataaccess.Channel
+import org.openmuc.framework.lib.rest1.Const
+import org.slf4j.LoggerFactory
+import javax.servlet.ServletException
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.openmuc.framework.config.ChannelConfig;
-import org.openmuc.framework.config.ConfigService;
-import org.openmuc.framework.config.ConfigWriteException;
-import org.openmuc.framework.config.DeviceConfig;
-import org.openmuc.framework.config.DeviceScanInfo;
-import org.openmuc.framework.config.DriverConfig;
-import org.openmuc.framework.config.DriverInfo;
-import org.openmuc.framework.config.DriverNotAvailableException;
-import org.openmuc.framework.config.IdCollisionException;
-import org.openmuc.framework.config.RootConfig;
-import org.openmuc.framework.dataaccess.Channel;
-import org.openmuc.framework.dataaccess.DataAccessService;
-import org.openmuc.framework.lib.rest1.Const;
-import org.openmuc.framework.lib.rest1.FromJson;
-import org.openmuc.framework.lib.rest1.ToJson;
-import org.openmuc.framework.lib.rest1.exceptions.MissingJsonObjectException;
-import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
-
-public class DriverResourceServlet extends GenericServlet {
-
-    private static final String REQUESTED_REST_PATH_IS_NOT_AVAILABLE = "Requested rest path is not available.";
-    private static final String DRIVER_ID = " driverID = ";
-    private static final String PATH_INFO = " Path Info = ";
-    private static final long serialVersionUID = -2223282905555493215L;
-
-    private static final Logger logger = LoggerFactory.getLogger(DriverResourceServlet.class);
-
-    private DataAccessService dataAccess;
-    private ConfigService configService;
-    private RootConfig rootConfig;
-
-    private DeviceScanListenerImplementation scanListener = new DeviceScanListenerImplementation();
-
-    @Override
-    public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+class DriverResourceServlet : GenericServlet() {
+    private var dataAccess: DataAccessService? = null
+    private var configService: ConfigService? = null
+    private var rootConfig: RootConfig? = null
+    private var scanListener = DeviceScanListenerImplementation()
+    @Throws(ServletException::class, IOException::class)
+    override fun doGet(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            setConfigAccess();
-
-            String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-
-            List<String> driversList = new ArrayList<>();
-            Collection<DriverConfig> driverConfigList = rootConfig.getDrivers();
-
-            for (DriverConfig drv : driverConfigList) {
-                driversList.add(drv.getId());
+            setConfigAccess()
+            val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+            val driversList: MutableList<String> = ArrayList()
+            val driverConfigList: Collection<DriverConfig> = rootConfig.drivers
+            for (drv in driverConfigList) {
+                driversList.add(drv.id)
             }
-
-            ToJson json = new ToJson();
-
-            if (pathInfo.equals("/")) {
-                json.addStringList(Const.DRIVERS, driversList);
-            }
-            else {
-                String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-                String driverID = pathInfoArray[0].replace("/", "");
-
-                List<Channel> driverChannelsList;
-                List<String> driverDevicesList = new ArrayList<>();
-
+            val json = ToJson()
+            if (pathInfo == "/") {
+                json.addStringList(Const.DRIVERS, driversList)
+            } else {
+                val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+                val driverID = pathInfoArray!![0]!!.replace("/", "")
+                val driverChannelsList: List<Channel>
+                val driverDevicesList: MutableList<String> = ArrayList()
                 if (driversList.contains(driverID)) {
-
-                    Collection<ChannelConfig> channelConfigList = new ArrayList<>();
-                    Collection<DeviceConfig> deviceConfigList;
-                    DriverConfig drv = rootConfig.getDriver(driverID);
-
-                    deviceConfigList = drv.getDevices();
-                    setDriverDevicesListAndChannelConfigList(driverDevicesList, channelConfigList, deviceConfigList);
-                    driverChannelsList = getDriverChannelList(channelConfigList);
-
-                    response.setStatus(HttpServletResponse.SC_OK);
-                    boolean driverIsRunning = configService.getIdsOfRunningDrivers().contains(driverID);
-
-                    if (pathInfoArray.length > 1) {
-                        if (pathInfoArray[1].equalsIgnoreCase(Const.CHANNELS)) {
-                            json.addChannelList(driverChannelsList);
-                            json.addBoolean(Const.RUNNING, driverIsRunning);
-                        }
-                        else if (pathInfoArray[1].equalsIgnoreCase(Const.RUNNING)) {
-                            json.addBoolean(Const.RUNNING, driverIsRunning);
-                        }
-                        else if (pathInfoArray[1].equalsIgnoreCase(Const.INFOS)) {
-                            DriverInfo driverInfo;
+                    val channelConfigList: MutableCollection<ChannelConfig> = ArrayList()
+                    val deviceConfigList: Collection<DeviceConfig>
+                    val drv: DriverConfig = rootConfig.getDriver(driverID)
+                    deviceConfigList = drv.devices
+                    setDriverDevicesListAndChannelConfigList(driverDevicesList, channelConfigList, deviceConfigList)
+                    driverChannelsList = getDriverChannelList(channelConfigList)
+                    response.status = HttpServletResponse.SC_OK
+                    val driverIsRunning: Boolean = configService.idsOfRunningDrivers.contains(driverID)
+                    if (pathInfoArray.size > 1) {
+                        if (pathInfoArray[1].equals(Const.CHANNELS, ignoreCase = true)) {
+                            json.addChannelList(driverChannelsList)
+                            json.addBoolean(Const.RUNNING, driverIsRunning)
+                        } else if (pathInfoArray[1].equals(Const.RUNNING, ignoreCase = true)) {
+                            json.addBoolean(Const.RUNNING, driverIsRunning)
+                        } else if (pathInfoArray[1].equals(Const.INFOS, ignoreCase = true)) {
+                            val driverInfo: DriverInfo
                             try {
-                                driverInfo = configService.getDriverInfo(driverID);
-                                json.addDriverInfo(driverInfo);
-                            } catch (DriverNotAvailableException e) {
-                                logger.error("Driver info not available, because driver {} doesn't exist.", driverID);
+                                driverInfo = configService.getDriverInfo(driverID)
+                                json.addDriverInfo(driverInfo)
+                            } catch (e: DriverNotAvailableException) {
+                                logger.error("Driver info not available, because driver {} doesn't exist.", driverID)
                             }
+                        } else if (pathInfoArray[1].equals(Const.DEVICES, ignoreCase = true)) {
+                            json.addStringList(Const.DEVICES, driverDevicesList)
+                            json.addBoolean(Const.RUNNING, driverIsRunning)
+                        } else if (pathInfoArray[1].equals(Const.SCAN, ignoreCase = true)) {
+                            var deviceScanInfoList: MutableList<DeviceScanInfo?>? = ArrayList<DeviceScanInfo?>()
+                            scanListener = DeviceScanListenerImplementation(deviceScanInfoList)
+                            val settings = request.getParameter(Const.SETTINGS)
+                            deviceScanInfoList = scanForAllDrivers(driverID, settings, scanListener, response)
+                            json.addDeviceScanInfoList(deviceScanInfoList)
+                        } else if (pathInfoArray[1].equals(Const.SCAN_PROGRESS_INFO, ignoreCase = true)) {
+                            json.addDeviceScanProgressInfo(scanListener.restScanProgressInfo)
+                        } else if (pathInfoArray[1].equals(
+                                Const.CONFIGS,
+                                ignoreCase = true
+                            ) && pathInfoArray.size == 2
+                        ) {
+                            doGetConfigs(json, driverID, response)
+                        } else if (pathInfoArray[1].equals(
+                                Const.CONFIGS,
+                                ignoreCase = true
+                            ) && pathInfoArray.size == 3
+                        ) {
+                            doGetConfigField(json, driverID, pathInfoArray[2], response)
+                        } else {
+                            ServletLib.sendHTTPErrorAndLogDebug(
+                                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, PATH_INFO, request.pathInfo
+                            )
                         }
-                        else if (pathInfoArray[1].equalsIgnoreCase(Const.DEVICES)) {
-                            json.addStringList(Const.DEVICES, driverDevicesList);
-                            json.addBoolean(Const.RUNNING, driverIsRunning);
-                        }
-                        else if (pathInfoArray[1].equalsIgnoreCase(Const.SCAN)) {
-                            List<DeviceScanInfo> deviceScanInfoList = new ArrayList<>();
-                            scanListener = new DeviceScanListenerImplementation(deviceScanInfoList);
-
-                            String settings = request.getParameter(Const.SETTINGS);
-                            deviceScanInfoList = scanForAllDrivers(driverID, settings, scanListener, response);
-                            json.addDeviceScanInfoList(deviceScanInfoList);
-                        }
-
-                        else if (pathInfoArray[1].equalsIgnoreCase(Const.SCAN_PROGRESS_INFO)) {
-                            json.addDeviceScanProgressInfo(scanListener.getRestScanProgressInfo());
-                        }
-                        else if (pathInfoArray[1].equalsIgnoreCase(Const.CONFIGS) && pathInfoArray.length == 2) {
-                            doGetConfigs(json, driverID, response);
-                        }
-                        else if (pathInfoArray[1].equalsIgnoreCase(Const.CONFIGS) && pathInfoArray.length == 3) {
-                            doGetConfigField(json, driverID, pathInfoArray[2], response);
-                        }
-                        else {
-                            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, PATH_INFO, request.getPathInfo());
-                        }
+                    } else if (pathInfoArray.size == 1) {
+                        json.addChannelRecordList(driverChannelsList)
+                        json.addBoolean(Const.RUNNING, driverIsRunning)
+                    } else {
+                        ServletLib.sendHTTPErrorAndLogDebug(
+                            response, HttpServletResponse.SC_NOT_FOUND, logger,
+                            REQUESTED_REST_PATH_IS_NOT_AVAILABLE, PATH_INFO, request.pathInfo
+                        )
                     }
-                    else if (pathInfoArray.length == 1) {
-                        json.addChannelRecordList(driverChannelsList);
-                        json.addBoolean(Const.RUNNING, driverIsRunning);
-                    }
-                    else {
-                        ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, PATH_INFO, request.getPathInfo());
-                    }
-
+                } else {
+                    driverNotAvailable(response, driverID)
                 }
-                else {
-                    driverNotAvailable(response, driverID);
-                }
             }
-            sendJson(json, response);
+            sendJson(json, response)
         }
     }
 
-    private static void driverNotAvailable(HttpServletResponse response, String driverID) {
-        ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                "Requested rest driver is not available.", DRIVER_ID, driverID);
+    @Throws(ServletException::class, IOException::class)
+    override fun doPut(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger) ?: return
+        setConfigAccess()
+        val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+        val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+        val driverID = pathInfoArray!![0]!!.replace("/", "")
+        val json = ServletLib.getJsonText(request)
+        if (pathInfoArray.size < 1) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+            )
+        } else {
+            val driverConfig: DriverConfig = rootConfig.getDriver(driverID)
+            if (driverConfig != null && pathInfoArray.size == 2 && pathInfoArray[1].equals(
+                    Const.CONFIGS,
+                    ignoreCase = true
+                )
+            ) {
+                setAndWriteDriverConfig(driverID, response, json)
+            } else if (driverConfig != null && pathInfoArray.size == 2 && pathInfoArray[1].equals(
+                    Const.SCAN_INTERRUPT,
+                    ignoreCase = true
+                )
+            ) {
+                interruptScanProcess(driverID, response, json)
+            } else {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                )
+            }
+        }
     }
 
-    @Override
-    public void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
-        if (pathAndQueryString == null) {
-            return;
-        }
-
-        setConfigAccess();
-
-        String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-
-        String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-        String driverID = pathInfoArray[0].replace("/", "");
-
-        String json = ServletLib.getJsonText(request);
-
-        if (pathInfoArray.length < 1) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
-        }
-        else {
-            DriverConfig driverConfig = rootConfig.getDriver(driverID);
-
-            if (driverConfig != null && pathInfoArray.length == 2 && pathInfoArray[1].equalsIgnoreCase(Const.CONFIGS)) {
-                setAndWriteDriverConfig(driverID, response, json);
-            }
-            else if (driverConfig != null && pathInfoArray.length == 2
-                    && pathInfoArray[1].equalsIgnoreCase(Const.SCAN_INTERRUPT)) {
-                interruptScanProcess(driverID, response, json);
-            }
-            else {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
-            }
-        }
-
-    }
-
-    @Override
-    public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+    @Throws(ServletException::class, IOException::class)
+    override fun doPost(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            setConfigAccess();
-
-            String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-
-            String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-            String driverID = pathInfoArray[0].replace("/", "");
-
-            String json = ServletLib.getJsonText(request);
-
-            if (pathInfoArray.length != 1) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
-            }
-            else {
+            setConfigAccess()
+            val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+            val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+            val driverID = pathInfoArray!![0]!!.replace("/", "")
+            val json = ServletLib.getJsonText(request)
+            if (pathInfoArray.size != 1) {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                )
+            } else {
                 try {
-                    rootConfig.addDriver(driverID);
-                    configService.setConfig(rootConfig);
-                    configService.writeConfigToFile();
-
-                    setAndWriteDriverConfig(driverID, response, json);
-
-                } catch (IdCollisionException e) {
-                    ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger,
-                            "Driver \"" + driverID + "\" already exist");
-                } catch (ConfigWriteException e) {
-                    ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_CONFLICT, logger,
-                            "Could not write driver \"", driverID, "\".");
-                    e.printStackTrace();
+                    rootConfig.addDriver(driverID)
+                    configService.config = rootConfig
+                    configService.writeConfigToFile()
+                    setAndWriteDriverConfig(driverID, response, json)
+                } catch (e: IdCollisionException) {
+                    ServletLib.sendHTTPErrorAndLogDebug(
+                        response, HttpServletResponse.SC_CONFLICT, logger,
+                        "Driver \"$driverID\" already exist"
+                    )
+                } catch (e: ConfigWriteException) {
+                    ServletLib.sendHTTPErrorAndLogErr(
+                        response, HttpServletResponse.SC_CONFLICT, logger,
+                        "Could not write driver \"", driverID, "\"."
+                    )
+                    e.printStackTrace()
                 }
             }
         }
     }
 
-    @Override
-    public void doDelete(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+    @Throws(ServletException::class, IOException::class)
+    override fun doDelete(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            setConfigAccess();
-
-            String pathInfo = pathAndQueryString[0];
-            String driverID = null;
-
-            String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-            driverID = pathInfoArray[0].replace("/", "");
-
-            DriverConfig driverConfig = rootConfig.getDriver(driverID);
-
-            if (pathInfoArray.length != 1) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, PATH_INFO, request.getPathInfo());
-            }
-            else if (driverConfig == null) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        "Driver \"" + driverID + "\" does not exist.");
-            }
-            else {
+            setConfigAccess()
+            val pathInfo = pathAndQueryString[0]
+            var driverID: String? = null
+            val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+            driverID = pathInfoArray!![0]!!.replace("/", "")
+            val driverConfig: DriverConfig = rootConfig.getDriver(driverID)
+            if (pathInfoArray.size != 1) {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, PATH_INFO, request.pathInfo
+                )
+            } else if (driverConfig == null) {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    "Driver \"$driverID\" does not exist."
+                )
+            } else {
                 try {
-                    driverConfig.delete();
-                    configService.setConfig(rootConfig);
-                    configService.writeConfigToFile();
-
+                    driverConfig.delete()
+                    configService.config = rootConfig
+                    configService.writeConfigToFile()
                     if (rootConfig.getDriver(driverID) == null) {
-                        response.setStatus(HttpServletResponse.SC_OK);
+                        response.status = HttpServletResponse.SC_OK
+                    } else {
+                        ServletLib.sendHTTPErrorAndLogErr(
+                            response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                            logger, "Not able to delete driver ", driverID
+                        )
                     }
-                    else {
-                        ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                                logger, "Not able to delete driver ", driverID);
-                    }
-                } catch (ConfigWriteException e) {
-                    ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
-                            "Not able to write into config.");
-                    e.printStackTrace();
+                } catch (e: ConfigWriteException) {
+                    ServletLib.sendHTTPErrorAndLogErr(
+                        response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
+                        "Not able to write into config."
+                    )
+                    e.printStackTrace()
                 }
             }
         }
     }
 
-    private boolean setAndWriteDriverConfig(String driverID, HttpServletResponse response, String json) {
-        boolean ok = false;
-
+    private fun setAndWriteDriverConfig(driverID: String, response: HttpServletResponse, json: String?): Boolean {
+        var ok = false
         try {
-            DriverConfig driverConfig = rootConfig.getDriver(driverID);
+            val driverConfig: DriverConfig = rootConfig.getDriver(driverID)
             if (driverConfig != null) {
                 try {
-                    FromJson fromJson = new FromJson(json);
-                    fromJson.setDriverConfig(driverConfig, driverID);
-                } catch (IdCollisionException e) {
-
+                    val fromJson = FromJson(json)
+                    fromJson.setDriverConfig(driverConfig, driverID)
+                } catch (e: IdCollisionException) {
                 }
-                configService.setConfig(rootConfig);
-                configService.writeConfigToFile();
-                response.setStatus(HttpServletResponse.SC_OK);
-                ok = true;
+                configService.config = rootConfig
+                configService.writeConfigToFile()
+                response.status = HttpServletResponse.SC_OK
+                ok = true
+            } else {
+                ServletLib.sendHTTPErrorAndLogErr(
+                    response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
+                    "Not able to access to driver ", driverID
+                )
             }
-            else {
-                ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
-                        "Not able to access to driver ", driverID);
-            }
-        } catch (JsonSyntaxException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "JSON syntax is wrong.");
-        } catch (MissingJsonObjectException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger, e.getMessage());
-        } catch (ConfigWriteException e) {
-            ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "Could not write driver \"", driverID, "\".");
-            logger.debug(e.getMessage());
-        } catch (RestConfigIsNotCorrectException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
-                    "Not correct formed driver config json.", " JSON = ", json);
-        } catch (IllegalStateException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger, e.getMessage());
+        } catch (e: JsonSyntaxException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "JSON syntax is wrong."
+            )
+        } catch (e: MissingJsonObjectException) {
+            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger, e.message)
+        } catch (e: ConfigWriteException) {
+            ServletLib.sendHTTPErrorAndLogErr(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "Could not write driver \"", driverID, "\"."
+            )
+            logger.debug(e.message)
+        } catch (e: RestConfigIsNotCorrectException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
+                "Not correct formed driver config json.", " JSON = ", json
+            )
+        } catch (e: IllegalStateException) {
+            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger, e.message)
         }
-        return ok;
+        return ok
     }
 
-    private void doGetConfigs(ToJson json, String drvId, HttpServletResponse response) {
-        DriverConfig driverConfig = rootConfig.getDriver(drvId);
-
+    private fun doGetConfigs(json: ToJson, drvId: String, response: HttpServletResponse) {
+        val driverConfig: DriverConfig = rootConfig.getDriver(drvId)
         if (driverConfig != null) {
-            json.addDriverConfig(driverConfig);
-        }
-        else {
-            driverNotAvailable(response, drvId);
+            json.addDriverConfig(driverConfig)
+        } else {
+            driverNotAvailable(response, drvId)
         }
     }
 
-    private void doGetConfigField(ToJson json, String drvId, String configField, HttpServletResponse response)
-            throws IOException {
-        DriverConfig driverConfig = rootConfig.getDriver(drvId);
-
+    @Throws(IOException::class)
+    private fun doGetConfigField(json: ToJson, drvId: String, configField: String?, response: HttpServletResponse) {
+        val driverConfig: DriverConfig = rootConfig.getDriver(drvId)
         if (driverConfig != null) {
-            JsonObject jsoConfigAll = ToJson.getDriverConfigAsJsonObject(driverConfig);
+            val jsoConfigAll: JsonObject = ToJson.getDriverConfigAsJsonObject(driverConfig)
             if (jsoConfigAll == null) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        "Could not find JSON object \"configs\"");
-            }
-            else {
-                JsonElement jseConfigField = jsoConfigAll.get(configField);
-
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    "Could not find JSON object \"configs\""
+                )
+            } else {
+                val jseConfigField: JsonElement = jsoConfigAll.get(configField)
                 if (jseConfigField == null) {
-                    ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                            "Requested rest config field is not available.", " configField = ", configField);
-                }
-                else {
-                    JsonObject jso = new JsonObject();
-                    jso.add(configField, jseConfigField);
-                    json.addJsonObject(Const.CONFIGS, jso);
+                    ServletLib.sendHTTPErrorAndLogDebug(
+                        response, HttpServletResponse.SC_NOT_FOUND, logger,
+                        "Requested rest config field is not available.", " configField = ", configField
+                    )
+                } else {
+                    val jso = JsonObject()
+                    jso.add(configField, jseConfigField)
+                    json.addJsonObject(Const.CONFIGS, jso)
                 }
             }
-        }
-        else {
-            driverNotAvailable(response, drvId);
+        } else {
+            driverNotAvailable(response, drvId)
         }
     }
 
-    private void interruptScanProcess(String driverID, HttpServletResponse response, String json) {
+    private fun interruptScanProcess(driverID: String, response: HttpServletResponse, json: String?) {
         try {
-            configService.interruptDeviceScan(driverID);
-            response.setStatus(HttpServletResponse.SC_OK);
-        } catch (UnsupportedOperationException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
-                    "Driver does not support scan interrupting.", DRIVER_ID, driverID);
-        } catch (DriverNotAvailableException e) {
-            driverNotAvailable(response, driverID);
+            configService.interruptDeviceScan(driverID)
+            response.status = HttpServletResponse.SC_OK
+        } catch (e: UnsupportedOperationException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
+                "Driver does not support scan interrupting.", DRIVER_ID, driverID
+            )
+        } catch (e: DriverNotAvailableException) {
+            driverNotAvailable(response, driverID)
         }
     }
 
-    private List<DeviceScanInfo> scanForAllDrivers(String driverID, String settings,
-            DeviceScanListenerImplementation scanListener, HttpServletResponse response) {
-        List<DeviceScanInfo> scannedDevicesList = new ArrayList<>();
-
+    private fun scanForAllDrivers(
+        driverID: String, settings: String,
+        scanListener: DeviceScanListenerImplementation, response: HttpServletResponse
+    ): MutableList<DeviceScanInfo?>? {
+        var scannedDevicesList: MutableList<DeviceScanInfo?>? = ArrayList<DeviceScanInfo?>()
         try {
-            configService.scanForDevices(driverID, settings, scanListener);
-            scannedDevicesList = scanListener.getScannedDevicesList();
-
-        } catch (UnsupportedOperationException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
-                    "Driver does not support scanning.", DRIVER_ID, driverID);
-        } catch (DriverNotAvailableException e) {
-            driverNotAvailable(response, driverID);
+            configService.scanForDevices(driverID, settings, scanListener)
+            scannedDevicesList = scanListener.scannedDevicesList
+        } catch (e: UnsupportedOperationException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
+                "Driver does not support scanning.", DRIVER_ID, driverID
+            )
+        } catch (e: DriverNotAvailableException) {
+            driverNotAvailable(response, driverID)
         }
-
-        return scannedDevicesList;
+        return scannedDevicesList
     }
 
-    private List<Channel> getDriverChannelList(Collection<ChannelConfig> channelConfig) {
-        List<Channel> driverChannels = new ArrayList<>();
-
-        for (ChannelConfig chCf : channelConfig) {
-            driverChannels.add(dataAccess.getChannel(chCf.getId()));
+    private fun getDriverChannelList(channelConfig: Collection<ChannelConfig>): List<Channel> {
+        val driverChannels: MutableList<Channel> = ArrayList()
+        for (chCf in channelConfig) {
+            driverChannels.add(dataAccess.getChannel(chCf.id))
         }
-
-        return driverChannels;
+        return driverChannels
     }
 
-    private void setDriverDevicesListAndChannelConfigList(List<String> driverDevices,
-            Collection<ChannelConfig> channelConfig, Collection<DeviceConfig> deviceConfig) {
-        for (DeviceConfig dvCf : deviceConfig) {
-            driverDevices.add(dvCf.getId());
-            channelConfig.addAll(dvCf.getChannels());
+    private fun setDriverDevicesListAndChannelConfigList(
+        driverDevices: MutableList<String>,
+        channelConfig: MutableCollection<ChannelConfig>, deviceConfig: Collection<DeviceConfig>
+    ) {
+        for (dvCf in deviceConfig) {
+            driverDevices.add(dvCf.id)
+            channelConfig.addAll(dvCf.channels)
         }
     }
 
-    private void setConfigAccess() {
-        this.dataAccess = handleDataAccessService(null);
-        this.configService = handleConfigService(null);
-        this.rootConfig = handleRootConfig(null);
+    private fun setConfigAccess() {
+        this.dataAccess = handleDataAccessService(null)
+        this.configService = handleConfigService(null)
+        this.rootConfig = handleRootConfig(null)
     }
 
+    companion object {
+        private const val REQUESTED_REST_PATH_IS_NOT_AVAILABLE = "Requested rest path is not available."
+        private const val DRIVER_ID = " driverID = "
+        private const val PATH_INFO = " Path Info = "
+        private const val serialVersionUID = -2223282905555493215L
+        private val logger = LoggerFactory.getLogger(DriverResourceServlet::class.java)
+        private fun driverNotAvailable(response: HttpServletResponse, driverID: String) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                "Requested rest driver is not available.", DRIVER_ID, driverID
+            )
+        }
+    }
 }

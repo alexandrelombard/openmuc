@@ -18,25 +18,43 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.ssl;
+package org.openmuc.framework.lib.ssl
 
-import org.openmuc.framework.lib.osgi.config.GenericSettings;
-import org.openmuc.framework.lib.osgi.config.ServiceProperty;
+import org.openmuc.framework.lib.osgi.config.GenericSettings
+import org.openmuc.framework.lib.osgi.config.ServiceProperty
 
-class Settings extends GenericSettings {
-    final static String KEYSTORE = "keystore";
-    final static String KEYSTORE_PASSWORD = "keystorepassword";
-    final static String TRUSTSTORE = "truststore";
-    final static String TRUSTSTORE_PASSWORD = "truststorepassword";
+internal class Settings : GenericSettings() {
+    init {
+        properties[KEYSTORE] = ServiceProperty(
+            KEYSTORE,
+            "path to the keystore",
+            "conf/keystore.jks",
+            true
+        )
+        properties[KEYSTORE_PASSWORD] = ServiceProperty(
+            KEYSTORE_PASSWORD,
+            "keystore password",
+            "changeme",
+            true
+        )
+        properties[TRUSTSTORE] = ServiceProperty(
+            TRUSTSTORE,
+            "path to the truststore",
+            "conf/truststore.jks",
+            true
+        )
+        properties[TRUSTSTORE_PASSWORD] = ServiceProperty(
+            TRUSTSTORE_PASSWORD,
+            "truststore password",
+            "changeme",
+            true
+        )
+    }
 
-    Settings() {
-        super();
-        properties.put(KEYSTORE, new ServiceProperty(KEYSTORE, "path to the keystore", "conf/keystore.jks", true));
-        properties.put(KEYSTORE_PASSWORD,
-                new ServiceProperty(KEYSTORE_PASSWORD, "keystore password", "changeme", true));
-        properties.put(TRUSTSTORE,
-                new ServiceProperty(TRUSTSTORE, "path to the truststore", "conf/truststore.jks", true));
-        properties.put(TRUSTSTORE_PASSWORD,
-                new ServiceProperty(TRUSTSTORE_PASSWORD, "truststore password", "changeme", true));
+    companion object {
+        const val KEYSTORE = "keystore"
+        const val KEYSTORE_PASSWORD = "keystorepassword"
+        const val TRUSTSTORE = "truststore"
+        const val TRUSTSTORE_PASSWORD = "truststorepassword"
     }
 }

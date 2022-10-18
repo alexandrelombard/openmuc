@@ -18,22 +18,21 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.mqtt
 
-package org.openmuc.framework.lib.mqtt;
-
-import java.util.EventListener;
+import java.util.*
 
 /**
  * Gets notified when a MQTT message was received
  */
-public interface MqttMessageListener extends EventListener {
+interface MqttMessageListener : EventListener {
     /**
      * Call this when a new message was received
-     * 
+     *
      * @param topic
-     *            the topic from which the message comes from
+     * the topic from which the message comes from
      * @param message
-     *            the received message
+     * the received message
      */
-    void newMessage(String topic, byte[] message);
+    fun newMessage(topic: String?, message: ByteArray?)
 }

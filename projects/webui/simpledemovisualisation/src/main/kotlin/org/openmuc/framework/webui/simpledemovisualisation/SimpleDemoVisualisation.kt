@@ -18,22 +18,18 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.webui.simpledemovisualisation;
+package org.openmuc.framework.webui.simpledemovisualisation
 
-import org.openmuc.framework.webui.spi.WebUiPluginService;
-import org.osgi.service.component.annotations.Component;
+import org.openmuc.framework.webui.spi.WebUiPluginService
+import org.osgi.service.component.annotations.Component
 
-@Component(service = WebUiPluginService.class)
-public final class SimpleDemoVisualisation extends WebUiPluginService {
-
-    @Override
-    public String getAlias() {
-        return "simpledemovisualisation";
+@Component(service = [WebUiPluginService::class])
+class SimpleDemoVisualisation : WebUiPluginService() {
+    override fun getAlias(): String {
+        return "simpledemovisualisation"
     }
 
-    @Override
-    public String getName() {
-        return "Simple Demo Visualisation";
+    override fun getName(): String {
+        return "Simple Demo Visualisation"
     }
-
 }

@@ -18,146 +18,142 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.mqtt
 
-package org.openmuc.framework.lib.mqtt;
+import com.hivemq.client.mqtt.lifecycle.MqttClientConnectedContext
+import com.hivemq.client.mqtt.lifecycle.MqttClientDisconnectedContext
+import com.hivemq.client.mqtt.mqtt3.message.publish.Mqtt3Publish
+import com.hivemq.client.mqtt.mqtt3.message.subscribe.Mqtt3Subscribe
+import com.hivemq.client.mqtt.mqtt3.message.subscribe.Mqtt3SubscribeBuilder
+import com.hivemq.client.mqtt.mqtt3.message.subscribe.Mqtt3Subscription
+import org.openmuc.framework.lib.mqtt.MqttConnection
+import org.slf4j.LoggerFactory
+import org.slf4j.helpers.MessageFormatter
+import java.util.*
 
-import java.util.LinkedList;
-import java.util.List;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.MessageFormatter;
-
-import com.hivemq.client.mqtt.mqtt3.message.subscribe.Mqtt3Subscribe;
-import com.hivemq.client.mqtt.mqtt3.message.subscribe.Mqtt3SubscribeBuilder;
-import com.hivemq.client.mqtt.mqtt3.message.subscribe.Mqtt3Subscription;
-
-public class MqttReader {
-    private static final Logger logger = LoggerFactory.getLogger(MqttReader.class);
-    private final MqttConnection connection;
-    private boolean connected = false;
-    private final List<SubscribeListenerTuple> subscribes = new LinkedList<>();
-    private final String pid;
+class MqttReader(private val connection: MqttConnection, private val pid: String) {
+    private var connected = false
+    private val subscribes: MutableList<SubscribeListenerTuple> = LinkedList()
 
     /**
      * Note that the connect method of the connection should be called after the Writer got instantiated.
      *
      * @param connection
-     *            the {@link MqttConnection} this Writer should use
+     * the [MqttConnection] this Writer should use
      * @param pid
-     *            an id which is preceding every log call
+     * an id which is preceding every log call
      */
-    public MqttReader(MqttConnection connection, String pid) {
-        this.connection = connection;
-        this.pid = pid;
-        addConnectedListener(connection);
-        addDisconnectedListener(connection);
+    init {
+        addConnectedListener(connection)
+        addDisconnectedListener(connection)
     }
 
-    private void addDisconnectedListener(MqttConnection connection) {
-        connection.addDisconnectedListener(context -> {
-            if (context.getReconnector().isReconnect()) {
+    private fun addDisconnectedListener(connection: MqttConnection) {
+        connection.addDisconnectedListener { context: MqttClientDisconnectedContext ->
+            if (context.reconnector.isReconnect) {
                 if (connected) {
-                    warn("Disconnected! {}", context.getCause().getMessage());
+                    warn("Disconnected! {}", context.cause.message!!)
+                } else {
+                    warn("Reconnect failed! Reason: {}", context.cause.message!!)
                 }
-                else {
-                    warn("Reconnect failed! Reason: {}", context.getCause().getMessage());
-                }
-                connected = false;
+                connected = false
             }
-        });
+        }
     }
 
-    private void addConnectedListener(MqttConnection connection) {
-        connection.addConnectedListener(context -> {
-            for (SubscribeListenerTuple tuple : subscribes) {
-                subscribe(tuple.subscribe, tuple.listener);
+    private fun addConnectedListener(connection: MqttConnection) {
+        connection.addConnectedListener { context: MqttClientConnectedContext ->
+            for (tuple in subscribes) {
+                subscribe(tuple.subscribe, tuple.listener)
             }
-            connected = true;
-            log("Connected to {}:{}", context.getClientConfig().getServerHost(),
-                    context.getClientConfig().getServerPort());
-        });
+            connected = true
+            log(
+                "Connected to {}:{}", context.clientConfig.serverHost,
+                context.clientConfig.serverPort
+            )
+        }
     }
 
     /**
      * Listens on all topics and notifies the listener when a new message on one of the topics comes in
      *
      * @param topics
-     *            List with topic string to listen on
+     * List with topic string to listen on
      * @param listener
-     *            listener which gets notified of new messages coming in
+     * listener which gets notified of new messages coming in
      */
-    public void listen(List<String> topics, MqttMessageListener listener) {
-        Mqtt3Subscribe subscribe = buildSubscribe(topics);
-
+    fun listen(topics: List<String>, listener: MqttMessageListener) {
+        val subscribe = buildSubscribe(topics)
         if (subscribe == null) {
-            error("No topic given to listen on");
-            return;
+            error("No topic given to listen on")
+            return
         }
-
         if (connected) {
-            subscribe(subscribe, listener);
+            subscribe(subscribe, listener)
         }
-        subscribes.add(new SubscribeListenerTuple(subscribe, listener));
+        subscribes.add(SubscribeListenerTuple(subscribe, listener))
     }
 
-    private void subscribe(Mqtt3Subscribe subscribe, MqttMessageListener listener) {
-        this.connection.getClient().subscribe(subscribe, mqtt3Publish -> {
-            listener.newMessage(mqtt3Publish.getTopic().toString(), mqtt3Publish.getPayloadAsBytes());
-            if (logger.isTraceEnabled()) {
-                trace("Message on topic {} received, payload: {}", mqtt3Publish.getTopic().toString(),
-                        new String(mqtt3Publish.getPayloadAsBytes()));
+    private fun subscribe(subscribe: Mqtt3Subscribe, listener: MqttMessageListener) {
+        connection.client.subscribe(subscribe) { mqtt3Publish: Mqtt3Publish ->
+            listener.newMessage(mqtt3Publish.topic.toString(), mqtt3Publish.payloadAsBytes)
+            if (logger.isTraceEnabled) {
+                trace(
+                    "Message on topic {} received, payload: {}", mqtt3Publish.topic.toString(),
+                    String(mqtt3Publish.payloadAsBytes)
+                )
             }
-        });
+        }
     }
 
-    private Mqtt3Subscribe buildSubscribe(List<String> topics) {
-        Mqtt3SubscribeBuilder subscribeBuilder = Mqtt3Subscribe.builder();
-        Mqtt3Subscribe subscribe = null;
-        for (String topic : topics) {
-            Mqtt3Subscription subscription = Mqtt3Subscription.builder().topicFilter(topic).build();
+    private fun buildSubscribe(topics: List<String>): Mqtt3Subscribe? {
+        val subscribeBuilder: Mqtt3SubscribeBuilder = Mqtt3Subscribe.builder()
+        var subscribe: Mqtt3Subscribe? = null
+        for (topic in topics) {
+            val subscription = Mqtt3Subscription.builder().topicFilter(topic).build()
             // last topic, build the subscribe object
-            if (topics.get(topics.size() - 1).equals(topic)) {
-                subscribe = subscribeBuilder.addSubscription(subscription).build();
-                break;
+            if (topics[topics.size - 1] == topic) {
+                subscribe = subscribeBuilder.addSubscription(subscription).build()
+                break
             }
-            subscribeBuilder.addSubscription(subscription);
+            subscribeBuilder.addSubscription(subscription)
         }
-        return subscribe;
+        return subscribe
     }
 
-    private static class SubscribeListenerTuple {
-        private final Mqtt3Subscribe subscribe;
-        private final MqttMessageListener listener;
+    private class SubscribeListenerTuple(val subscribe: Mqtt3Subscribe, val listener: MqttMessageListener)
 
-        private SubscribeListenerTuple(Mqtt3Subscribe subscribe, MqttMessageListener listener) {
-            this.subscribe = subscribe;
-            this.listener = listener;
-        }
+    private fun log(message: String, vararg args: Any) {
+        var message: String? = message
+        message = MessageFormatter.arrayFormat(message, args).message
+        logger.info("[{}] {}", pid, message)
     }
 
-    private void log(String message, Object... args) {
-        message = MessageFormatter.arrayFormat(message, args).getMessage();
-        logger.info("[{}] {}", pid, message);
+    private fun debug(message: String, vararg args: Any) {
+        var message: String? = message
+        message = MessageFormatter.arrayFormat(message, args).message
+        logger.debug("[{}] {}", pid, message)
     }
 
-    private void debug(String message, Object... args) {
-        message = MessageFormatter.arrayFormat(message, args).getMessage();
-        logger.debug("[{}] {}", pid, message);
+    private fun warn(message: String, vararg args: Any) {
+        var message: String? = message
+        message = MessageFormatter.arrayFormat(message, args).message
+        logger.warn("[{}] {}", pid, message)
     }
 
-    private void warn(String message, Object... args) {
-        message = MessageFormatter.arrayFormat(message, args).getMessage();
-        logger.warn("[{}] {}", pid, message);
+    private fun error(message: String, vararg args: Any) {
+        var message: String? = message
+        message = MessageFormatter.arrayFormat(message, args).message
+        logger.error("[{}] {}", pid, message)
     }
 
-    private void error(String message, Object... args) {
-        message = MessageFormatter.arrayFormat(message, args).getMessage();
-        logger.error("[{}] {}", pid, message);
+    private fun trace(message: String, vararg args: Any) {
+        var message: String? = message
+        message = MessageFormatter.arrayFormat(message, args).message
+        logger.trace("[{}] {}", pid, message)
     }
 
-    private void trace(String message, Object... args) {
-        message = MessageFormatter.arrayFormat(message, args).getMessage();
-        logger.trace("[{}] {}", pid, message);
+    companion object {
+        private val logger = LoggerFactory.getLogger(MqttReader::class.java)
     }
 }

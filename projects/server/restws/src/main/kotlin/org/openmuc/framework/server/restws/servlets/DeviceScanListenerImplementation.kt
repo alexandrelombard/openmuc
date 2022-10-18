@@ -18,71 +18,60 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws.servlets;
+package org.openmuc.framework.server.restws.servlets
 
-import java.util.ArrayList;
-import java.util.List;
+import org.openmuc.framework.config.DeviceScanInfo
+import org.openmuc.framework.config.DeviceScanListener
+import org.openmuc.framework.lib.rest1.rest.objects.RestScanProgressInfo
 
-import org.openmuc.framework.config.DeviceScanInfo;
-import org.openmuc.framework.config.DeviceScanListener;
-import org.openmuc.framework.lib.rest1.rest.objects.RestScanProgressInfo;
+internal class DeviceScanListenerImplementation : DeviceScanListener {
+    val restScanProgressInfo = RestScanProgressInfo()
+    private val scannedDevicesList: MutableList<DeviceScanInfo?>?
 
-class DeviceScanListenerImplementation implements DeviceScanListener {
-    private final RestScanProgressInfo restScanProgressInfo = new RestScanProgressInfo();
-
-    private final List<DeviceScanInfo> scannedDevicesList;
-
-    DeviceScanListenerImplementation() {
-        scannedDevicesList = new ArrayList<>();
+    constructor() {
+        scannedDevicesList = ArrayList()
     }
 
-    DeviceScanListenerImplementation(List<DeviceScanInfo> scannedDevicesList) {
-        restScanProgressInfo.setScanFinished(false);
-        this.scannedDevicesList = scannedDevicesList;
+    constructor(scannedDevicesList: MutableList<DeviceScanInfo?>?) {
+        restScanProgressInfo.isScanFinished = false
+        this.scannedDevicesList = scannedDevicesList
     }
 
-    @Override
-    public void deviceFound(DeviceScanInfo scanInfo) {
-        scannedDevicesList.add(scanInfo);
+    override fun deviceFound(scanInfo: DeviceScanInfo?) {
+        scannedDevicesList!!.add(scanInfo)
     }
 
-    @Override
-    public void scanProgress(int scanProgress) {
-        restScanProgressInfo.setScanProgress(scanProgress);
+    override fun scanProgress(scanProgress: Int) {
+        restScanProgressInfo.scanProgress = scanProgress
     }
 
-    @Override
-    public synchronized void scanFinished() {
-        notifyAll();
-        restScanProgressInfo.setScanFinished(true);
+    @Synchronized
+    override fun scanFinished() {
+        notifyAll()
+        restScanProgressInfo.isScanFinished = true
     }
 
-    @Override
-    public synchronized void scanInterrupted() {
-        notifyAll();
-        restScanProgressInfo.setScanInterrupted(true);
+    @Synchronized
+    override fun scanInterrupted() {
+        notifyAll()
+        restScanProgressInfo.isScanInterrupted = true
     }
 
-    @Override
-    public synchronized void scanError(String message) {
-        notifyAll();
-        restScanProgressInfo.setScanError(message);
+    @Synchronized
+    override fun scanError(message: String?) {
+        notifyAll()
+        restScanProgressInfo.scanError = message
     }
 
-    RestScanProgressInfo getRestScanProgressInfo() {
-        return restScanProgressInfo;
-    }
-
-    synchronized List<DeviceScanInfo> getScannedDevicesList() {
-        while (!restScanProgressInfo.isScanFinished() && !restScanProgressInfo.isScanInterrupted()
-                && restScanProgressInfo.getScanError() == null) {
+    @Synchronized
+    fun getScannedDevicesList(): MutableList<DeviceScanInfo?>? {
+        while (!restScanProgressInfo.isScanFinished && !restScanProgressInfo.isScanInterrupted && restScanProgressInfo.scanError == null) {
             try {
-                wait();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+                wait()
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
             }
         }
-        return scannedDevicesList;
+        return scannedDevicesList
     }
-
 }

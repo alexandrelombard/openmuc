@@ -18,164 +18,150 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.amqp
 
-package org.openmuc.framework.lib.amqp;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeoutException;
-
-import org.openmuc.framework.security.SslManagerInterface;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.Recoverable;
-import com.rabbitmq.client.RecoveryListener;
-import com.rabbitmq.client.ShutdownSignalException;
+import com.rabbitmq.client.*
+import org.openmuc.framework.lib.amqp.AmqpSettings
+import org.openmuc.framework.security.SslConfigChangeListener
+import org.openmuc.framework.security.SslManagerInterface
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import java.util.concurrent.TimeoutException
 
 /**
  * Represents a connection to an AMQP broker
  */
-public class AmqpConnection {
-
-    private static final Logger logger = LoggerFactory.getLogger(AmqpConnection.class);
-    private static final List<String> DECLARED_QUEUES = new ArrayList<>();
-
-    private final List<RecoveryListener> recoveryListeners = new ArrayList<>();
-    private final List<AmqpReader> readers = new ArrayList<>();
-    private final AmqpSettings settings;
-    private String exchange;
-    private Connection connection;
-    private Channel channel;
-    private SslManagerInterface sslManager;
-    private boolean connected = false;
+class AmqpConnection(val settings: AmqpSettings) {
+    private val recoveryListeners: MutableList<RecoveryListener> = ArrayList()
+    private val readers: MutableList<AmqpReader> = ArrayList()
+    var exchange: String? = null
+        private set
+    private var connection: Connection? = null
+    var rabbitMqChannel: Channel? = null
+        private set
+    private var sslManager: SslManagerInterface? = null
+    var isConnected = false
+        private set
 
     /**
      * A connection to an AMQP broker
      *
      * @param settings
-     *            connection details {@link AmqpSettings}
+     * connection details [AmqpSettings]
      * @throws IOException
-     *             when connection fails
+     * when connection fails
      * @throws TimeoutException
-     *             when connection fails due time out
+     * when connection fails due time out
      */
-    public AmqpConnection(AmqpSettings settings) throws IOException, TimeoutException {
-        this.settings = settings;
-
-        if (!settings.isSsl()) {
-            logger.info("Starting amqp connection without ssl");
-            ConnectionFactory factory = getConnectionFactoryForSsl(settings);
-
+    init {
+        if (!settings.isSsl) {
+            logger.info("Starting amqp connection without ssl")
+            val factory = getConnectionFactoryForSsl(settings)
             try {
-                connect(settings, factory);
-            } catch (Exception e) {
-                logger.error("Connection could not be created: {}", e.getMessage());
+                connect(settings, factory)
+            } catch (e: Exception) {
+                logger.error("Connection could not be created: {}", e.message)
             }
         }
     }
 
-    private ConnectionFactory getConnectionFactoryForSsl(AmqpSettings settings) {
-        ConnectionFactory factory = new ConnectionFactory();
-        if (settings.isSsl()) {
-            factory.useSslProtocol(sslManager.getSslContext());
-            factory.enableHostnameVerification();
+    private fun getConnectionFactoryForSsl(settings: AmqpSettings): ConnectionFactory {
+        val factory = ConnectionFactory()
+        if (settings.isSsl) {
+            factory.useSslProtocol(sslManager!!.sslContext)
+            factory.enableHostnameVerification()
         }
-        factory.setHost(settings.getHost());
-        factory.setPort(settings.getPort());
-        factory.setVirtualHost(settings.getVirtualHost());
-        factory.setUsername(settings.getUsername());
-        factory.setPassword(settings.getPassword());
-        factory.setExceptionHandler(new AmqpExceptionHandler());
-        factory.setRequestedHeartbeat(settings.getConnectionAliveInterval());
-        return factory;
+        factory.host = settings.host
+        factory.port = settings.port
+        factory.virtualHost = settings.virtualHost
+        factory.username = settings.username
+        factory.password = settings.password
+        factory.exceptionHandler = AmqpExceptionHandler()
+        factory.requestedHeartbeat = settings.connectionAliveInterval
+        return factory
     }
 
-    private void connect(AmqpSettings settings, ConnectionFactory factory) throws IOException {
-        establishConnection(factory);
-
+    @Throws(IOException::class)
+    private fun connect(settings: AmqpSettings, factory: ConnectionFactory) {
+        establishConnection(factory)
         if (connection == null) {
-            logger.warn("Created connection is null, check your config\n{}", settings);
-            return;
+            logger.warn("Created connection is null, check your config\n{}", settings)
+            return
         }
-
-        connected = true;
-        logger.info("Connection established successfully!");
-
-        addRecoveryListener(new RecoveryListener() {
-            @Override
-            public void handleRecovery(Recoverable recoverable) {
-                logger.debug("Connection recovery completed");
-                connected = true;
+        isConnected = true
+        logger.info("Connection established successfully!")
+        addRecoveryListener(object : RecoveryListener {
+            override fun handleRecovery(recoverable: Recoverable) {
+                logger.debug("Connection recovery completed")
+                isConnected = true
             }
 
-            @Override
-            public void handleRecoveryStarted(Recoverable recoverable) {
-                logger.debug("Connection recovery started");
-                connected = false;
+            override fun handleRecoveryStarted(recoverable: Recoverable) {
+                logger.debug("Connection recovery started")
+                isConnected = false
             }
-        });
-
-        channel = connection.createChannel();
-        exchange = settings.getExchange();
-        channel.exchangeDeclare(exchange, "topic", true);
-
-        if (logger.isTraceEnabled()) {
-            logger.trace("Connected to {}:{} on virtualHost {} as user {}", settings.getHost(), settings.getPort(),
-                    settings.getVirtualHost(), settings.getUsername());
+        })
+        rabbitMqChannel = connection!!.createChannel()
+        exchange = settings.exchange
+        rabbitMqChannel.exchangeDeclare(exchange, "topic", true)
+        if (logger.isTraceEnabled) {
+            logger.trace(
+                "Connected to {}:{} on virtualHost {} as user {}", settings.host, settings.port,
+                settings.virtualHost, settings.username
+            )
         }
     }
 
-    private void establishConnection(ConnectionFactory factory) {
+    private fun establishConnection(factory: ConnectionFactory) {
         try {
-            connection = factory.newConnection();
-        } catch (Exception e) {
-            logger.error("Error at creation of new connection: {}", e.getMessage());
+            connection = factory.newConnection()
+        } catch (e: Exception) {
+            logger.error("Error at creation of new connection: {}", e.message)
         }
     }
 
-    private void sslUpdate() {
-        logger.warn("SSL configuration changed, reconnecting.");
-        disconnect();
-        ConnectionFactory factory = getConnectionFactoryForSsl(settings);
+    private fun sslUpdate() {
+        logger.warn("SSL configuration changed, reconnecting.")
+        disconnect()
+        val factory = getConnectionFactoryForSsl(settings)
         try {
-            connect(settings, factory);
+            connect(settings, factory)
             if (connection == null) {
-                logger.error("connection after calling ssl update is null");
-                return;
+                logger.error("connection after calling ssl update is null")
+                return
             }
-            for (RecoveryListener listener : recoveryListeners) {
-                ((Recoverable) connection).addRecoveryListener(listener);
-                listener.handleRecovery((Recoverable) connection);
+            for (listener in recoveryListeners) {
+                (connection as Recoverable).addRecoveryListener(listener)
+                listener.handleRecovery(connection as Recoverable?)
             }
-            for (AmqpReader reader : readers) {
-                reader.resubscribe();
+            for (reader in readers) {
+                reader.resubscribe()
             }
-        } catch (IOException e) {
-            logger.error("Reconnection failed. Reason: {}", e.getMessage());
+        } catch (e: IOException) {
+            logger.error("Reconnection failed. Reason: {}", e.message)
         }
-        logger.warn("Reconnection completed.");
+        logger.warn("Reconnection completed.")
     }
 
     /**
      * Close the channel and connection
      */
-    public void disconnect() {
-        if (channel == null || connection == null) {
-            return;
+    fun disconnect() {
+        if (rabbitMqChannel == null || connection == null) {
+            return
         }
         try {
-            channel.close();
-            connection.close();
-            if (logger.isTraceEnabled()) {
-                logger.trace("Successfully disconnected");
+            rabbitMqChannel!!.close()
+            connection!!.close()
+            if (logger.isTraceEnabled) {
+                logger.trace("Successfully disconnected")
             }
-        } catch (IOException | TimeoutException | ShutdownSignalException e) {
-            logger.error("failed to close connection: {}", e.getMessage());
+        } catch (e: IOException) {
+            logger.error("failed to close connection: {}", e.message)
+        } catch (e: TimeoutException) {
+            logger.error("failed to close connection: {}", e.message)
+        } catch (e: ShutdownSignalException) {
+            logger.error("failed to close connection: {}", e.message)
         }
     }
 
@@ -183,83 +169,73 @@ public class AmqpConnection {
      * Declares the passed queue as a durable queue
      *
      * @param queue
-     *            the queue that should be declared
+     * the queue that should be declared
      * @throws IOException
-     *             if an I/O problem is encountered
+     * if an I/O problem is encountered
      */
-    public void declareQueue(String queue) throws IOException {
+    @Throws(IOException::class)
+    fun declareQueue(queue: String?) {
         if (!DECLARED_QUEUES.contains(queue)) {
             try {
-                channel.queueDeclarePassive(queue);
-                channel.queueBind(queue, exchange, queue);
-                DECLARED_QUEUES.add(queue);
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Queue {} declared", queue);
+                rabbitMqChannel!!.queueDeclarePassive(queue)
+                rabbitMqChannel!!.queueBind(queue, exchange, queue)
+                DECLARED_QUEUES.add(queue)
+                if (logger.isTraceEnabled) {
+                    logger.trace("Queue {} declared", queue)
                 }
-            } catch (Exception e) {
-                logger.debug("Channel {} not found, start to create it...", queue);
-                initDeclare(queue);
+            } catch (e: Exception) {
+                logger.debug("Channel {} not found, start to create it...", queue)
+                initDeclare(queue)
             }
         }
     }
 
-    void addRecoveryListener(RecoveryListener listener) {
-        recoveryListeners.add(listener);
+    fun addRecoveryListener(listener: RecoveryListener) {
+        recoveryListeners.add(listener)
         if (connection == null) {
-            return;
+            return
         }
-        ((Recoverable) connection).addRecoveryListener(listener);
+        (connection as Recoverable).addRecoveryListener(listener)
     }
 
-    void addReader(AmqpReader reader) {
-        readers.add(reader);
+    fun addReader(reader: AmqpReader) {
+        readers.add(reader)
     }
 
-    private void initDeclare(String queue) throws IOException {
+    @Throws(IOException::class)
+    private fun initDeclare(queue: String?) {
         if (connection == null) {
-            logger.error("declaring queue stopped, because connection to broker is null");
-            return;
+            logger.error("declaring queue stopped, because connection to broker is null")
+            return
         }
         try {
-            channel = connection.createChannel();
-        } catch (Exception e) {
-            logger.error("Queue {} could not be declared.", queue);
-            return;
+            rabbitMqChannel = connection!!.createChannel()
+        } catch (e: Exception) {
+            logger.error("Queue {} could not be declared.", queue)
+            return
         }
-        channel.exchangeDeclare(exchange, "topic", true);
-        channel.queueDeclare(queue, true, false, false, null);
+        rabbitMqChannel.exchangeDeclare(exchange, "topic", true)
+        rabbitMqChannel.queueDeclare(queue, true, false, false, null)
     }
 
-    public String getExchange() {
-        return exchange;
-    }
-
-    Channel getRabbitMqChannel() {
-        return channel;
-    }
-
-    AmqpSettings getSettings() {
-        return settings;
-    }
-
-    public void setSslManager(SslManagerInterface instance) {
-        if (!settings.isSsl()) {
-            return;
+    fun setSslManager(instance: SslManagerInterface?) {
+        if (!settings.isSsl) {
+            return
         }
-        sslManager = instance;
-        sslManager.listenForConfigChange(this::sslUpdate);
-        ConnectionFactory factory = getConnectionFactoryForSsl(settings);
-
-        if (sslManager.isLoaded()) {
+        sslManager = instance
+        sslManager!!.listenForConfigChange(SslConfigChangeListener { sslUpdate() })
+        val factory = getConnectionFactoryForSsl(settings)
+        if (sslManager!!.isLoaded) {
             try {
-                connect(settings, factory);
-            } catch (Exception e) {
-                logger.error("Connection with SSL couldn't be created");
+                connect(settings, factory)
+            } catch (e: Exception) {
+                logger.error("Connection with SSL couldn't be created")
             }
         }
     }
 
-    public boolean isConnected() {
-        return connected;
+    companion object {
+        private val logger = LoggerFactory.getLogger(AmqpConnection::class.java)
+        private val DECLARED_QUEUES: MutableList<String?> = ArrayList()
     }
 }

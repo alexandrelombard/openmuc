@@ -18,60 +18,49 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws.servlets;
+package org.openmuc.framework.server.restws.servlets
 
-import java.io.IOException;
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import javax.servlet.ServletException
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class ConnectServlet extends GenericServlet {
-
-    private static final String NOT_FOUND = "Not found.";
-    private static final long serialVersionUID = -2248093375930139043L;
-    private static final Logger logger = LoggerFactory.getLogger(DriverResourceServlet.class);
-
-    @Override
-    public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
-        if (pathAndQueryString == null) {
-            return;
-        }
-
-        String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-
-        if (pathInfo.equals("/")) {
+class ConnectServlet : GenericServlet() {
+    @Throws(ServletException::class, IOException::class)
+    override fun doGet(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger) ?: return
+        val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+        if (pathInfo == "/") {
             // do nothing only send 200 SC_OK
-            sendJson(null, response);
+            sendJson(null, response)
+        } else {
+            response.sendError(HttpServletResponse.SC_NOT_FOUND, NOT_FOUND)
         }
-        else {
-            response.sendError(HttpServletResponse.SC_NOT_FOUND, NOT_FOUND);
-        }
     }
 
-    @Override
-    public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType("application/json");
-        response.sendError(HttpServletResponse.SC_NOT_FOUND, NOT_FOUND);
+    @Throws(ServletException::class, IOException::class)
+    override fun doPost(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = "application/json"
+        response.sendError(HttpServletResponse.SC_NOT_FOUND, NOT_FOUND)
     }
 
-    @Override
-    public void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType("application/json");
-        response.sendError(HttpServletResponse.SC_NOT_FOUND, NOT_FOUND);
+    @Throws(ServletException::class, IOException::class)
+    override fun doPut(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = "application/json"
+        response.sendError(HttpServletResponse.SC_NOT_FOUND, NOT_FOUND)
     }
 
-    @Override
-    public void doDelete(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        response.setContentType("application/json");
-        response.sendError(HttpServletResponse.SC_NOT_FOUND, NOT_FOUND);
+    @Throws(ServletException::class, IOException::class)
+    override fun doDelete(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = "application/json"
+        response.sendError(HttpServletResponse.SC_NOT_FOUND, NOT_FOUND)
     }
 
+    companion object {
+        private const val NOT_FOUND = "Not found."
+        private const val serialVersionUID = -2248093375930139043L
+        private val logger = LoggerFactory.getLogger(DriverResourceServlet::class.java)
+    }
 }

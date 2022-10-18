@@ -1,0 +1,80 @@
+/*
+ * Copyright 2011-2022 Fraunhofer ISE
+ *
+ * This file is part of OpenMUC.
+ * For more information visit http://www.openmuc.org
+ *
+ * OpenMUC is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * OpenMUC is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+package org.openmuc.framework.core.datamanager
+
+import junitparams.JUnitParamsRunner
+import junitparams.Parameters
+import org.junit.Assert
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.openmuc.framework.config.ParseException
+import org.openmuc.framework.core.datamanager.ChannelConfigImpl.Companion.millisToTimeString
+import org.openmuc.framework.core.datamanager.ChannelConfigImpl.Companion.timeStringToMillis
+
+@RunWith(JUnitParamsRunner::class)
+class ChannelConfigImplTest {
+    @Test
+    @Parameters("99ms, 99", "100, 100", "1s, 1000", "1m, 60000", "0h, 0", "5h, 18000000", "24h, 86400000")
+    @Throws(
+        Exception::class
+    )
+    fun testTimeStringToMillis(timeStr: String?, expTimeInMillis: Int?) {
+        val millis = timeStringToMillis(timeStr)
+        Assert.assertEquals(expTimeInMillis, millis)
+    }
+
+    @Test
+    @Throws(Exception::class)
+    fun testEmptyTimeStringToMillis() {
+        val millis = timeStringToMillis("")
+        Assert.assertNull(millis)
+    }
+
+    @Test(expected = ParseException::class)
+    @Parameters("99w", "1y", "a77")
+    @Throws(
+        Exception::class
+    )
+    fun testTimeStringToMillisFail(timeStr: String?) {
+        timeStringToMillis(timeStr)
+    }
+
+    @Test
+    @Parameters(
+        "99ms, 99",
+        "5ms, 5",
+        "100ms, 100",
+        "1s, 1000",
+        "59s, 59000",
+        "59001ms,59001",
+        "1m, 60000",
+        "0, 0",
+        "5h, 18000000",
+        "24h, 86400000"
+    )
+    @Throws(
+        Exception::class
+    )
+    fun testTimeToString(expectedTimeStr: String?, millis: Int) {
+        val resTime = millisToTimeString(millis)
+        Assert.assertEquals(expectedTimeStr, resTime)
+    }
+}

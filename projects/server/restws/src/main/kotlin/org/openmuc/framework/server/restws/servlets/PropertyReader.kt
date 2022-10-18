@@ -18,76 +18,72 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.server.restws.servlets
 
-package org.openmuc.framework.server.restws.servlets;
+import org.slf4j.LoggerFactory
+import java.lang.Boolean
+import kotlin.Array
+import kotlin.Exception
+import kotlin.String
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class PropertyReader {
-
-    private static final Logger logger = LoggerFactory.getLogger(PropertyReader.class);
-    private static final String SEPERATOR = ";";
-
-    private static PropertyReader instance;
+class PropertyReader private constructor() {
     // Map<ORIGIN, [METHODS, HEADERS]>
-    private Map<String, ArrayList<String>> propertyMap;
-    private boolean enableCors;
+    private var propertyMap: MutableMap<String, ArrayList<String>>? = null
+    var isCorsEnabled = false
+        private set
 
-    public static PropertyReader getInstance() {
-        if (instance == null) {
-            instance = new PropertyReader();
-        }
-        return instance;
+    init {
+        loadAllProperties()
     }
 
-    private PropertyReader() {
-        loadAllProperties();
-    }
-
-    private void loadAllProperties() {
-        propertyMap = new HashMap<>();
-        enableCors = Boolean.parseBoolean(getProperty("enable_cors"));
-
-        if (enableCors) {
-            String[] urls = getPropertyList("url_cors");
-            String[] methods = getPropertyList("methods_cors");
-            String[] headers = getPropertyList("headers_cors");
-            for (int i = 0; i < urls.length; i++) {
-                ArrayList<String> methodHeader = new ArrayList<>();
-                methodHeader.add(methods[i]);
-                methodHeader.add(headers[i]);
-                propertyMap.put(urls[i], methodHeader);
+    private fun loadAllProperties() {
+        propertyMap = HashMap()
+        isCorsEnabled = Boolean.parseBoolean(getProperty("enable_cors"))
+        if (isCorsEnabled) {
+            val urls = getPropertyList("url_cors")
+            val methods = getPropertyList("methods_cors")
+            val headers = getPropertyList("headers_cors")
+            for (i in urls.indices) {
+                val methodHeader = ArrayList<String>()
+                methodHeader.add(methods[i])
+                methodHeader.add(headers[i])
+                propertyMap[urls[i]] = methodHeader
             }
         }
     }
 
-    private String[] getPropertyList(String key) {
-        return getProperty(key).split(SEPERATOR);
+    private fun getPropertyList(key: String): Array<String> {
+        return getProperty(key).split(SEPERATOR.toRegex()).dropLastWhile { it.isEmpty() }
+            .toTypedArray()
     }
 
-    private String getProperty(String key) {
-        String baseKey = "org.openmuc.framework.server.restws.";
-        String property;
+    private fun getProperty(key: String): String {
+        val baseKey = "org.openmuc.framework.server.restws."
+        var property: String
         try {
-            property = System.getProperty(baseKey + key);
-        } catch (Exception e) {
-            logger.error("Necessary system properties for CORS handling are missing. {}{}", baseKey, key);
-            enableCors = false;
-            property = "";
+            property = System.getProperty(baseKey + key)
+        } catch (e: Exception) {
+            logger.error("Necessary system properties for CORS handling are missing. {}{}", baseKey, key)
+            isCorsEnabled = false
+            property = ""
         }
-        return property;
+        return property
     }
 
-    public Map<String, ArrayList<String>> getPropertyMap() {
-        return propertyMap;
+    fun getPropertyMap(): Map<String, ArrayList<String>>? {
+        return propertyMap
     }
 
-    public boolean isCorsEnabled() {
-        return enableCors;
+    companion object {
+        private val logger = LoggerFactory.getLogger(PropertyReader::class.java)
+        private const val SEPERATOR = ";"
+        var instance: PropertyReader? = null
+            get() {
+                if (field == null) {
+                    field = PropertyReader()
+                }
+                return field
+            }
+            private set
     }
 }

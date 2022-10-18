@@ -18,36 +18,29 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.parser.openmuc
 
-package org.openmuc.framework.lib.parser.openmuc;
-
-import java.util.Dictionary;
-import java.util.Hashtable;
-
-import org.openmuc.framework.parser.spi.ParserService;
-import org.osgi.framework.BundleContext;
-import org.osgi.framework.ServiceRegistration;
-import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Deactivate;
+import org.openmuc.framework.parser.spi.ParserService
+import org.osgi.framework.BundleContext
+import org.osgi.framework.ServiceRegistration
+import org.osgi.service.component.annotations.Activate
+import org.osgi.service.component.annotations.Component
+import org.osgi.service.component.annotations.Deactivate
+import java.util.*
 
 @Component
-public class OpenMucParserComponent {
-
-    private ServiceRegistration<?> registration;
-
+class OpenMucParserComponent {
+    private var registration: ServiceRegistration<*>? = null
     @Activate
-    public void activate(BundleContext context) {
-        Dictionary<String, Object> properties = new Hashtable<>();
-        properties.put("parserID", "openmuc");
-
-        String serviceName = ParserService.class.getName();
-
-        registration = context.registerService(serviceName, new OpenmucParserServiceImpl(), properties);
+    fun activate(context: BundleContext) {
+        val properties: Dictionary<String, Any> = Hashtable()
+        properties.put("parserID", "openmuc")
+        val serviceName = ParserService::class.java.name
+        registration = context.registerService(serviceName, OpenmucParserServiceImpl(), properties)
     }
 
     @Deactivate
-    public void deactivate() {
-        registration.unregister();
+    fun deactivate() {
+        registration!!.unregister()
     }
 }

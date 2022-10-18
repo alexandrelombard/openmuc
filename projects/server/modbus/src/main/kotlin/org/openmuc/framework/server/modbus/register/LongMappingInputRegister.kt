@@ -18,30 +18,21 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.modbus.register;
+package org.openmuc.framework.server.modbus.register
 
-import org.openmuc.framework.data.LongValue;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.dataaccess.Channel;
+import org.openmuc.framework.data.LongValue
+import org.openmuc.framework.dataaccess.Channel
 
-public class LongMappingInputRegister extends MappingInputRegister {
-
-    public LongMappingInputRegister(Channel channel, int byteHigh, int byteLow) {
-        super(channel, byteHigh, byteLow);
-    }
-
-    @Override
-    public byte[] toBytes() {
-        byte[] bytes;
-        if (useUnscaledValues) {
-            Value value = channel.getLatestRecord().getValue();
-            bytes = new LongValue(value.asLong() / (long) channel.getScalingFactor()).asByteArray();
+class LongMappingInputRegister(channel: Channel, byteHigh: Int, byteLow: Int) :
+    MappingInputRegister(channel, byteHigh, byteLow) {
+    override fun toBytes(): ByteArray {
+        val bytes: ByteArray?
+        bytes = if (useUnscaledValues) {
+            val value = channel.latestRecord!!.value
+            LongValue(value!!.asLong() / channel.scalingFactor.toLong()).asByteArray()
+        } else {
+            LongValue(channel.latestRecord!!.value!!.asLong()).asByteArray()
         }
-        else {
-            bytes = new LongValue(channel.getLatestRecord().getValue().asLong()).asByteArray();
-        }
-
-        return new byte[] { bytes[highByte], bytes[lowByte] };
+        return byteArrayOf(bytes!![highByte], bytes[lowByte])
     }
-
 }

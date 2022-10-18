@@ -18,29 +18,22 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.modbus.register;
+package org.openmuc.framework.server.modbus.register
 
-import org.openmuc.framework.data.ShortValue;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.dataaccess.Channel;
+import org.openmuc.framework.data.ShortValue
+import org.openmuc.framework.dataaccess.Channel
 
-public class ShortMappingInputRegister extends MappingInputRegister {
-
-    public ShortMappingInputRegister(Channel channel, int byteHigh, int byteLow) {
-        super(channel, byteHigh, byteLow);
-    }
-
-    @Override
-    public byte[] toBytes() {
-        byte[] bytes;
-        if (useUnscaledValues) {
-            Value value = channel.getLatestRecord().getValue();
-            bytes = new ShortValue((short) (value.asShort() / (short) channel.getScalingFactor())).asByteArray();
+class ShortMappingInputRegister(channel: Channel, byteHigh: Int, byteLow: Int) :
+    MappingInputRegister(channel, byteHigh, byteLow) {
+    override fun toBytes(): ByteArray {
+        val bytes: ByteArray?
+        bytes = if (useUnscaledValues) {
+            val value = channel.latestRecord!!.value
+            ShortValue((value!!.asShort() / channel.scalingFactor.toShort()).toShort())
+                .asByteArray()
+        } else {
+            ShortValue(channel.latestRecord!!.value!!.asShort()).asByteArray()
         }
-        else {
-            bytes = new ShortValue(channel.getLatestRecord().getValue().asShort()).asByteArray();
-        }
-        return new byte[] { bytes[highByte], bytes[lowByte] };
+        return byteArrayOf(bytes!![highByte], bytes[lowByte])
     }
-
 }

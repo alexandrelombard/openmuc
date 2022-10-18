@@ -18,44 +18,11 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.rest1.rest.objects;
+package org.openmuc.framework.lib.rest1.rest.objects
 
-public class RestDriverConfig {
-
-    private String id = "";
-    private Integer samplingTimeout = null;
-    private Integer connectRetryInterval = null;
-    private Boolean disabled = null;
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public Integer getSamplingTimeout() {
-        return samplingTimeout;
-    }
-
-    public void setSamplingTimeout(Integer samplingTimeout) {
-        this.samplingTimeout = samplingTimeout;
-    }
-
-    public Integer getConnectRetryInterval() {
-        return connectRetryInterval;
-    }
-
-    public void setConnectRetryInterval(Integer connectRetryInterval) {
-        this.connectRetryInterval = connectRetryInterval;
-    }
-
-    public Boolean isDisabled() {
-        return disabled;
-    }
-
-    public void setDisabled(Boolean disabled) {
-        this.disabled = disabled;
-    }
+class RestDriverConfig {
+    var id: String? = ""
+    var samplingTimeout: Int? = null
+    var connectRetryInterval: Int? = null
+    var isDisabled: Boolean? = null
 }

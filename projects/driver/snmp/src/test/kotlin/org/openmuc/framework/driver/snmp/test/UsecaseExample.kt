@@ -18,62 +18,50 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.snmp.test;
+package org.openmuc.framework.driver.snmp.test
 
-import java.util.ArrayList;
-import java.util.List;
+import org.openmuc.framework.config.ArgumentSyntaxException
+import org.openmuc.framework.driver.snmp.SnmpDriver
+import org.openmuc.framework.driver.snmp.SnmpDriver.SnmpDriverSettingVariableNames
+import org.openmuc.framework.driver.snmp.implementation.SnmpDevice
+import org.openmuc.framework.driver.snmp.implementation.SnmpDevice.SNMPVersion
+import org.openmuc.framework.driver.spi.ChannelRecordContainer
+import org.openmuc.framework.driver.spi.ConnectionException
 
-import org.openmuc.framework.config.ArgumentSyntaxException;
-import org.openmuc.framework.driver.snmp.SnmpDriver;
-import org.openmuc.framework.driver.snmp.SnmpDriver.SnmpDriverSettingVariableNames;
-import org.openmuc.framework.driver.snmp.implementation.SnmpDevice;
-import org.openmuc.framework.driver.snmp.implementation.SnmpDevice.SNMPVersion;
-import org.openmuc.framework.driver.spi.ChannelRecordContainer;
-import org.openmuc.framework.driver.spi.ConnectionException;
-
-public class UsecaseExample {
-
+object UsecaseExample {
     /**
      * @param args
      */
-    public static void main(String[] args) {
-
+    @JvmStatic
+    fun main(args: Array<String>) {
         try {
-
-            SnmpDriver snmpDriver = new SnmpDriver();
+            val snmpDriver = SnmpDriver()
             // SNMPVersion=V2c:COMMUNITY=root:SECURITYNAME=root:AUTHENTICATIONPASSPHRASE=adminadmin:PRIVACYPASSPHRASE=adminadmin
-            String settings = SnmpDriverSettingVariableNames.SNMP_VERSION + "=" + SNMPVersion.V2c + ":"
+            val settings = (SnmpDriverSettingVariableNames.SNMP_VERSION.toString() + "=" + SNMPVersion.V2c + ":"
                     + SnmpDriverSettingVariableNames.USERNAME + "=root:" + SnmpDriverSettingVariableNames.SECURITYNAME
                     + "=root:" + SnmpDriverSettingVariableNames.AUTHENTICATIONPASSPHRASE + "=adminadmin:"
-                    + SnmpDriverSettingVariableNames.PRIVACYPASSPHRASE + "=adminadmin";
-            System.out.println(settings);
-            SnmpDevice myDevice = (SnmpDevice) snmpDriver.connect("192.168.1.1/161", settings);
-
-            List<ChannelRecordContainer> containers = new ArrayList<>();
-
-            SnmpChannel ch1 = new SnmpChannel("192.168.1.1/161", "1.3.6.1.2.1.1.1.0");
-            SnmpChannel ch2 = new SnmpChannel("192.168.1.1/161", "1.3.6.1.2.1.25.1.1.0");
-            SnmpChannel ch3 = new SnmpChannel("192.168.1.1/161", "1.3.6.1.2.1.1.5.0");
-            containers.add(new SnmpChannelRecordContainer(ch1));
-            containers.add(new SnmpChannelRecordContainer(ch2));
-            containers.add(new SnmpChannelRecordContainer(ch3));
-
-            myDevice.read(containers, null, null);
-
-            for (ChannelRecordContainer container : containers) {
-                if (container.getRecord() != null) {
-                    System.out.println(container.getRecord().getValue());
+                    + SnmpDriverSettingVariableNames.PRIVACYPASSPHRASE + "=adminadmin")
+            println(settings)
+            val myDevice = snmpDriver.connect("192.168.1.1/161", settings) as SnmpDevice?
+            val containers: MutableList<ChannelRecordContainer?> = ArrayList()
+            val ch1 = SnmpChannel("192.168.1.1/161", "1.3.6.1.2.1.1.1.0")
+            val ch2 = SnmpChannel("192.168.1.1/161", "1.3.6.1.2.1.25.1.1.0")
+            val ch3 = SnmpChannel("192.168.1.1/161", "1.3.6.1.2.1.1.5.0")
+            containers.add(SnmpChannelRecordContainer(ch1))
+            containers.add(SnmpChannelRecordContainer(ch2))
+            containers.add(SnmpChannelRecordContainer(ch3))
+            myDevice!!.read(containers, null, null)
+            for (container in containers) {
+                if (container!!.record != null) {
+                    println(container.record!!.value)
                 }
             }
-
-        } catch (ConnectionException e) {
+        } catch (e: ConnectionException) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
-        } catch (ArgumentSyntaxException e) {
+            e.printStackTrace()
+        } catch (e: ArgumentSyntaxException) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            e.printStackTrace()
         }
-
     }
-
 }

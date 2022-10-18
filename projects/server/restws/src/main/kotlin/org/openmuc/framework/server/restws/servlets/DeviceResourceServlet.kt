@@ -18,429 +18,411 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws.servlets;
+package org.openmuc.framework.server.restws.servlets
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import com.google.gson.JsonElement
+import org.openmuc.framework.config.ChannelConfig
+import org.openmuc.framework.config.ScanException
+import org.openmuc.framework.dataaccess.Channel
+import org.openmuc.framework.lib.rest1.Const
+import org.openmuc.framework.lib.rest1.FromJson
+import org.slf4j.LoggerFactory
+import javax.servlet.ServletException
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.openmuc.framework.config.ArgumentSyntaxException;
-import org.openmuc.framework.config.ChannelConfig;
-import org.openmuc.framework.config.ChannelScanInfo;
-import org.openmuc.framework.config.ConfigService;
-import org.openmuc.framework.config.ConfigWriteException;
-import org.openmuc.framework.config.DeviceConfig;
-import org.openmuc.framework.config.DriverConfig;
-import org.openmuc.framework.config.DriverNotAvailableException;
-import org.openmuc.framework.config.IdCollisionException;
-import org.openmuc.framework.config.RootConfig;
-import org.openmuc.framework.config.ScanException;
-import org.openmuc.framework.dataaccess.Channel;
-import org.openmuc.framework.dataaccess.DataAccessService;
-import org.openmuc.framework.dataaccess.DeviceState;
-import org.openmuc.framework.lib.rest1.Const;
-import org.openmuc.framework.lib.rest1.FromJson;
-import org.openmuc.framework.lib.rest1.ToJson;
-import org.openmuc.framework.lib.rest1.exceptions.MissingJsonObjectException;
-import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
-
-public class DeviceResourceServlet extends GenericServlet {
-
-    private static final String REQUESTED_REST_PATH_IS_NOT_AVAILABLE = "Requested rest path is not available.";
-    private static final String REQUESTED_REST_DEVICE_IS_NOT_AVAILABLE = "Requested rest device is not available.";
-    private static final long serialVersionUID = 4619892734239871891L;
-    private static final Logger logger = LoggerFactory.getLogger(DeviceResourceServlet.class);
-
-    private DataAccessService dataAccess;
-    private ConfigService configService;
-    private RootConfig rootConfig;
-
-    @Override
-    public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+class DeviceResourceServlet : GenericServlet() {
+    private var dataAccess: DataAccessService? = null
+    private var configService: ConfigService? = null
+    private var rootConfig: RootConfig? = null
+    @Throws(ServletException::class, IOException::class)
+    override fun doGet(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            setConfigAccess();
-
-            String deviceID, configField;
-            String pathInfo = pathAndQueryString[0];
-            String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-            List<String> deviceList = doGetDeviceList();
-
-            response.setStatus(HttpServletResponse.SC_OK);
-
-            ToJson json = new ToJson();
-
-            if (pathInfo.equals("/")) {
-                json.addStringList(Const.DEVICES, deviceList);
-            }
-            else {
-                deviceID = pathInfoArray[0].replace("/", "");
-
+            setConfigAccess()
+            val deviceID: String
+            val configField: String
+            val pathInfo = pathAndQueryString[0]
+            val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+            val deviceList = doGetDeviceList()
+            response.status = HttpServletResponse.SC_OK
+            val json = ToJson()
+            if (pathInfo == "/") {
+                json.addStringList(Const.DEVICES, deviceList)
+            } else {
+                deviceID = pathInfoArray!![0]!!.replace("/", "")
                 if (deviceList.contains(deviceID)) {
-
-                    List<Channel> deviceChannelList = doGetDeviceChannelList(deviceID);
-                    DeviceState deviceState = configService.getDeviceState(deviceID);
-
-                    if (pathInfoArray.length == 1) {
-                        json.addChannelRecordList(deviceChannelList);
-                        json.addDeviceState(deviceState);
+                    val deviceChannelList = doGetDeviceChannelList(deviceID)
+                    val deviceState: DeviceState = configService.getDeviceState(deviceID)
+                    if (pathInfoArray.size == 1) {
+                        json.addChannelRecordList(deviceChannelList)
+                        json.addDeviceState(deviceState)
+                    } else if (pathInfoArray[1].equals(Const.STATE, ignoreCase = true)) {
+                        json.addDeviceState(deviceState)
+                    } else if (pathInfoArray.size > 1 && pathInfoArray[1] == Const.CHANNELS) {
+                        json.addChannelList(deviceChannelList)
+                        json.addDeviceState(deviceState)
+                    } else if (pathInfoArray.size == 2 && pathInfoArray[1].equals(Const.CONFIGS, ignoreCase = true)) {
+                        doGetConfigs(json, deviceID, response)
+                    } else if (pathInfoArray.size == 3 && pathInfoArray[1].equals(Const.CONFIGS, ignoreCase = true)) {
+                        configField = pathInfoArray[2]
+                        doGetConfigField(json, deviceID, configField, response)
+                    } else if (pathInfoArray[1].equals(Const.SCAN, ignoreCase = true)) {
+                        val settings = request.getParameter(Const.SETTINGS)
+                        val channelScanInfoList: List<ChannelScanInfo> =
+                            scanForAllChannels(deviceID, settings, response)
+                        json.addChannelScanInfoList(channelScanInfoList)
+                    } else {
+                        ServletLib.sendHTTPErrorAndLogDebug(
+                            response, HttpServletResponse.SC_NOT_FOUND, logger,
+                            "Requested rest device is not available or unknown option.", " DeviceID = ", deviceID
+                        )
                     }
-                    else if (pathInfoArray[1].equalsIgnoreCase(Const.STATE)) {
-                        json.addDeviceState(deviceState);
-                    }
-                    else if (pathInfoArray.length > 1 && pathInfoArray[1].equals(Const.CHANNELS)) {
-                        json.addChannelList(deviceChannelList);
-                        json.addDeviceState(deviceState);
-                    }
-                    else if (pathInfoArray.length == 2 && pathInfoArray[1].equalsIgnoreCase(Const.CONFIGS)) {
-                        doGetConfigs(json, deviceID, response);
-                    }
-                    else if (pathInfoArray.length == 3 && pathInfoArray[1].equalsIgnoreCase(Const.CONFIGS)) {
-                        configField = pathInfoArray[2];
-                        doGetConfigField(json, deviceID, configField, response);
-                    }
-                    else if (pathInfoArray[1].equalsIgnoreCase(Const.SCAN)) {
-                        String settings = request.getParameter(Const.SETTINGS);
-                        List<ChannelScanInfo> channelScanInfoList = scanForAllChannels(deviceID, settings, response);
-                        json.addChannelScanInfoList(channelScanInfoList);
-                    }
-                    else {
-                        ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                                "Requested rest device is not available or unknown option.", " DeviceID = ", deviceID);
-                    }
-                }
-                else {
-                    ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                            REQUESTED_REST_DEVICE_IS_NOT_AVAILABLE, " DeviceID = ", deviceID);
+                } else {
+                    ServletLib.sendHTTPErrorAndLogDebug(
+                        response, HttpServletResponse.SC_NOT_FOUND, logger,
+                        REQUESTED_REST_DEVICE_IS_NOT_AVAILABLE, " DeviceID = ", deviceID
+                    )
                 }
             }
-            sendJson(json, response);
+            sendJson(json, response)
         }
     }
 
-    @Override
-    public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+    @Throws(ServletException::class, IOException::class)
+    override fun doPost(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            setConfigAccess();
-
-            String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-            String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-            String deviceID = pathInfoArray[0].replace("/", "");
-            FromJson json = ServletLib.getFromJson(request, logger, response);
-            if (json == null) {
-                return;
+            setConfigAccess()
+            val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+            val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+            val deviceID = pathInfoArray!![0]!!.replace("/", "")
+            val json = ServletLib.getFromJson(request, logger, response) ?: return
+            if (pathInfoArray.size == 1) {
+                setAndWriteDeviceConfig(deviceID, response, json, false)
+            } else {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                )
             }
-            if (pathInfoArray.length == 1) {
-                setAndWriteDeviceConfig(deviceID, response, json, false);
-            }
-            else {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
-            }
-
         }
     }
 
-    @Override
-    public void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+    @Throws(ServletException::class, IOException::class)
+    override fun doPut(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            setConfigAccess();
-
-            String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-            String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-            String deviceID = pathInfoArray[0].replace("/", "");
-            FromJson json = ServletLib.getFromJson(request, logger, response);
-            if (json == null) {
-                return;
-            }
-
-            if (pathInfoArray.length < 1) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
-            }
-            else {
-
-                DeviceConfig deviceConfig = rootConfig.getDevice(deviceID);
-
-                if (deviceConfig != null && pathInfoArray.length == 2
-                        && pathInfoArray[1].equalsIgnoreCase(Const.CONFIGS)) {
-                    setAndWriteDeviceConfig(deviceID, response, json, true);
-                }
-                else {
-                    ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                            REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
+            setConfigAccess()
+            val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+            val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+            val deviceID = pathInfoArray!![0]!!.replace("/", "")
+            val json = ServletLib.getFromJson(request, logger, response) ?: return
+            if (pathInfoArray.size < 1) {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                )
+            } else {
+                val deviceConfig: DeviceConfig = rootConfig.getDevice(deviceID)
+                if (deviceConfig != null && pathInfoArray.size == 2 && pathInfoArray[1].equals(
+                        Const.CONFIGS,
+                        ignoreCase = true
+                    )
+                ) {
+                    setAndWriteDeviceConfig(deviceID, response, json, true)
+                } else {
+                    ServletLib.sendHTTPErrorAndLogDebug(
+                        response, HttpServletResponse.SC_NOT_FOUND, logger,
+                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                    )
                 }
             }
         }
     }
 
-    @Override
-    public void doDelete(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+    @Throws(ServletException::class, IOException::class)
+    override fun doDelete(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            setConfigAccess();
-
-            String pathInfo = pathAndQueryString[0];
-            String deviceID = null;
-            String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-
-            deviceID = pathInfoArray[0].replace("/", "");
-            DeviceConfig deviceConfig = rootConfig.getDevice(deviceID);
-
-            if (pathInfoArray.length != 1) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        "Requested rest path is not available", " Path Info = ", request.getPathInfo());
-            }
-            else if (deviceConfig == null) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        "Device \"" + deviceID + "\" does not exist.");
-            }
-            else {
+            setConfigAccess()
+            val pathInfo = pathAndQueryString[0]
+            var deviceID: String? = null
+            val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+            deviceID = pathInfoArray!![0]!!.replace("/", "")
+            val deviceConfig: DeviceConfig = rootConfig.getDevice(deviceID)
+            if (pathInfoArray.size != 1) {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    "Requested rest path is not available", " Path Info = ", request.pathInfo
+                )
+            } else if (deviceConfig == null) {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    "Device \"$deviceID\" does not exist."
+                )
+            } else {
                 try {
-                    deviceConfig.delete();
-                    configService.setConfig(rootConfig);
-                    configService.writeConfigToFile();
-
+                    deviceConfig.delete()
+                    configService.config = rootConfig
+                    configService.writeConfigToFile()
                     if (rootConfig.getDriver(deviceID) == null) {
-                        response.setStatus(HttpServletResponse.SC_OK);
+                        response.status = HttpServletResponse.SC_OK
+                    } else {
+                        ServletLib.sendHTTPErrorAndLogErr(
+                            response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                            logger, "Not able to delete driver ", deviceID
+                        )
                     }
-                    else {
-                        ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                                logger, "Not able to delete driver ", deviceID);
-                    }
-                } catch (ConfigWriteException e) {
-                    ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
-                            "Not able to write into config.");
+                } catch (e: ConfigWriteException) {
+                    ServletLib.sendHTTPErrorAndLogErr(
+                        response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
+                        "Not able to write into config."
+                    )
                 }
             }
         }
     }
 
-    private List<ChannelScanInfo> scanForAllChannels(String deviceID, String settings, HttpServletResponse response) {
-        List<ChannelScanInfo> channelList = new ArrayList<>();
-        List<ChannelScanInfo> scannedDevicesList;
-        String deviceIDString = " deviceId = ";
-
+    private fun scanForAllChannels(
+        deviceID: String,
+        settings: String,
+        response: HttpServletResponse
+    ): List<ChannelScanInfo> {
+        val channelList: MutableList<ChannelScanInfo> = ArrayList<ChannelScanInfo>()
+        val scannedDevicesList: List<ChannelScanInfo>
+        val deviceIDString = " deviceId = "
         try {
-            scannedDevicesList = configService.scanForChannels(deviceID, settings);
-
-            for (ChannelScanInfo scannedDevice : scannedDevicesList) {
-                channelList.add(scannedDevice);
+            scannedDevicesList = configService.scanForChannels(deviceID, settings)
+            for (scannedDevice in scannedDevicesList) {
+                channelList.add(scannedDevice)
             }
-
-        } catch (UnsupportedOperationException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
-                    "Device does not support scanning.", deviceIDString, deviceID);
-        } catch (DriverNotAvailableException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    REQUESTED_REST_DEVICE_IS_NOT_AVAILABLE, deviceIDString, deviceID);
-        } catch (ArgumentSyntaxException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
-                    "Argument syntax was wrong.", deviceIDString, deviceID, " Settings = ", settings);
-        } catch (ScanException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
-                    "Error while scan device channels", deviceIDString, deviceID, " Settings = ", settings);
+        } catch (e: UnsupportedOperationException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
+                "Device does not support scanning.", deviceIDString, deviceID
+            )
+        } catch (e: DriverNotAvailableException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                REQUESTED_REST_DEVICE_IS_NOT_AVAILABLE, deviceIDString, deviceID
+            )
+        } catch (e: ArgumentSyntaxException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
+                "Argument syntax was wrong.", deviceIDString, deviceID, " Settings = ", settings
+            )
+        } catch (e: ScanException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
+                "Error while scan device channels", deviceIDString, deviceID, " Settings = ", settings
+            )
         }
-        return channelList;
+        return channelList
     }
 
-    private List<Channel> doGetDeviceChannelList(String deviceID) {
-        List<Channel> deviceChannelList = new ArrayList<>();
-        Collection<ChannelConfig> channelConfig;
-
-        channelConfig = rootConfig.getDevice(deviceID).getChannels();
-        for (ChannelConfig chCf : channelConfig) {
-            deviceChannelList.add(dataAccess.getChannel(chCf.getId()));
+    private fun doGetDeviceChannelList(deviceID: String): List<Channel> {
+        val deviceChannelList: MutableList<Channel> = ArrayList()
+        val channelConfig: Collection<ChannelConfig>
+        channelConfig = rootConfig.getDevice(deviceID).channels
+        for (chCf in channelConfig) {
+            deviceChannelList.add(dataAccess.getChannel(chCf.id))
         }
-        return deviceChannelList;
+        return deviceChannelList
     }
 
-    private List<String> doGetDeviceList() {
-        List<String> deviceList = new ArrayList<>();
-
-        Collection<DriverConfig> driverConfig;
-        driverConfig = rootConfig.getDrivers();
-
-        Collection<DeviceConfig> deviceConfig = new ArrayList<>();
-
-        for (DriverConfig drvCfg : driverConfig) {
-            String driverId = drvCfg.getId();
-            deviceConfig.addAll(rootConfig.getDriver(driverId).getDevices());
+    private fun doGetDeviceList(): List<String> {
+        val deviceList: MutableList<String> = ArrayList()
+        val driverConfig: Collection<DriverConfig>
+        driverConfig = rootConfig.drivers
+        val deviceConfig: MutableCollection<DeviceConfig> = ArrayList<DeviceConfig>()
+        for (drvCfg in driverConfig) {
+            val driverId: String = drvCfg.id
+            deviceConfig.addAll(rootConfig.getDriver(driverId).devices)
         }
-        for (DeviceConfig devCfg : deviceConfig) {
-            deviceList.add(devCfg.getId());
+        for (devCfg in deviceConfig) {
+            deviceList.add(devCfg.id)
         }
-        return deviceList;
+        return deviceList
     }
 
-    private void doGetConfigField(ToJson json, String deviceID, String configField, HttpServletResponse response)
-            throws IOException {
-        DeviceConfig deviceConfig = rootConfig.getDevice(deviceID);
-
+    @Throws(IOException::class)
+    private fun doGetConfigField(json: ToJson, deviceID: String, configField: String?, response: HttpServletResponse) {
+        val deviceConfig: DeviceConfig = rootConfig.getDevice(deviceID)
         if (deviceConfig != null) {
-            JsonObject jsoConfigAll = ToJson.getDeviceConfigAsJsonObject(deviceConfig);
+            val jsoConfigAll: JsonObject = ToJson.getDeviceConfigAsJsonObject(deviceConfig)
             if (jsoConfigAll == null) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        "Could not find JSON object \"configs\"");
-            }
-            else {
-                JsonElement jseConfigField = jsoConfigAll.get(configField);
-
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    "Could not find JSON object \"configs\""
+                )
+            } else {
+                val jseConfigField: JsonElement = jsoConfigAll.get(configField)
                 if (jseConfigField == null) {
-                    ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                            "Requested rest config field is not available.", " configField = ", configField);
-                }
-                else {
-                    JsonObject jso = new JsonObject();
-                    jso.add(configField, jseConfigField);
-                    json.addJsonObject(Const.CONFIGS, jso);
+                    ServletLib.sendHTTPErrorAndLogDebug(
+                        response, HttpServletResponse.SC_NOT_FOUND, logger,
+                        "Requested rest config field is not available.", " configField = ", configField
+                    )
+                } else {
+                    val jso = JsonObject()
+                    jso.add(configField, jseConfigField)
+                    json.addJsonObject(Const.CONFIGS, jso)
                 }
             }
-        }
-        else {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    "Requested rest channel is not available.", " ChannelID = ", deviceID);
+        } else {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                "Requested rest channel is not available.", " ChannelID = ", deviceID
+            )
         }
     }
 
-    private void doGetConfigs(ToJson json, String deviceID, HttpServletResponse response) throws IOException {
-        DeviceConfig deviceConfig;
-        deviceConfig = rootConfig.getDevice(deviceID);
-
+    @Throws(IOException::class)
+    private fun doGetConfigs(json: ToJson, deviceID: String, response: HttpServletResponse) {
+        val deviceConfig: DeviceConfig
+        deviceConfig = rootConfig.getDevice(deviceID)
         if (deviceConfig != null) {
-            json.addDeviceConfig(deviceConfig);
-        }
-        else {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    REQUESTED_REST_DEVICE_IS_NOT_AVAILABLE, " DeviceID = ", deviceID);
+            json.addDeviceConfig(deviceConfig)
+        } else {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                REQUESTED_REST_DEVICE_IS_NOT_AVAILABLE, " DeviceID = ", deviceID
+            )
         }
     }
 
-    private boolean setAndWriteDeviceConfig(String deviceID, HttpServletResponse response, FromJson json,
-            boolean isHTTPPut) {
-
+    private fun setAndWriteDeviceConfig(
+        deviceID: String, response: HttpServletResponse, json: FromJson?,
+        isHTTPPut: Boolean
+    ): Boolean {
         try {
-            if (isHTTPPut) {
-                return setAndWriteHttpPutDeviceConfig(deviceID, response, json);
+            return if (isHTTPPut) {
+                setAndWriteHttpPutDeviceConfig(deviceID, response, json)
+            } else {
+                setAndWriteHttpPostDeviceConfig(deviceID, response, json)
             }
-            else {
-                return setAndWriteHttpPostDeviceConfig(deviceID, response, json);
-            }
-        } catch (JsonSyntaxException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "JSON syntax is wrong.");
-        } catch (ConfigWriteException e) {
-            ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "Could not write device \"", deviceID, "\".");
-        } catch (RestConfigIsNotCorrectException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
-                    "Not correct formed device config json.", " JSON = ", json.getJsonObject().toString());
-        } catch (Error e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
-                    e.getMessage());
-        } catch (MissingJsonObjectException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger, e.getMessage());
-        } catch (IllegalStateException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger, e.getMessage());
+        } catch (e: JsonSyntaxException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "JSON syntax is wrong."
+            )
+        } catch (e: ConfigWriteException) {
+            ServletLib.sendHTTPErrorAndLogErr(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "Could not write device \"", deviceID, "\"."
+            )
+        } catch (e: RestConfigIsNotCorrectException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
+                "Not correct formed device config json.", " JSON = ", json.jsonObject.toString()
+            )
+        } catch (e: Error) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
+                e.message
+            )
+        } catch (e: MissingJsonObjectException) {
+            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger, e.message)
+        } catch (e: IllegalStateException) {
+            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger, e.message)
         }
-        return false;
+        return false
     }
 
-    private boolean setAndWriteHttpPutDeviceConfig(String deviceID, HttpServletResponse response, FromJson json)
-            throws JsonSyntaxException, ConfigWriteException, RestConfigIsNotCorrectException,
-            MissingJsonObjectException, IllegalStateException {
-
-        boolean ok = false;
-
-        DeviceConfig deviceConfig = rootConfig.getDevice(deviceID);
+    @Throws(
+        JsonSyntaxException::class,
+        ConfigWriteException::class,
+        RestConfigIsNotCorrectException::class,
+        MissingJsonObjectException::class,
+        IllegalStateException::class
+    )
+    private fun setAndWriteHttpPutDeviceConfig(
+        deviceID: String,
+        response: HttpServletResponse,
+        json: FromJson?
+    ): Boolean {
+        var ok = false
+        val deviceConfig: DeviceConfig = rootConfig.getDevice(deviceID)
         if (deviceConfig != null) {
             try {
-                json.setDeviceConfig(deviceConfig, deviceID);
-            } catch (IdCollisionException e) {
+                json.setDeviceConfig(deviceConfig, deviceID)
+            } catch (e: IdCollisionException) {
             }
-            configService.setConfig(rootConfig);
-            configService.writeConfigToFile();
-            response.setStatus(HttpServletResponse.SC_OK);
-            ok = true;
+            configService.config = rootConfig
+            configService.writeConfigToFile()
+            response.status = HttpServletResponse.SC_OK
+            ok = true
+        } else {
+            ServletLib.sendHTTPErrorAndLogErr(
+                response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
+                "Not able to access to device ", deviceID
+            )
         }
-        else {
-            ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
-                    "Not able to access to device ", deviceID);
-        }
-        return ok;
+        return ok
     }
 
-    private synchronized boolean setAndWriteHttpPostDeviceConfig(String deviceID, HttpServletResponse response,
-            FromJson json) throws JsonSyntaxException, ConfigWriteException, RestConfigIsNotCorrectException, Error,
-            MissingJsonObjectException, IllegalStateException {
-
-        boolean ok = false;
-        DriverConfig driverConfig;
-
-        DeviceConfig deviceConfig = rootConfig.getDevice(deviceID);
-
-        JsonObject jso = json.getJsonObject();
-        String driverID = jso.get(Const.DRIVER).getAsString();
-
-        if (driverID != null) {
-            driverConfig = rootConfig.getDriver(driverID);
+    @Synchronized
+    @Throws(
+        JsonSyntaxException::class,
+        ConfigWriteException::class,
+        RestConfigIsNotCorrectException::class,
+        Error::class,
+        MissingJsonObjectException::class,
+        IllegalStateException::class
+    )
+    private fun setAndWriteHttpPostDeviceConfig(
+        deviceID: String,
+        response: HttpServletResponse,
+        json: FromJson?
+    ): Boolean {
+        var ok = false
+        val driverConfig: DriverConfig
+        var deviceConfig: DeviceConfig = rootConfig.getDevice(deviceID)
+        val jso: JsonObject = json.jsonObject
+        val driverID: String = jso.get(Const.DRIVER).getAsString()
+        driverConfig = if (driverID != null) {
+            rootConfig.getDriver(driverID)
+        } else {
+            throw Error("No driver ID in JSON")
         }
-        else {
-            throw new Error("No driver ID in JSON");
-        }
-
         if (driverConfig == null) {
-            ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "Driver does not exists: ", driverID);
-        }
-        else if (deviceConfig != null) {
-            ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "Device already exists: ", deviceID);
-        }
-        else {
+            ServletLib.sendHTTPErrorAndLogErr(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "Driver does not exists: ", driverID
+            )
+        } else if (deviceConfig != null) {
+            ServletLib.sendHTTPErrorAndLogErr(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "Device already exists: ", deviceID
+            )
+        } else {
             try {
-                deviceConfig = driverConfig.addDevice(deviceID);
-                json.setDeviceConfig(deviceConfig, deviceID);
-            } catch (IdCollisionException e) {
+                deviceConfig = driverConfig.addDevice(deviceID)
+                json.setDeviceConfig(deviceConfig, deviceID)
+            } catch (e: IdCollisionException) {
             }
-            configService.setConfig(rootConfig);
-            configService.writeConfigToFile();
-            response.setStatus(HttpServletResponse.SC_OK);
-            ok = true;
+            configService.config = rootConfig
+            configService.writeConfigToFile()
+            response.status = HttpServletResponse.SC_OK
+            ok = true
         }
-        return ok;
+        return ok
     }
 
-    private void setConfigAccess() {
-        this.dataAccess = handleDataAccessService(null);
-        this.configService = handleConfigService(null);
-        this.rootConfig = handleRootConfig(null);
+    private fun setConfigAccess() {
+        this.dataAccess = handleDataAccessService(null)
+        this.configService = handleConfigService(null)
+        this.rootConfig = handleRootConfig(null)
     }
 
+    companion object {
+        private const val REQUESTED_REST_PATH_IS_NOT_AVAILABLE = "Requested rest path is not available."
+        private const val REQUESTED_REST_DEVICE_IS_NOT_AVAILABLE = "Requested rest device is not available."
+        private const val serialVersionUID = 4619892734239871891L
+        private val logger = LoggerFactory.getLogger(DeviceResourceServlet::class.java)
+    }
 }

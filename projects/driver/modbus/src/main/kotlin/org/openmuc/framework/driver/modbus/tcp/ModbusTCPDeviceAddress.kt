@@ -18,38 +18,29 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.modbus.tcp;
+package org.openmuc.framework.driver.modbus.tcp
 
-import com.ghgande.j2mod.modbus.Modbus;
+import com.ghgande.j2mod.modbus.Modbus
+import java.util.*
 
-public class ModbusTCPDeviceAddress {
+class ModbusTCPDeviceAddress(deviceAddress: String?) {
+    var ip: String? = null
+    var port = 0
 
-    private String ip;
-    private int port;
-
-    public ModbusTCPDeviceAddress(String deviceAddress) {
-        String[] address = deviceAddress.toLowerCase().split(":");
-
-        if (address.length == 1) {
-            ip = address[0];
-            port = Modbus.DEFAULT_PORT;
-        }
-        else if (address.length == 2) {
-            ip = address[0];
-            port = Integer.parseInt(address[1]);
-        }
-        else {
-            throw new RuntimeException("Invalid device address: '" + deviceAddress
-                    + "'! Use following format: [ip:port] like localhost:1502 or 127.0.0.1:1502");
+    init {
+        val address = deviceAddress!!.lowercase(Locale.getDefault()).split(":".toRegex()).dropLastWhile { it.isEmpty() }
+            .toTypedArray()
+        if (address.size == 1) {
+            ip = address[0]
+            port = Modbus.DEFAULT_PORT
+        } else if (address.size == 2) {
+            ip = address[0]
+            port = address[1].toInt()
+        } else {
+            throw RuntimeException(
+                "Invalid device address: '" + deviceAddress
+                        + "'! Use following format: [ip:port] like localhost:1502 or 127.0.0.1:1502"
+            )
         }
     }
-
-    public String getIp() {
-        return ip;
-    }
-
-    public int getPort() {
-        return port;
-    }
-
 }

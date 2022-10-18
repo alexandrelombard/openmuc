@@ -18,40 +18,23 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.snmp.implementation;
+package org.openmuc.framework.driver.snmp.implementation
 
-import java.util.EventObject;
+import org.openmuc.framework.driver.snmp.implementation.SnmpDevice.SNMPVersion
+import org.snmp4j.smi.Address
+import java.util.*
 
-import org.openmuc.framework.driver.snmp.implementation.SnmpDevice.SNMPVersion;
-import org.snmp4j.smi.Address;
+class SnmpDiscoveryEvent(
+    source: Any?,
+    val deviceAddress: Address,
+    val snmpVersion: SNMPVersion?,
+    val description: String?
+) : EventObject(source) {
 
-public class SnmpDiscoveryEvent extends EventObject {
-
-    /**
-     * 
-     */
-    private static final long serialVersionUID = 1382183246520560859L;
-    private final Address deviceAddress;
-    private final SNMPVersion snmpVersion;
-    private final String description;
-
-    public SnmpDiscoveryEvent(Object source, Address address, SNMPVersion version, String description) {
-        super(source);
-        deviceAddress = address;
-        snmpVersion = version;
-        this.description = description;
+    companion object {
+        /**
+         *
+         */
+        private const val serialVersionUID = 1382183246520560859L
     }
-
-    public Address getDeviceAddress() {
-        return deviceAddress;
-    }
-
-    public SNMPVersion getSnmpVersion() {
-        return snmpVersion;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
 }

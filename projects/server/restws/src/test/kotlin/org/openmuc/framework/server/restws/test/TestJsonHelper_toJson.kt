@@ -18,14 +18,12 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws.test;
+package org.openmuc.framework.server.restws.test
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Test
 
-public class TestJsonHelper_toJson {
-
+class TestJsonHelper_toJson {
     @Test
-    public void test_RecordToJson() {
-
+    fun test_RecordToJson() {
     }
 }

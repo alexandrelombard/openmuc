@@ -18,256 +18,247 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.mqtt
 
-package org.openmuc.framework.lib.mqtt;
+import com.hivemq.client.mqtt.lifecycle.MqttClientConnectedContext
+import com.hivemq.client.mqtt.lifecycle.MqttClientDisconnectedContext
+import com.hivemq.client.mqtt.mqtt3.message.publish.Mqtt3Publish
+import org.slf4j.LoggerFactory
+import org.slf4j.helpers.MessageFormatter
+import java.text.SimpleDateFormat
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicBoolean
 
-import java.text.SimpleDateFormat;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.TimeZone;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
+open class MqttWriter(connection: MqttConnection, pid: String) {
+    val connection: MqttConnection?
+    private var connected = false
+    private val cancelReconnect = AtomicBoolean(false)
+    private var timeOfConnectionLoss: LocalDateTime? = null
+    private val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    private val buffer: MqttBufferHandler
+    private val pid: String
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.MessageFormatter;
-
-import com.hivemq.client.mqtt.mqtt3.message.publish.Mqtt3Publish;
-
-public class MqttWriter {
-    private static final Logger logger = LoggerFactory.getLogger(MqttWriter.class);
-
-    private final MqttConnection connection;
-    private boolean connected = false;
-    private final AtomicBoolean cancelReconnect = new AtomicBoolean(false);
-    private LocalDateTime timeOfConnectionLoss;
-    private final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
-    private final DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private final MqttBufferHandler buffer;
-    private final String pid;
-
-    public MqttWriter(MqttConnection connection, String pid) {
-        this.connection = connection;
-        addConnectedListener();
-        addDisconnectedListener();
-        MqttSettings s = connection.getSettings();
-        buffer = new MqttBufferHandler(s.getMaxBufferSize(), s.getMaxFileCount(), s.getMaxFileSize(),
-                s.getPersistenceDirectory());
-        this.pid = pid;
+    init {
+        this.connection = connection
+        addConnectedListener()
+        addDisconnectedListener()
+        val s = connection.settings
+        buffer = MqttBufferHandler(
+            s.maxBufferSize, s.maxFileCount, s.maxFileSize,
+            s.persistenceDirectory
+        )
+        this.pid = pid
     }
 
-    private void addConnectedListener() {
-        connection.addConnectedListener(context -> {
+    private fun addConnectedListener() {
+        connection!!.addConnectedListener { context: MqttClientConnectedContext ->
 
             // FIXME null checks currently workaround for MqttWriterTest, it is not set there
-            String serverHost = "UNKNOWN";
-            String serverPort = "UNKNOWN";
-
-            if (context.getClientConfig() != null) {
-                serverHost = context.getClientConfig().getServerHost();
-                serverPort = String.valueOf(context.getClientConfig().getServerPort());
+            var serverHost = "UNKNOWN"
+            var serverPort = "UNKNOWN"
+            if (context.clientConfig != null) {
+                serverHost = context.clientConfig.serverHost
+                serverPort = context.clientConfig.serverPort.toString()
             }
-
-            log("connected to broker {}:{}", serverHost, serverPort);
-            connected = true;
-
-            MqttSettings settings = connection.getSettings();
-            if (settings.isFirstWillSet()) {
-                write(settings.getFirstWillTopic(), settings.getFirstWillPayload());
+            log("connected to broker {}:{}", serverHost, serverPort)
+            connected = true
+            val settings = connection.settings
+            if (settings!!.isFirstWillSet) {
+                write(settings.firstWillTopic, settings.firstWillPayload)
             }
-
-            Thread recovery = new Thread(this::emptyBuffer, "MqttRecovery");
-            recovery.start();
-
-        });
+            val recovery = Thread({ emptyBuffer() }, "MqttRecovery")
+            recovery.start()
+        }
     }
 
-    private void emptyFileBuffer() {
-
-        log("Clearing file buffer.");
-        String[] buffers = buffer.getBuffers();
-        if (buffers.length == 0) {
-            log("File buffer already empty.");
+    private fun emptyFileBuffer() {
+        log("Clearing file buffer.")
+        val buffers = buffer.buffers
+        if (buffers!!.size == 0) {
+            log("File buffer already empty.")
         }
-        int messageCount = 0;
-        int chunkSize = connection.getSettings().getRecoveryChunkSize();
-        int delay = connection.getSettings().getRecoveryDelay();
-        for (String buffer : buffers) {
-            Iterator<MessageTuple> iterator = this.buffer.getMessageIterator(buffer);
-            while (iterator.hasNext()) {
+        var messageCount = 0
+        val chunkSize = connection.getSettings().recoveryChunkSize
+        val delay = connection.getSettings().recoveryDelay
+        for (buffer in buffers) {
+            val iterator = this.buffer.getMessageIterator(buffer)
+            while (iterator!!.hasNext()) {
                 if (!connected) {
-                    warn("Recovery from file buffer interrupted by connection loss.");
-                    return;
+                    warn("Recovery from file buffer interrupted by connection loss.")
+                    return
                 }
-                MessageTuple messageTuple = iterator.next();
-                if (logger.isTraceEnabled()) {
-                    trace("Resend from file: {}", new String(messageTuple.message));
+                val messageTuple = iterator.next()
+                if (logger.isTraceEnabled) {
+                    trace("Resend from file: {}", String(messageTuple!!.message!!))
                 }
-                write(messageTuple.topic, messageTuple.message);
-                messageCount++;
-                if (connection.getSettings().isRecoveryLimitSet() && messageCount == chunkSize) {
-                    messageCount = 0;
+                write(messageTuple!!.topic, messageTuple.message)
+                messageCount++
+                if (connection.getSettings().isRecoveryLimitSet && messageCount == chunkSize) {
+                    messageCount = 0
                     try {
-                        Thread.sleep(delay);
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        Thread.sleep(delay.toLong())
+                    } catch (e: InterruptedException) {
+                        e.printStackTrace()
                     }
                 }
             }
         }
-
-        log("Empty file buffer done.");
+        log("Empty file buffer done.")
     }
 
-    private void emptyBuffer() {
-        log("Clearing memory (RAM) buffer.");
-        if (buffer.isEmpty()) {
-            log("Memory buffer already empty.");
+    private fun emptyBuffer() {
+        log("Clearing memory (RAM) buffer.")
+        if (buffer.isEmpty) {
+            log("Memory buffer already empty.")
         }
-        int messageCount = 0;
-        int chunkSize = connection.getSettings().getRecoveryChunkSize();
-        int delay = connection.getSettings().getRecoveryDelay();
-        while (!buffer.isEmpty()) {
+        var messageCount = 0
+        val chunkSize = connection.getSettings().recoveryChunkSize
+        val delay = connection.getSettings().recoveryDelay
+        while (!buffer.isEmpty) {
             if (!connected) {
-                warn("Recovery from memory buffer interrupted by connection loss.");
-                return;
+                warn("Recovery from memory buffer interrupted by connection loss.")
+                return
             }
-            MessageTuple messageTuple = buffer.removeNextMessage();
-            if (logger.isTraceEnabled()) {
-                trace("Resend from memory: {}", new String(messageTuple.message));
+            val messageTuple = buffer.removeNextMessage()
+            if (logger.isTraceEnabled) {
+                trace("Resend from memory: {}", String(messageTuple!!.message!!))
             }
-            write(messageTuple.topic, messageTuple.message);
-            messageCount++;
-            if (connection.getSettings().isRecoveryLimitSet() && messageCount == chunkSize) {
-                messageCount = 0;
+            write(messageTuple!!.topic, messageTuple.message)
+            messageCount++
+            if (connection.getSettings().isRecoveryLimitSet && messageCount == chunkSize) {
+                messageCount = 0
                 try {
-                    Thread.sleep(delay);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                    Thread.sleep(delay.toLong())
+                } catch (e: InterruptedException) {
+                    e.printStackTrace()
                 }
             }
-
         }
-        log("Empty memory buffer done.");
-        emptyFileBuffer();
+        log("Empty memory buffer done.")
+        emptyFileBuffer()
     }
 
-    private void addDisconnectedListener() {
-        connection.addDisconnectedListener(context -> {
+    private fun addDisconnectedListener() {
+        connection!!.addDisconnectedListener { context: MqttClientDisconnectedContext ->
             if (cancelReconnect.getAndSet(false)) {
-                context.getReconnector().reconnect(false);
+                context.reconnector.reconnect(false)
             }
-            if (context.getReconnector().isReconnect()) {
-                String serverHost = context.getClientConfig().getServerHost();
-                String cause = context.getCause().getMessage();
-                String source = context.getSource().name();
-
+            if (context.reconnector.isReconnect) {
+                val serverHost = context.clientConfig.serverHost
+                val cause = context.cause.message
+                val source = context.source.name
                 if (connected) {
-                    handleDisconnect(serverHost, cause);
-                }
-                else {
-                    handleFailedReconnect(serverHost, cause, source);
+                    handleDisconnect(serverHost, cause)
+                } else {
+                    handleFailedReconnect(serverHost, cause, source)
                 }
             }
-        });
-    }
-
-    private void handleFailedReconnect(String serverHost, String cause, String source) {
-        if (isInitialConnect()) {
-            timeOfConnectionLoss = LocalDateTime.now();
         }
-        long d = Duration.between(timeOfConnectionLoss, LocalDateTime.now()).getSeconds() * 1000;
-        String duration = sdf.format(new Date(d - TimeZone.getDefault().getRawOffset()));
-        warn("Reconnect failed: broker '{}'. Source: '{}'. Cause: '{}'. Connection lost at: {}, duration {}",
-                serverHost, source, cause, dateFormatter.format(timeOfConnectionLoss), duration);
     }
 
-    public boolean isInitialConnect() {
-        return timeOfConnectionLoss == null;
+    private fun handleFailedReconnect(serverHost: String, cause: String?, source: String) {
+        if (isInitialConnect) {
+            timeOfConnectionLoss = LocalDateTime.now()
+        }
+        val d = Duration.between(timeOfConnectionLoss, LocalDateTime.now()).seconds * 1000
+        val duration = sdf.format(Date(d - TimeZone.getDefault().rawOffset))
+        warn(
+            "Reconnect failed: broker '{}'. Source: '{}'. Cause: '{}'. Connection lost at: {}, duration {}",
+            serverHost, source, cause!!, dateFormatter.format(timeOfConnectionLoss), duration
+        )
     }
 
-    private void handleDisconnect(String serverHost, String cause) {
-        timeOfConnectionLoss = LocalDateTime.now();
-        connected = false;
-        warn("Connection lost: broker '{}'. Cause: '{}'", serverHost, cause);
+    val isInitialConnect: Boolean
+        get() = timeOfConnectionLoss == null
+
+    private fun handleDisconnect(serverHost: String, cause: String?) {
+        timeOfConnectionLoss = LocalDateTime.now()
+        connected = false
+        warn("Connection lost: broker '{}'. Cause: '{}'", serverHost, cause!!)
     }
 
     /**
      * Publishes a message to the specified topic
      *
      * @param topic
-     *            the topic on which to publish the message
+     * the topic on which to publish the message
      * @param message
-     *            the message to be published
+     * the message to be published
      */
-    public void write(String topic, byte[] message) {
+    fun write(topic: String?, message: ByteArray?) {
         if (connected) {
-            startPublishing(topic, message);
-        }
-        else {
-            warn("No connection to broker - adding message to buffer");
-            buffer.add(topic, message);
+            startPublishing(topic, message)
+        } else {
+            warn("No connection to broker - adding message to buffer")
+            buffer.add(topic, message)
         }
     }
 
-    private void startPublishing(String topic, byte[] message) {
-        publish(topic, message).whenComplete((publish, exception) -> {
+    private fun startPublishing(topic: String?, message: ByteArray?) {
+        publish(topic, message).whenComplete { publish: Mqtt3Publish?, exception: Throwable? ->
             if (exception != null) {
-                warn("Connection issue: {} message could not be sent. Adding message to buffer",
-                        exception.getMessage());
-                buffer.add(topic, message);
+                warn(
+                    "Connection issue: {} message could not be sent. Adding message to buffer",
+                    exception.message!!
+                )
+                buffer.add(topic, message)
+            } else if (logger.isTraceEnabled) {
+                trace("Message successfully delivered on topic {}", topic!!)
             }
-            else if (logger.isTraceEnabled()) {
-                trace("Message successfully delivered on topic {}", topic);
-            }
-        });
+        }
     }
 
-    CompletableFuture<Mqtt3Publish> publish(String topic, byte[] message) {
-        return connection.getClient().publishWith().topic(topic).payload(message).send();
+    open fun publish(topic: String?, message: ByteArray?): CompletableFuture<Mqtt3Publish?> {
+        return connection.getClient().publishWith().topic(topic).payload(message).send()
     }
 
-    public MqttConnection getConnection() {
-        return connection;
+    fun isConnected(): Boolean {
+        return connection != null && connected
     }
 
-    public boolean isConnected() {
-        return connection != null && connected;
+    private fun log(message: String, vararg args: Any) {
+        var message: String? = message
+        message = MessageFormatter.arrayFormat(message, args).message
+        logger.info("[{}] {}", pid, message)
     }
 
-    private void log(String message, Object... args) {
-        message = MessageFormatter.arrayFormat(message, args).getMessage();
-        logger.info("[{}] {}", pid, message);
+    private fun debug(message: String, vararg args: Any) {
+        var message: String? = message
+        message = MessageFormatter.arrayFormat(message, args).message
+        logger.debug("[{}] {}", pid, message)
     }
 
-    private void debug(String message, Object... args) {
-        message = MessageFormatter.arrayFormat(message, args).getMessage();
-        logger.debug("[{}] {}", pid, message);
+    private fun warn(message: String, vararg args: Any) {
+        var message: String? = message
+        message = MessageFormatter.arrayFormat(message, args).message
+        logger.warn("[{}] {}", pid, message)
     }
 
-    private void warn(String message, Object... args) {
-        message = MessageFormatter.arrayFormat(message, args).getMessage();
-        logger.warn("[{}] {}", pid, message);
+    private fun error(message: String, vararg args: Any) {
+        var message: String? = message
+        message = MessageFormatter.arrayFormat(message, args).message
+        logger.error("[{}] {}", pid, message)
     }
 
-    private void error(String message, Object... args) {
-        message = MessageFormatter.arrayFormat(message, args).getMessage();
-        logger.error("[{}] {}", pid, message);
+    private fun trace(message: String, vararg args: Any) {
+        var message: String? = message
+        message = MessageFormatter.arrayFormat(message, args).message
+        logger.trace("[{}] {}", pid, message)
     }
 
-    private void trace(String message, Object... args) {
-        message = MessageFormatter.arrayFormat(message, args).getMessage();
-        logger.trace("[{}] {}", pid, message);
+    fun shutdown() {
+        connected = false
+        cancelReconnect.set(true)
+        log("Saving buffers.")
+        buffer.persist()
     }
 
-    public void shutdown() {
-        connected = false;
-        cancelReconnect.set(true);
-        log("Saving buffers.");
-        buffer.persist();
+    companion object {
+        private val logger = LoggerFactory.getLogger(MqttWriter::class.java)
     }
 }

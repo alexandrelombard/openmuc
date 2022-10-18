@@ -18,22 +18,15 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.webui.userconfigurator;
+package org.openmuc.framework.webui.userconfigurator
 
-import org.openmuc.framework.webui.spi.WebUiPluginService;
-import org.osgi.service.component.annotations.Component;
+import org.openmuc.framework.webui.spi.WebUiPluginService
+import org.osgi.service.component.annotations.Component
 
-@Component(service = WebUiPluginService.class)
-public final class UserConfigurator extends WebUiPluginService {
-
-    @Override
-    public String getAlias() {
-        return "userconfigurator";
-    }
-
-    @Override
-    public String getName() {
-        return "User Configurator";
-    }
-
+@Component(service = [WebUiPluginService::class])
+class UserConfigurator : WebUiPluginService() {
+    override val alias: String
+        get() = "userconfigurator"
+    override val name: String
+        get() = "User Configurator"
 }

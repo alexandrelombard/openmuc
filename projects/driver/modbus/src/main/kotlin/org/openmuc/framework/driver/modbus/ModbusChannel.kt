@@ -18,55 +18,41 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.modbus;
+package org.openmuc.framework.driver.modbus
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.slf4j.LoggerFactory
+import java.util.*
 
-public class ModbusChannel {
-
-    private static final Logger logger = LoggerFactory.getLogger(ModbusDriver.class);
-
-    /** Contains values to define the access method of the channel */
-    public static enum EAccess {
-        READ,
-        WRITE
+class ModbusChannel(channelAddress: String?, accessFlag: EAccess) {
+    /** Contains values to define the access method of the channel  */
+    enum class EAccess {
+        READ, WRITE
     }
 
-    /** A Parameter of the channel address */
-    public static final int IGNORE_UNIT_ID = -1;
+    /** Start address to read or write from  */
+    var startAddress = 0
+        private set
 
-    /** A Parameter of the channel address */
-    private static final int UNITID = 0;
+    /** Number of registers/coils to be read or written  */
+    var count = 0
+        private set
 
-    /** A Parameter of the channel address */
-    private static final int PRIMARYTABLE = 1;
+    /** Used to determine the register/coil count  */
+    var datatype: EDatatype? = null
+        private set
 
-    /** A Parameter of the channel address */
-    private static final int ADDRESS = 2;
+    /** Used to determine the appropriate transaction method  */
+    var functionCode: EFunctionCode? = null
+        private set
 
-    /** A Parameter of the channel address */
-    private static final int DATATYPE = 3;
+    /** Specifies whether the channel should be read or written  */
+    var accessFlag: EAccess? = null
+        private set
 
-    /** Start address to read or write from */
-    private int startAddress;
-
-    /** Number of registers/coils to be read or written */
-    private int count;
-
-    /** Used to determine the register/coil count */
-    private EDatatype datatype;
-
-    /** Used to determine the appropriate transaction method */
-    private EFunctionCode functionCode;
-
-    /** Specifies whether the channel should be read or written */
-    private EAccess accessFlag;
-
-    /** */
-    private EPrimaryTable primaryTable;
-
-    private String channelAddress;
+    /**  */
+    var primaryTable: EPrimaryTable? = null
+        private set
+    val channelAddress: String? = null
 
     /**
      * Is needed when the target device is behind a gateway/bridge which connects Modbus TCP with Modbus+ or Modbus
@@ -74,248 +60,197 @@ public class ModbusChannel {
      * "Like when a device ties its Ethernet and RS-485 ports together and broadcasts whatever shows up on one side,
      * onto the other if the packet isn't for themselves, but isn't "just a bridge"."
      */
-    private int unitId;
+    var unitId = 0
+        private set
 
-    public ModbusChannel(String channelAddress, EAccess accessFlag) {
-
-        channelAddress = channelAddress.toLowerCase();
-        String[] addressParams = decomposeAddress(channelAddress);
+    init {
+        var channelAddress = channelAddress
+        channelAddress = channelAddress!!.lowercase(Locale.getDefault())
+        val addressParams = decomposeAddress(channelAddress)
         if (addressParams != null && checkAddressParams(addressParams)) {
-            this.channelAddress = channelAddress;
-            setUnitId(addressParams[UNITID]);
-            setPrimaryTable(addressParams[PRIMARYTABLE]);
-            setStartAddress(addressParams[ADDRESS]);
-            setDatatype(addressParams[DATATYPE]);
-            setCount(addressParams[DATATYPE]);
-            setAccessFlag(accessFlag);
-            setFunctionCode();
+            this.channelAddress = channelAddress
+            setUnitId(addressParams[UNITID])
+            setPrimaryTable(addressParams[PRIMARYTABLE])
+            setStartAddress(addressParams[ADDRESS])
+            setDatatype(addressParams[DATATYPE])
+            setCount(addressParams[DATATYPE])
+            setAccessFlag(accessFlag)
+            setFunctionCode()
+        } else {
+            throw RuntimeException("Address initialization faild! Invalid parameters used: $channelAddress")
         }
-        else {
-            throw new RuntimeException("Address initialization faild! Invalid parameters used: " + channelAddress);
-        }
-
     }
 
-    public void update(EAccess access) {
-        setAccessFlag(access);
-        setFunctionCode();
+    fun update(access: EAccess) {
+        setAccessFlag(access)
+        setFunctionCode()
     }
 
-    private String[] decomposeAddress(String channelAddress) {
-
-        String[] param = new String[4];
-        String[] addressParams = channelAddress.toLowerCase().split(":");
-        if (addressParams.length == 3) {
-            param[UNITID] = "";
-            param[PRIMARYTABLE] = addressParams[0];
-            param[ADDRESS] = addressParams[1];
-            param[DATATYPE] = addressParams[2];
+    private fun decomposeAddress(channelAddress: String): Array<String?>? {
+        val param = arrayOfNulls<String>(4)
+        val addressParams =
+            channelAddress.lowercase(Locale.getDefault()).split(":".toRegex()).dropLastWhile { it.isEmpty() }
+                .toTypedArray()
+        if (addressParams.size == 3) {
+            param[UNITID] = ""
+            param[PRIMARYTABLE] = addressParams[0]
+            param[ADDRESS] = addressParams[1]
+            param[DATATYPE] = addressParams[2]
+        } else if (addressParams.size == 4) {
+            param[UNITID] = addressParams[0]
+            param[PRIMARYTABLE] = addressParams[1]
+            param[ADDRESS] = addressParams[2]
+            param[DATATYPE] = addressParams[3]
+        } else {
+            return null
         }
-        else if (addressParams.length == 4) {
-            param[UNITID] = addressParams[0];
-            param[PRIMARYTABLE] = addressParams[1];
-            param[ADDRESS] = addressParams[2];
-            param[DATATYPE] = addressParams[3];
-        }
-        else {
-            return null;
-        }
-        return param;
+        return param
     }
 
-    private boolean checkAddressParams(String[] params) {
-        boolean returnValue = false;
-        if ((params[UNITID].matches("\\d+?") || params[UNITID].equals(""))
-                && EPrimaryTable.isValidValue(params[PRIMARYTABLE]) && params[ADDRESS].matches("\\d+?")
-                && EDatatype.isValid(params[DATATYPE])) {
-            returnValue = true;
+    private fun checkAddressParams(params: Array<String?>): Boolean {
+        var returnValue = false
+        if (params[UNITID]!!.matches("\\d+?") || params[UNITID] == ""
+            && EPrimaryTable.Companion.isValidValue(params[PRIMARYTABLE]) && params[ADDRESS]!!
+                .matches("\\d+?")
+            && EDatatype.Companion.isValid(params[DATATYPE])
+        ) {
+            returnValue = true
         }
-        return returnValue;
+        return returnValue
     }
 
-    private void setFunctionCode() {
-        if (accessFlag.equals(EAccess.READ)) {
-            setFunctionCodeForReading();
-        }
-        else {
-            setFunctionCodeForWriting();
+    private fun setFunctionCode() {
+        if (accessFlag == EAccess.READ) {
+            setFunctionCodeForReading()
+        } else {
+            setFunctionCodeForWriting()
         }
     }
 
     /**
      * Matches data type with function code
-     * 
+     *
      * @throws Exception
      */
-    private void setFunctionCodeForReading() {
+    private fun setFunctionCodeForReading() {
+        when (datatype) {
+            EDatatype.BOOLEAN -> if (primaryTable == EPrimaryTable.COILS) {
+                functionCode = EFunctionCode.FC_01_READ_COILS
+            } else if (primaryTable == EPrimaryTable.DISCRETE_INPUTS) {
+                functionCode = EFunctionCode.FC_02_READ_DISCRETE_INPUTS
+            } else {
+                invalidReadAddressParameterCombination()
+            }
 
-        switch (datatype) {
-        case BOOLEAN:
-            if (primaryTable.equals(EPrimaryTable.COILS)) {
-                functionCode = EFunctionCode.FC_01_READ_COILS;
+            EDatatype.SHORT, EDatatype.INT16, EDatatype.INT32, EDatatype.UINT16, EDatatype.UINT32, EDatatype.FLOAT, EDatatype.DOUBLE, EDatatype.LONG, EDatatype.BYTEARRAY -> if (primaryTable == EPrimaryTable.HOLDING_REGISTERS) {
+                functionCode = EFunctionCode.FC_03_READ_HOLDING_REGISTERS
+            } else if (primaryTable == EPrimaryTable.INPUT_REGISTERS) {
+                functionCode = EFunctionCode.FC_04_READ_INPUT_REGISTERS
+            } else {
+                invalidReadAddressParameterCombination()
             }
-            else if (primaryTable.equals(EPrimaryTable.DISCRETE_INPUTS)) {
-                functionCode = EFunctionCode.FC_02_READ_DISCRETE_INPUTS;
-            }
-            else {
-                invalidReadAddressParameterCombination();
-            }
-            break;
-        case SHORT:
-        case INT16:
-        case INT32:
-        case UINT16:
-        case UINT32:
-        case FLOAT:
-        case DOUBLE:
-        case LONG:
-        case BYTEARRAY:
-            if (primaryTable.equals(EPrimaryTable.HOLDING_REGISTERS)) {
-                functionCode = EFunctionCode.FC_03_READ_HOLDING_REGISTERS;
-            }
-            else if (primaryTable.equals(EPrimaryTable.INPUT_REGISTERS)) {
-                functionCode = EFunctionCode.FC_04_READ_INPUT_REGISTERS;
-            }
-            else {
-                invalidReadAddressParameterCombination();
-            }
-            break;
-        default:
-            throw new RuntimeException("read: Datatype " + datatype.toString() + " not supported yet!");
+
+            else -> throw RuntimeException("read: Datatype " + datatype.toString() + " not supported yet!")
         }
     }
 
-    private void setFunctionCodeForWriting() {
-        switch (datatype) {
-        case BOOLEAN:
-            if (primaryTable.equals(EPrimaryTable.COILS)) {
-                functionCode = EFunctionCode.FC_05_WRITE_SINGLE_COIL;
+    private fun setFunctionCodeForWriting() {
+        when (datatype) {
+            EDatatype.BOOLEAN -> if (primaryTable == EPrimaryTable.COILS) {
+                functionCode = EFunctionCode.FC_05_WRITE_SINGLE_COIL
+            } else {
+                invalidWriteAddressParameterCombination()
             }
-            else {
-                invalidWriteAddressParameterCombination();
+
+            EDatatype.SHORT, EDatatype.INT16, EDatatype.INT32, EDatatype.UINT16, EDatatype.UINT32, EDatatype.FLOAT, EDatatype.DOUBLE, EDatatype.LONG, EDatatype.BYTEARRAY -> if (primaryTable == EPrimaryTable.HOLDING_REGISTERS) {
+                functionCode = EFunctionCode.FC_16_WRITE_MULTIPLE_REGISTERS
+            } else {
+                invalidWriteAddressParameterCombination()
             }
-            break;
-        // case BYTE_HIGH:
-        // case BYTE_LOW:
-        // // case SHORT:
-        // case INT8:
-        // case UINT8:
-        // if (primaryTable.equals(EPrimaryTable.HOLDING_REGISTERS)) {
-        // functionCode = EFunctionCode.FC_06_WRITE_SINGLE_REGISTER;
-        // }
-        // else {
-        // invalidWriteAddressParameterCombination();
-        // }
-        // break;
-        // case INT:
-        case SHORT:
-        case INT16:
-        case INT32:
-        case UINT16:
-        case UINT32:
-        case FLOAT:
-        case DOUBLE:
-        case LONG:
-        case BYTEARRAY:
-            if (primaryTable.equals(EPrimaryTable.HOLDING_REGISTERS)) {
-                functionCode = EFunctionCode.FC_16_WRITE_MULTIPLE_REGISTERS;
-            }
-            else {
-                invalidWriteAddressParameterCombination();
-            }
-            break;
-        default:
-            throw new RuntimeException("write: Datatype " + datatype.toString() + " not supported yet!");
+
+            else -> throw RuntimeException("write: Datatype " + datatype.toString() + " not supported yet!")
         }
     }
 
-    private void invalidWriteAddressParameterCombination() {
-        throw new RuntimeException("Invalid channel address parameter combination for writing. \n Datatype: "
-                + datatype.toString().toUpperCase() + " PrimaryTable: " + primaryTable.toString().toUpperCase());
+    private fun invalidWriteAddressParameterCombination() {
+        throw RuntimeException(
+            """Invalid channel address parameter combination for writing. 
+ Datatype: ${datatype.toString().uppercase(Locale.getDefault())} PrimaryTable: ${
+                primaryTable.toString().uppercase(Locale.getDefault())
+            }"""
+        )
     }
 
-    private void invalidReadAddressParameterCombination() {
-        throw new RuntimeException("Invalid channel address parameter combination for reading. \n Datatype: "
-                + datatype.toString().toUpperCase() + " PrimaryTable: " + primaryTable.toString().toUpperCase());
+    private fun invalidReadAddressParameterCombination() {
+        throw RuntimeException(
+            """Invalid channel address parameter combination for reading. 
+ Datatype: ${datatype.toString().uppercase(Locale.getDefault())} PrimaryTable: ${
+                primaryTable.toString().uppercase(Locale.getDefault())
+            }"""
+        )
     }
 
-    private void setStartAddress(String startAddress) {
-        this.startAddress = Integer.parseInt(startAddress);
+    private fun setStartAddress(startAddress: String?) {
+        this.startAddress = startAddress!!.toInt()
     }
 
-    private void setDatatype(String datatype) {
-        this.datatype = EDatatype.getEnum(datatype);
+    private fun setDatatype(datatype: String?) {
+        this.datatype = EDatatype.Companion.getEnum(datatype)
     }
 
-    private void setUnitId(String unitId) {
-        if (unitId.equals("")) {
-            this.unitId = IGNORE_UNIT_ID;
+    private fun setUnitId(unitId: String?) {
+        if (unitId == "") {
+            this.unitId = IGNORE_UNIT_ID
+        } else {
+            this.unitId = unitId!!.toInt()
         }
-        else {
-            this.unitId = Integer.parseInt(unitId);
-        }
     }
 
-    private void setPrimaryTable(String primaryTable) {
-        this.primaryTable = EPrimaryTable.getEnumfromString(primaryTable);
+    private fun setPrimaryTable(primaryTable: String?) {
+        this.primaryTable = EPrimaryTable.Companion.getEnumfromString(primaryTable)
     }
 
-    public EPrimaryTable getPrimaryTable() {
-        return primaryTable;
-    }
-
-    private void setCount(String addressParamDatatyp) {
-        if (datatype.equals(EDatatype.BYTEARRAY)) {
+    private fun setCount(addressParamDatatyp: String?) {
+        if (datatype == EDatatype.BYTEARRAY) {
             // TODO check syntax first? bytearray[n]
 
             // special handling of the BYTEARRAY datatyp
-            String[] datatypParts = addressParamDatatyp.split("\\[|\\]"); // split string either at [ or ]
-            if (datatypParts.length == 2) {
-                count = Integer.parseInt(datatypParts[1]);
+            val datatypParts = addressParamDatatyp!!.split("\\[|\\]".toRegex()).dropLastWhile { it.isEmpty() }
+                .toTypedArray() // split string either at [ or ]
+            if (datatypParts.size == 2) {
+                count = datatypParts[1].toInt()
             }
-        }
-        else {
+        } else {
             // all other datatyps
-            count = datatype.getRegisterSize();
+            count = datatype.getRegisterSize()
         }
     }
 
-    private void setAccessFlag(EAccess accessFlag) {
-        this.accessFlag = accessFlag;
+    private fun setAccessFlag(accessFlag: EAccess) {
+        this.accessFlag = accessFlag
     }
 
-    public int getStartAddress() {
-        return startAddress;
+    override fun toString(): String {
+        return ("channeladdress: " + unitId + ":" + primaryTable.toString() + ":" + startAddress + ":"
+                + datatype.toString())
     }
 
-    public int getCount() {
-        return count;
-    }
+    companion object {
+        private val logger = LoggerFactory.getLogger(ModbusDriver::class.java)
 
-    public EDatatype getDatatype() {
-        return datatype;
-    }
+        /** A Parameter of the channel address  */
+        const val IGNORE_UNIT_ID = -1
 
-    public EFunctionCode getFunctionCode() {
-        return functionCode;
-    }
+        /** A Parameter of the channel address  */
+        private const val UNITID = 0
 
-    public EAccess getAccessFlag() {
-        return accessFlag;
-    }
+        /** A Parameter of the channel address  */
+        private const val PRIMARYTABLE = 1
 
-    public int getUnitId() {
-        return unitId;
-    }
+        /** A Parameter of the channel address  */
+        private const val ADDRESS = 2
 
-    public String getChannelAddress() {
-        return channelAddress;
+        /** A Parameter of the channel address  */
+        private const val DATATYPE = 3
     }
-
-    @Override
-    public String toString() {
-        return "channeladdress: " + unitId + ":" + primaryTable.toString() + ":" + startAddress + ":"
-                + datatype.toString();
-    }
-
 }

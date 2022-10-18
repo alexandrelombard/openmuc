@@ -18,22 +18,18 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.webui.mediaviewer;
+package org.openmuc.framework.webui.mediaviewer
 
-import org.openmuc.framework.webui.spi.WebUiPluginService;
-import org.osgi.service.component.annotations.Component;
+import org.openmuc.framework.webui.spi.WebUiPluginService
+import org.osgi.service.component.annotations.Component
 
-@Component(service = WebUiPluginService.class)
-public final class MediaViewer extends WebUiPluginService {
-
-    @Override
-    public String getAlias() {
-        return "mediaviewer";
+@Component(service = [WebUiPluginService::class])
+class MediaViewer : WebUiPluginService() {
+    override fun getAlias(): String {
+        return "mediaviewer"
     }
 
-    @Override
-    public String getName() {
-        return "Media Viewer";
+    override fun getName(): String {
+        return "Media Viewer"
     }
-
 }

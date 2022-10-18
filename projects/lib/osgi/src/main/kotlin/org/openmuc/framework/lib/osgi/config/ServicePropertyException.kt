@@ -18,15 +18,9 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-package org.openmuc.framework.lib.osgi.config;
+package org.openmuc.framework.lib.osgi.config
 
 /**
- * Should be thrown if ServiceProperty has invalid parameters see {@link ServiceProperty} and {@link PropertyHandler}
+ * Should be thrown if ServiceProperty has invalid parameters see [ServiceProperty] and [PropertyHandler]
  */
-public class ServicePropertyException extends Exception {
-
-    public ServicePropertyException(String message) {
-        super(message);
-    }
-}
+class ServicePropertyException(message: String?) : Exception(message)

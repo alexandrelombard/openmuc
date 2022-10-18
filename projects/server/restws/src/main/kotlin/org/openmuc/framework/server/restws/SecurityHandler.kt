@@ -18,69 +18,51 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws;
+package org.openmuc.framework.server.restws
 
-import java.io.IOException;
-import java.net.URL;
+import org.apache.commons.codec.binary.Base64
+import org.openmuc.framework.authentication.AuthenticationService
+import org.openmuc.framework.data.Record.value
+import org.osgi.framework.Bundle
+import org.osgi.service.http.HttpContext
+import java.io.IOException
+import java.net.URL
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.commons.codec.binary.Base64;
-import org.openmuc.framework.authentication.AuthenticationService;
-import org.osgi.framework.Bundle;
-import org.osgi.service.http.HttpContext;
-
-public class SecurityHandler implements HttpContext {
-
-    Bundle contextBundle;
-    AuthenticationService authService;
-
-    public SecurityHandler(Bundle contextBundle, AuthenticationService authService) {
-        this.contextBundle = contextBundle;
-        this.authService = authService;
-    }
-
-    @Override
-    public boolean handleSecurity(HttpServletRequest request, HttpServletResponse response) throws IOException {
+class SecurityHandler(var contextBundle: Bundle, var authService: AuthenticationService?) : HttpContext {
+    @Throws(IOException::class)
+    override fun handleSecurity(request: HttpServletRequest, response: HttpServletResponse): Boolean {
         if (!authenticated(request)) {
-            response.setHeader("WWW-Authenticate", "BASIC realm=\"private area\"");
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-            return false;
+            response.setHeader("WWW-Authenticate", "BASIC realm=\"private area\"")
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED)
+            return false
         }
-
-        return true;
+        return true
     }
 
-    private boolean authenticated(HttpServletRequest request) {
-        if (request.getMethod().equals("OPTIONS")) {
-            return true;
+    private fun authenticated(request: HttpServletRequest): Boolean {
+        if (request.method == "OPTIONS") {
+            return true
         }
-        String authzHeader = request.getHeader("Authorization");
-        if (authzHeader == null) {
-            return false;
+        val authzHeader = request.getHeader("Authorization") ?: return false
+        val usernameAndPassword: String
+        usernameAndPassword = try {
+            String(Base64.decodeBase64(authzHeader.substring(6)))
+        } catch (e: ArrayIndexOutOfBoundsException) {
+            return false
         }
-        String usernameAndPassword;
-        try {
-            usernameAndPassword = new String(Base64.decodeBase64(authzHeader.substring(6)));
-        } catch (ArrayIndexOutOfBoundsException e) {
-            return false;
-        }
-
-        int userNameIndex = usernameAndPassword.indexOf(':');
-        String username = usernameAndPassword.substring(0, userNameIndex);
-        String password = usernameAndPassword.substring(userNameIndex + 1);
-        return authService.login(username, password);
+        val userNameIndex = usernameAndPassword.indexOf(':')
+        val username = usernameAndPassword.substring(0, userNameIndex)
+        val password = usernameAndPassword.substring(userNameIndex + 1)
+        return authService!!.login(username, password)
     }
 
-    @Override
-    public URL getResource(String name) {
-        return contextBundle.getResource(name);
+    override fun getResource(name: String): URL {
+        return contextBundle.getResource(name)
     }
 
-    @Override
-    public String getMimeType(String name) {
-        return null;
+    override fun getMimeType(name: String): String {
+        return null
     }
-
 }

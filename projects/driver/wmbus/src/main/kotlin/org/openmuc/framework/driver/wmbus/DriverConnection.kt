@@ -18,91 +18,68 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.wmbus;
+package org.openmuc.framework.driver.wmbus
 
-import java.util.ArrayList;
-import java.util.List;
+import org.apache.commons.codec.binary.Hex
+import org.openmuc.framework.config.ArgumentSyntaxException
+import org.openmuc.framework.config.ChannelScanInfo
+import org.openmuc.framework.driver.spi.*
+import org.openmuc.jmbus.SecondaryAddress
+import org.openmuc.jmbus.wireless.WMBusConnection
 
 //import javax.xml.bind.DatatypeConverter;
-import org.apache.commons.codec.DecoderException;
-import org.apache.commons.codec.binary.Hex;
-import org.openmuc.framework.config.ArgumentSyntaxException;
-import org.openmuc.framework.config.ChannelScanInfo;
-import org.openmuc.framework.driver.spi.ChannelRecordContainer;
-import org.openmuc.framework.driver.spi.ChannelValueContainer;
-import org.openmuc.framework.driver.spi.Connection;
-import org.openmuc.framework.driver.spi.ConnectionException;
-import org.openmuc.framework.driver.spi.RecordsReceivedListener;
-import org.openmuc.jmbus.SecondaryAddress;
-import org.openmuc.jmbus.wireless.WMBusConnection;
-
 /**
- * Class representing an MBus Connection.<br>
- * This class will bind to the local com-interface.<br>
- * 
+ * Class representing an MBus Connection.<br></br>
+ * This class will bind to the local com-interface.<br></br>
+ *
  */
-public class DriverConnection implements Connection {
-    private final SecondaryAddress secondaryAddress;
-    private final WMBusInterface serialInterface;
-    private final WMBusConnection con;
-    private List<ChannelRecordContainer> containersToListenFor = new ArrayList<>();
+class DriverConnection(
+    private val con: WMBusConnection?, private val secondaryAddress: SecondaryAddress?, keyString: String?,
+    private val serialInterface: WMBusInterface
+) : Connection {
+    var containersToListenFor: List<ChannelRecordContainer?>? = ArrayList()
+        private set
 
-    public DriverConnection(WMBusConnection con, SecondaryAddress secondaryAddress, String keyString,
-            WMBusInterface serialInterface) throws ArgumentSyntaxException, DecoderException {
-        this.con = con;
-        this.serialInterface = serialInterface;
-        this.secondaryAddress = secondaryAddress;
-
+    init {
         if (keyString != null) {
-
-            byte[] keyAsBytes;
-            try {
-                keyAsBytes = Hex.decodeHex(keyString);
-            } catch (IllegalArgumentException e) {
-                serialInterface.connectionClosedIndication(secondaryAddress);
-                throw new ArgumentSyntaxException("The key could not be converted to a byte array.");
+            val keyAsBytes: ByteArray
+            keyAsBytes = try {
+                Hex.decodeHex(keyString)
+            } catch (e: IllegalArgumentException) {
+                serialInterface.connectionClosedIndication(secondaryAddress)
+                throw ArgumentSyntaxException("The key could not be converted to a byte array.")
             }
-            this.con.addKey(secondaryAddress, keyAsBytes);
+            con!!.addKey(secondaryAddress, keyAsBytes)
         }
     }
 
-    @Override
-    public List<ChannelScanInfo> scanForChannels(String settings)
-            throws UnsupportedOperationException, ConnectionException {
-        throw new UnsupportedOperationException();
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+        throw UnsupportedOperationException()
     }
 
-    @Override
-    public void disconnect() {
-        con.removeKey(secondaryAddress);
-
-        synchronized (serialInterface) {
-            serialInterface.connectionClosedIndication(secondaryAddress);
-        }
-
+    override fun disconnect() {
+        con!!.removeKey(secondaryAddress)
+        synchronized(serialInterface) { serialInterface.connectionClosedIndication(secondaryAddress) }
     }
 
-    @Override
-    public Object read(List<ChannelRecordContainer> containers, Object containerListHandle, String samplingGroup)
-            throws UnsupportedOperationException, ConnectionException {
-        throw new UnsupportedOperationException();
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun read(
+        containers: List<ChannelRecordContainer?>?,
+        containerListHandle: Any?,
+        samplingGroup: String?
+    ): Any? {
+        throw UnsupportedOperationException()
     }
 
-    @Override
-    public void startListening(List<ChannelRecordContainer> containers, RecordsReceivedListener listener)
-            throws UnsupportedOperationException, ConnectionException {
-        containersToListenFor = containers;
-        serialInterface.listener = listener;
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+        containersToListenFor = containers
+        serialInterface.listener = listener
     }
 
-    @Override
-    public Object write(List<ChannelValueContainer> containers, Object containerListHandle)
-            throws UnsupportedOperationException, ConnectionException {
-        throw new UnsupportedOperationException();
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+        throw UnsupportedOperationException()
     }
-
-    public List<ChannelRecordContainer> getContainersToListenFor() {
-        return containersToListenFor;
-    }
-
 }

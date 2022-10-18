@@ -18,540 +18,511 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws.servlets;
+package org.openmuc.framework.server.restws.servlets
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import com.google.gson.JsonElement
+import org.openmuc.framework.config.ChannelConfig
+import org.openmuc.framework.data.Flag
+import org.openmuc.framework.data.Record
+import org.openmuc.framework.data.Value
+import org.openmuc.framework.data.ValueType
+import org.openmuc.framework.dataaccess.Channel
+import org.openmuc.framework.lib.rest1.Const
+import org.openmuc.framework.lib.rest1.FromJson
+import org.slf4j.LoggerFactory
+import javax.servlet.ServletException
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.openmuc.framework.config.ChannelConfig;
-import org.openmuc.framework.config.ConfigService;
-import org.openmuc.framework.config.ConfigWriteException;
-import org.openmuc.framework.config.DeviceConfig;
-import org.openmuc.framework.config.IdCollisionException;
-import org.openmuc.framework.config.RootConfig;
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.data.ValueType;
-import org.openmuc.framework.dataaccess.Channel;
-import org.openmuc.framework.dataaccess.DataAccessService;
-import org.openmuc.framework.dataaccess.DataLoggerNotAvailableException;
-import org.openmuc.framework.lib.rest1.Const;
-import org.openmuc.framework.lib.rest1.FromJson;
-import org.openmuc.framework.lib.rest1.ToJson;
-import org.openmuc.framework.lib.rest1.exceptions.MissingJsonObjectException;
-import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
-
-public class ChannelResourceServlet extends GenericServlet {
-
-    private static final String REQUESTED_REST_PATH_IS_NOT_AVAILABLE = "Requested rest path is not available";
-    private static final long serialVersionUID = -702876016040151438L;
-    private static final Logger logger = LoggerFactory.getLogger(ChannelResourceServlet.class);
-
-    private DataAccessService dataAccess;
-    private ConfigService configService;
-    private RootConfig rootConfig;
-
-    @Override
-    public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
-        if (pathAndQueryString == null) {
-            return;
+class ChannelResourceServlet : GenericServlet() {
+    private var dataAccess: DataAccessService? = null
+    private var configService: ConfigService? = null
+    private var rootConfig: RootConfig? = null
+    @Throws(ServletException::class, IOException::class)
+    override fun doGet(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
+            ?: return
+        setConfigAccess()
+        val pathInfo = pathAndQueryString[0]
+        val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+        response.status = HttpServletResponse.SC_OK
+        val json = ToJson()
+        if (pathInfo == "/") {
+            doGetAllChannels(json)
+        } else {
+            readSpecificChannels(request, response, pathInfoArray, json)
         }
-
-        setConfigAccess();
-
-        String pathInfo = pathAndQueryString[0];
-        String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-
-        response.setStatus(HttpServletResponse.SC_OK);
-
-        ToJson json = new ToJson();
-
-        if (pathInfo.equals("/")) {
-            doGetAllChannels(json);
-        }
-        else {
-            readSpecificChannels(request, response, pathInfoArray, json);
-        }
-        sendJson(json, response);
+        sendJson(json, response)
     }
 
-    private void readSpecificChannels(HttpServletRequest request, HttpServletResponse response, String[] pathInfoArray,
-            ToJson json) throws IOException {
-        String channelId = pathInfoArray[0].replace("/", "");
-
-        if (pathInfoArray.length == 1) {
-            doGetSpecificChannel(json, channelId, response);
-        }
-        else if (pathInfoArray.length == 2) {
-            if (pathInfoArray[1].equalsIgnoreCase(Const.TIMESTAMP)) {
-                doGetSpecificChannelField(json, channelId, Const.TIMESTAMP, response);
+    @Throws(IOException::class)
+    private fun readSpecificChannels(
+        request: HttpServletRequest, response: HttpServletResponse, pathInfoArray: Array<String?>?,
+        json: ToJson
+    ) {
+        val channelId = pathInfoArray!![0]!!.replace("/", "")
+        if (pathInfoArray.size == 1) {
+            doGetSpecificChannel(json, channelId, response)
+        } else if (pathInfoArray.size == 2) {
+            if (pathInfoArray[1].equals(Const.TIMESTAMP, ignoreCase = true)) {
+                doGetSpecificChannelField(json, channelId, Const.TIMESTAMP, response)
+            } else if (pathInfoArray[1].equals(Const.FLAG, ignoreCase = true)) {
+                doGetSpecificChannelField(json, channelId, Const.FLAG, response)
+            } else if (pathInfoArray[1].equals(Const.VALUE_STRING, ignoreCase = true)) {
+                doGetSpecificChannelField(json, channelId, Const.VALUE_STRING, response)
+            } else if (pathInfoArray[1].equals(Const.CONFIGS, ignoreCase = true)) {
+                doGetConfigs(json, channelId, response)
+            } else if (pathInfoArray[1]!!.startsWith(Const.HISTORY)) {
+                val fromParameter = request.getParameter("from")
+                val untilParameter = request.getParameter("until")
+                doGetHistory(json, channelId, fromParameter, untilParameter, response)
+            } else if (pathInfoArray[1].equals(Const.DRIVER_ID, ignoreCase = true)) {
+                doGetDriverId(json, channelId, response)
+            } else if (pathInfoArray[1].equals(Const.DEVICE_ID, ignoreCase = true)) {
+                doGetDeviceId(json, channelId, response)
+            } else {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                )
             }
-            else if (pathInfoArray[1].equalsIgnoreCase(Const.FLAG)) {
-                doGetSpecificChannelField(json, channelId, Const.FLAG, response);
-            }
-            else if (pathInfoArray[1].equalsIgnoreCase(Const.VALUE_STRING)) {
-                doGetSpecificChannelField(json, channelId, Const.VALUE_STRING, response);
-            }
-            else if (pathInfoArray[1].equalsIgnoreCase(Const.CONFIGS)) {
-                doGetConfigs(json, channelId, response);
-            }
-            else if (pathInfoArray[1].startsWith(Const.HISTORY)) {
-                String fromParameter = request.getParameter("from");
-                String untilParameter = request.getParameter("until");
-                doGetHistory(json, channelId, fromParameter, untilParameter, response);
-            }
-            else if (pathInfoArray[1].equalsIgnoreCase(Const.DRIVER_ID)) {
-                doGetDriverId(json, channelId, response);
-            }
-            else if (pathInfoArray[1].equalsIgnoreCase(Const.DEVICE_ID)) {
-                doGetDeviceId(json, channelId, response);
-            }
-            else {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
-            }
-        }
-        else if (pathInfoArray.length == 3 && pathInfoArray[1].equalsIgnoreCase(Const.CONFIGS)) {
-            String configField = pathInfoArray[2];
-            doGetConfigField(json, channelId, configField, response);
-        }
-        else {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
+        } else if (pathInfoArray.size == 3 && pathInfoArray[1].equals(Const.CONFIGS, ignoreCase = true)) {
+            val configField = pathInfoArray[2]
+            doGetConfigField(json, channelId, configField, response)
+        } else {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+            )
         }
     }
 
-    @Override
-    public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
-        if (pathAndQueryString == null) {
-            return;
-        }
-
-        setConfigAccess();
-
-        String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-        String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-        String channelId = pathInfoArray[0].replace("/", "");
-        FromJson json = ServletLib.getFromJson(request, logger, response);
-        if (json == null) {
-            return;
-        }
-
-        if (pathInfoArray.length == 1) {
-            setAndWriteChannelConfig(channelId, response, json, false);
-        }
-        else {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
+    @Throws(ServletException::class, IOException::class)
+    override fun doPost(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
+            ?: return
+        setConfigAccess()
+        val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+        val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+        val channelId = pathInfoArray!![0]!!.replace("/", "")
+        val json = ServletLib.getFromJson(request, logger, response) ?: return
+        if (pathInfoArray.size == 1) {
+            setAndWriteChannelConfig(channelId, response, json, false)
+        } else {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+            )
         }
     }
 
-    @Override
-    public void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+    @Throws(ServletException::class, IOException::class)
+    override fun doPut(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            setConfigAccess();
-
-            String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-            String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-            String channelId = pathInfoArray[0].replace("/", "");
-            FromJson json = ServletLib.getFromJson(request, logger, response);
-            if (json == null) {
-                return;
-            }
-
-            if (pathInfoArray.length < 1) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
-            }
-            else {
-                ChannelConfig channelConfig = getChannelConfig(channelId, response);
-
+            setConfigAccess()
+            val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+            val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+            val channelId = pathInfoArray!![0]!!.replace("/", "")
+            val json = ServletLib.getFromJson(request, logger, response) ?: return
+            if (pathInfoArray.size < 1) {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                )
+            } else {
+                val channelConfig = getChannelConfig(channelId, response)
                 if (channelConfig != null) {
-
-                    if (pathInfoArray.length == 2 && pathInfoArray[1].equalsIgnoreCase(Const.CONFIGS)) {
-                        setAndWriteChannelConfig(channelId, response, json, true);
-                    }
-                    else if (pathInfoArray.length == 2 && pathInfoArray[1].equalsIgnoreCase(Const.LATESTRECORD)) {
-                        doSetRecord(channelId, response, json);
-                    }
-                    else if (pathInfoArray.length == 1) {
-                        doWriteChannel(channelId, response, json);
-                    }
-                    else {
-                        ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
+                    if (pathInfoArray.size == 2 && pathInfoArray[1].equals(Const.CONFIGS, ignoreCase = true)) {
+                        setAndWriteChannelConfig(channelId, response, json, true)
+                    } else if (pathInfoArray.size == 2 && pathInfoArray[1].equals(
+                            Const.LATESTRECORD,
+                            ignoreCase = true
+                        )
+                    ) {
+                        doSetRecord(channelId, response, json)
+                    } else if (pathInfoArray.size == 1) {
+                        doWriteChannel(channelId, response, json)
+                    } else {
+                        ServletLib.sendHTTPErrorAndLogDebug(
+                            response, HttpServletResponse.SC_NOT_FOUND, logger,
+                            REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                        )
                     }
                 }
             }
         }
     }
 
-    @Override
-    public synchronized void doDelete(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+    @Synchronized
+    @Throws(ServletException::class, IOException::class)
+    override fun doDelete(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            setConfigAccess();
-
-            String pathInfo = pathAndQueryString[0];
-            String channelId;
-            String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-            ChannelConfig channelConfig;
-
-            channelId = pathInfoArray[0].replace("/", "");
-            channelConfig = getChannelConfig(channelId, response);
-
+            setConfigAccess()
+            val pathInfo = pathAndQueryString[0]
+            val channelId: String
+            val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+            val channelConfig: ChannelConfig?
+            channelId = pathInfoArray!![0]!!.replace("/", "")
+            channelConfig = getChannelConfig(channelId, response)
             if (channelConfig == null) {
-                return;
+                return
             }
-
-            if (pathInfoArray.length != 1) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, " Path Info = ", request.getPathInfo());
-            }
-            else {
+            if (pathInfoArray.size != 1) {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, " Path Info = ", request.pathInfo
+                )
+            } else {
                 try {
-                    channelConfig.delete();
-                    configService.setConfig(rootConfig);
-                    configService.writeConfigToFile();
-
+                    channelConfig.delete()
+                    configService.config = rootConfig
+                    configService.writeConfigToFile()
                     if (rootConfig.getDriver(channelId) == null) {
-                        response.setStatus(HttpServletResponse.SC_OK);
+                        response.status = HttpServletResponse.SC_OK
+                    } else {
+                        ServletLib.sendHTTPErrorAndLogErr(
+                            response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                            logger, "Not able to delete channel ", channelId
+                        )
                     }
-                    else {
-                        ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
-                                logger, "Not able to delete channel ", channelId);
-                    }
-                } catch (ConfigWriteException e) {
-                    ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
-                            "Not able to write into config.");
-                    logger.warn("Failed to write config.", e);
+                } catch (e: ConfigWriteException) {
+                    ServletLib.sendHTTPErrorAndLogErr(
+                        response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
+                        "Not able to write into config."
+                    )
+                    logger.warn("Failed to write config.", e)
                 }
             }
         }
     }
 
-    private ChannelConfig getChannelConfig(String channelId, HttpServletResponse response) {
-        ChannelConfig channelConfig = rootConfig.getChannel(channelId);
+    private fun getChannelConfig(channelId: String, response: HttpServletResponse): ChannelConfig? {
+        val channelConfig: ChannelConfig = rootConfig.getChannel(channelId)
         if (channelConfig == null) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    "Requested rest channel is not available.", " ChannelID = ", channelId);
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                "Requested rest channel is not available.", " ChannelID = ", channelId
+            )
         }
-        return channelConfig;
+        return channelConfig
     }
 
-    private void doGetConfigField(ToJson json, String channelId, String configField, HttpServletResponse response)
-            throws IOException {
-
-        ChannelConfig channelConfig = getChannelConfig(channelId, response);
-
+    @Throws(IOException::class)
+    private fun doGetConfigField(json: ToJson, channelId: String, configField: String?, response: HttpServletResponse) {
+        val channelConfig = getChannelConfig(channelId, response)
         if (channelConfig != null) {
-            JsonObject jsoConfigAll = ToJson.getChannelConfigAsJsonObject(channelConfig);
+            val jsoConfigAll: JsonObject = ToJson.getChannelConfigAsJsonObject(channelConfig)
             if (jsoConfigAll == null) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        "Could not find JSON object \"configs\"");
-            }
-            else {
-                JsonElement jseConfigField = jsoConfigAll.get(configField);
-
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    "Could not find JSON object \"configs\""
+                )
+            } else {
+                val jseConfigField: JsonElement = jsoConfigAll.get(configField)
                 if (jseConfigField == null) {
-                    ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                            "Requested rest config field is not available.", " configField = ", configField);
-                }
-                else {
-                    JsonObject jso = new JsonObject();
-                    jso.add(configField, jseConfigField);
-                    json.addJsonObject(Const.CONFIGS, jso);
+                    ServletLib.sendHTTPErrorAndLogDebug(
+                        response, HttpServletResponse.SC_NOT_FOUND, logger,
+                        "Requested rest config field is not available.", " configField = ", configField
+                    )
+                } else {
+                    val jso = JsonObject()
+                    jso.add(configField, jseConfigField)
+                    json.addJsonObject(Const.CONFIGS, jso)
                 }
             }
         }
     }
 
-    private void doGetDriverId(ToJson json, String channelId, HttpServletResponse response) {
-        ChannelConfig channelConfig = getChannelConfig(channelId, response);
-
+    private fun doGetDriverId(json: ToJson, channelId: String, response: HttpServletResponse) {
+        val channelConfig = getChannelConfig(channelId, response)
         if (channelConfig != null) {
-            String driverId = channelConfig.getDevice().getDriver().getId();
-            json.addString(Const.DRIVER_ID, driverId);
+            val driverId = channelConfig.device!!.driver!!.id
+            json.addString(Const.DRIVER_ID, driverId)
         }
     }
 
-    private void doGetDeviceId(ToJson json, String channelId, HttpServletResponse response) {
-        ChannelConfig channelConfig = getChannelConfig(channelId, response);
-
+    private fun doGetDeviceId(json: ToJson, channelId: String, response: HttpServletResponse) {
+        val channelConfig = getChannelConfig(channelId, response)
         if (channelConfig != null) {
-            String deviceId = channelConfig.getDevice().getId();
-            json.addString(Const.DEVICE_ID, deviceId);
-        }
-
-    }
-
-    private void doGetConfigs(ToJson json, String channelId, HttpServletResponse response) {
-        ChannelConfig channelConfig = getChannelConfig(channelId, response);
-
-        if (channelConfig != null) {
-            json.addChannelConfig(channelConfig);
+            val deviceId = channelConfig.device!!.id
+            json.addString(Const.DEVICE_ID, deviceId)
         }
     }
 
-    private void doGetHistory(ToJson json, String channelId, String fromParameter, String untilParameter,
-            HttpServletResponse response) {
-        long fromTimeStamp = 0;
-        long untilTimeStamp = 0;
+    private fun doGetConfigs(json: ToJson, channelId: String, response: HttpServletResponse) {
+        val channelConfig = getChannelConfig(channelId, response)
+        if (channelConfig != null) {
+            json.addChannelConfig(channelConfig)
+        }
+    }
 
-        List<String> channelIds = dataAccess.getAllIds();
-        List<Record> records = null;
-
+    private fun doGetHistory(
+        json: ToJson, channelId: String, fromParameter: String, untilParameter: String,
+        response: HttpServletResponse
+    ) {
+        var fromTimeStamp: Long = 0
+        var untilTimeStamp: Long = 0
+        val channelIds: List<String> = dataAccess.allIds
+        var records: List<Record?>? = null
         if (channelIds.contains(channelId)) {
-            Channel channel = dataAccess.getChannel(channelId);
-
+            val channel: Channel = dataAccess.getChannel(channelId)
             try {
-                fromTimeStamp = Long.parseLong(fromParameter);
-                untilTimeStamp = Long.parseLong(untilParameter);
-            } catch (NumberFormatException ex) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_BAD_REQUEST, logger,
-                        "From/To value is not a long number.");
+                fromTimeStamp = fromParameter.toLong()
+                untilTimeStamp = untilParameter.toLong()
+            } catch (ex: NumberFormatException) {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_BAD_REQUEST, logger,
+                    "From/To value is not a long number."
+                )
             }
-
             try {
-                records = channel.getLoggedRecords(fromTimeStamp, untilTimeStamp);
-            } catch (DataLoggerNotAvailableException e) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
-                        e.getMessage());
-            } catch (IOException e) {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger, e.getMessage());
+                records = channel.getLoggedRecords(fromTimeStamp, untilTimeStamp)
+            } catch (e: DataLoggerNotAvailableException) {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, logger,
+                    e.message
+                )
+            } catch (e: IOException) {
+                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger, e.message)
             }
-            json.addRecordList(records, channel.getValueType());
+            json.addRecordList(records, channel.valueType)
         }
     }
 
-    private boolean setAndWriteChannelConfig(String channelId, HttpServletResponse response, FromJson json,
-            boolean isHTTPPut) {
-        boolean ok = false;
-
+    private fun setAndWriteChannelConfig(
+        channelId: String, response: HttpServletResponse, json: FromJson?,
+        isHTTPPut: Boolean
+    ): Boolean {
+        var ok = false
         try {
-            if (isHTTPPut) {
-                ok = setAndWriteHttpPutChannelConfig(channelId, response, json);
+            ok = if (isHTTPPut) {
+                setAndWriteHttpPutChannelConfig(channelId, response, json)
+            } else {
+                setAndWriteHttpPostChannelConfig(channelId, response, json)
             }
-            else {
-                ok = setAndWriteHttpPostChannelConfig(channelId, response, json);
-            }
-        } catch (JsonSyntaxException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "JSON syntax is wrong.");
-        } catch (ConfigWriteException e) {
-            ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "Could not write channel \"", channelId, "\".");
-            e.printStackTrace();
-        } catch (RestConfigIsNotCorrectException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
-                    "Not correct formed channel config json.", " JSON = ", json.getJsonObject().toString());
-        } catch (Error e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
-                    e.getMessage());
-        } catch (MissingJsonObjectException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger, e.getMessage());
-        } catch (IllegalStateException e) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger, e.getMessage());
+        } catch (e: JsonSyntaxException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "JSON syntax is wrong."
+            )
+        } catch (e: ConfigWriteException) {
+            ServletLib.sendHTTPErrorAndLogErr(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "Could not write channel \"", channelId, "\"."
+            )
+            e.printStackTrace()
+        } catch (e: RestConfigIsNotCorrectException) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
+                "Not correct formed channel config json.", " JSON = ", json.jsonObject.toString()
+            )
+        } catch (e: Error) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
+                e.message
+            )
+        } catch (e: MissingJsonObjectException) {
+            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger, e.message)
+        } catch (e: IllegalStateException) {
+            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger, e.message)
         }
-        return ok;
+        return ok
     }
 
-    private synchronized boolean setAndWriteHttpPutChannelConfig(String channelId, HttpServletResponse response,
-            FromJson json) throws JsonSyntaxException, ConfigWriteException, RestConfigIsNotCorrectException,
-            MissingJsonObjectException, IllegalStateException {
-        boolean ok = false;
-
-        ChannelConfig channelConfig = getChannelConfig(channelId, response);
+    @Synchronized
+    @Throws(
+        JsonSyntaxException::class,
+        ConfigWriteException::class,
+        RestConfigIsNotCorrectException::class,
+        MissingJsonObjectException::class,
+        IllegalStateException::class
+    )
+    private fun setAndWriteHttpPutChannelConfig(
+        channelId: String,
+        response: HttpServletResponse,
+        json: FromJson?
+    ): Boolean {
+        var ok = false
+        val channelConfig = getChannelConfig(channelId, response)
         if (channelConfig != null) {
             try {
-                json.setChannelConfig(channelConfig, channelId);
-
-                configService.setConfig(rootConfig);
-                configService.writeConfigToFile();
-            } catch (IdCollisionException e) {
-
+                json.setChannelConfig(channelConfig, channelId)
+                configService.config = rootConfig
+                configService.writeConfigToFile()
+            } catch (e: IdCollisionException) {
             }
-            response.setStatus(HttpServletResponse.SC_OK);
-            ok = true;
+            response.status = HttpServletResponse.SC_OK
+            ok = true
         }
-        return ok;
+        return ok
     }
 
-    private synchronized boolean setAndWriteHttpPostChannelConfig(String channelId, HttpServletResponse response,
-            FromJson json) throws JsonSyntaxException, ConfigWriteException, RestConfigIsNotCorrectException, Error,
-            MissingJsonObjectException, IllegalStateException {
-        boolean ok = false;
-        DeviceConfig deviceConfig;
-
-        ChannelConfig channelConfig = rootConfig.getChannel(channelId);
-
-        JsonObject jso = json.getJsonObject();
-        JsonElement jsonElement = jso.get(Const.DEVICE);
-
+    @Synchronized
+    @Throws(
+        JsonSyntaxException::class,
+        ConfigWriteException::class,
+        RestConfigIsNotCorrectException::class,
+        Error::class,
+        MissingJsonObjectException::class,
+        IllegalStateException::class
+    )
+    private fun setAndWriteHttpPostChannelConfig(
+        channelId: String,
+        response: HttpServletResponse,
+        json: FromJson?
+    ): Boolean {
+        var ok = false
+        val deviceConfig: DeviceConfig
+        var channelConfig: ChannelConfig = rootConfig.getChannel(channelId)
+        val jso: JsonObject = json.jsonObject
+        val jsonElement: JsonElement = jso.get(Const.DEVICE)
         if (jsonElement == null) {
-            ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_BAD_REQUEST, logger,
-                    "Wrong json message syntax. Device statement is missing.");
+            ServletLib.sendHTTPErrorAndLogErr(
+                response, HttpServletResponse.SC_BAD_REQUEST, logger,
+                "Wrong json message syntax. Device statement is missing."
+            )
         }
-        String deviceID = jsonElement.getAsString();
-
-        if (deviceID != null) {
-            deviceConfig = rootConfig.getDevice(deviceID);
+        val deviceID: String = jsonElement.getAsString()
+        deviceConfig = if (deviceID != null) {
+            rootConfig.getDevice(deviceID)
+        } else {
+            throw Error("No device ID in JSON")
         }
-        else {
-            throw new Error("No device ID in JSON");
-        }
-
         if (deviceConfig == null) {
-            ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "Device does not exists: ", deviceID);
-        }
-        else if (channelConfig != null) {
-            ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "Channel already exists: ", channelId);
-        }
-        else {
+            ServletLib.sendHTTPErrorAndLogErr(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "Device does not exists: ", deviceID
+            )
+        } else if (channelConfig != null) {
+            ServletLib.sendHTTPErrorAndLogErr(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "Channel already exists: ", channelId
+            )
+        } else {
             try {
-                channelConfig = deviceConfig.addChannel(channelId);
-                json.setChannelConfig(channelConfig, channelId);
-
-                if ((channelConfig.getValueType() == ValueType.STRING
-                        || channelConfig.getValueType() == ValueType.BYTE_ARRAY)
-                        && channelConfig.getValueTypeLength() == null) {
-                    ServletLib.sendHTTPErrorAndLogErr(response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
-                            "Channel ", channelId, " with value type ", channelConfig.getValueType().toString(),
-                            ", missing valueTypeLength.");
-                    channelConfig.delete();
+                channelConfig = deviceConfig.addChannel(channelId)
+                json.setChannelConfig(channelConfig, channelId)
+                if ((channelConfig.valueType === ValueType.STRING
+                            || channelConfig.valueType === ValueType.BYTE_ARRAY)
+                    && channelConfig.valueTypeLength == null
+                ) {
+                    ServletLib.sendHTTPErrorAndLogErr(
+                        response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
+                        "Channel ", channelId, " with value type ", channelConfig.valueType.toString(),
+                        ", missing valueTypeLength."
+                    )
+                    channelConfig.delete()
+                } else {
+                    configService.config = rootConfig
+                    configService.writeConfigToFile()
                 }
-                else {
-                    configService.setConfig(rootConfig);
-                    configService.writeConfigToFile();
-                }
-            } catch (IdCollisionException e) {
+            } catch (e: IdCollisionException) {
             }
-            response.setStatus(HttpServletResponse.SC_OK);
-            ok = true;
+            response.status = HttpServletResponse.SC_OK
+            ok = true
         }
-        return ok;
+        return ok
     }
 
-    private void doGetSpecificChannel(ToJson json, String chId, HttpServletResponse response) throws IOException {
-        Channel channel = dataAccess.getChannel(chId);
+    @Throws(IOException::class)
+    private fun doGetSpecificChannel(json: ToJson, chId: String, response: HttpServletResponse) {
+        val channel: Channel = dataAccess.getChannel(chId)
         if (channel != null) {
-            Record record = channel.getLatestRecord();
-            json.addRecord(record, channel.getValueType());
-        }
-        else {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    "Requested rest channel is not available, ChannelID = " + chId);
+            val record = channel.latestRecord
+            json.addRecord(record, channel.valueType)
+        } else {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                "Requested rest channel is not available, ChannelID = $chId"
+            )
         }
     }
 
-    private void doGetSpecificChannelField(ToJson json, String chId, String field, HttpServletResponse response)
-            throws IOException {
-        Channel channel = dataAccess.getChannel(chId);
+    @Throws(IOException::class)
+    private fun doGetSpecificChannelField(json: ToJson, chId: String, field: String, response: HttpServletResponse) {
+        val channel: Channel = dataAccess.getChannel(chId)
         if (channel != null) {
-            Record record = channel.getLatestRecord();
-            switch (field) {
-            case Const.TIMESTAMP:
-                json.addNumber(Const.TIMESTAMP, record.getTimestamp());
-                break;
-            case Const.FLAG:
-                json.addString(Const.FLAG, record.getFlag().toString());
-                break;
-            case Const.VALUE_STRING:
-                json.addValue(record.getValue(), channel.getValueType());
-                break;
-            default:
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        "Requested rest channel field is not available, ChannelID = " + chId + " Field: " + field);
-                break;
+            val record = channel.latestRecord
+            when (field) {
+                Const.TIMESTAMP -> json.addNumber(Const.TIMESTAMP, record!!.timestamp)
+                Const.FLAG -> json.addString(Const.FLAG, record!!.flag.toString())
+                Const.VALUE_STRING -> json.addValue(record!!.value, channel.valueType)
+                else -> ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    "Requested rest channel field is not available, ChannelID = $chId Field: $field"
+                )
             }
-        }
-        else {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    "Requested rest channel is not available, ChannelID = " + chId);
+        } else {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                "Requested rest channel is not available, ChannelID = $chId"
+            )
         }
     }
 
-    private void doGetAllChannels(ToJson json) {
-        List<String> ids = dataAccess.getAllIds();
-        List<Channel> channels = new ArrayList<>(ids.size());
-
-        for (String id : ids) {
-            channels.add(dataAccess.getChannel(id));
-
+    private fun doGetAllChannels(json: ToJson) {
+        val ids: List<String> = dataAccess.allIds
+        val channels: MutableList<Channel> = ArrayList(ids.size)
+        for (id in ids) {
+            channels.add(dataAccess.getChannel(id))
         }
-        json.addChannelRecordList(channels);
+        json.addChannelRecordList(channels)
     }
 
-    private void doSetRecord(String channelId, HttpServletResponse response, FromJson json) throws ClassCastException {
-        Channel channel = dataAccess.getChannel(channelId);
-        Record record = json.getRecord(channel.getValueType());
-
-        if (record.getFlag() == null) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
-                    "No flag set.");
-        }
-        else if (record.getValue() == null) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
-                    "No value set.");
-        }
-        else {
-            Long timestamp = record.getTimestamp();
+    @Throws(ClassCastException::class)
+    private fun doSetRecord(channelId: String, response: HttpServletResponse, json: FromJson?) {
+        val channel: Channel = dataAccess.getChannel(channelId)
+        val record: Record = json.getRecord(channel.valueType)
+        if (record.flag == null) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
+                "No flag set."
+            )
+        } else if (record.value == null) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_ACCEPTABLE, logger,
+                "No value set."
+            )
+        } else {
+            var timestamp = record.timestamp
             if (timestamp == null) {
-                timestamp = System.currentTimeMillis();
+                timestamp = System.currentTimeMillis()
             }
-            Record rec = new Record(record.getValue(), timestamp, record.getFlag());
-            channel.setLatestRecord(rec);
+            val rec = Record(record.value, timestamp, record.flag)
+            channel.latestRecord = rec
         }
     }
 
-    private void doWriteChannel(String channelId, HttpServletResponse response, FromJson json) {
-        Channel channel = dataAccess.getChannel(channelId);
-
-        Value value = json.getValue(channel.getValueType());
-        Flag flag = writeToChannel(channel, value);
-
-        if (flag != Flag.VALID) {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_CONFLICT, logger,
-                    "Problems by writing to channel. Flag = " + flag.toString());
+    private fun doWriteChannel(channelId: String, response: HttpServletResponse, json: FromJson?) {
+        val channel: Channel = dataAccess.getChannel(channelId)
+        val value: Value = json.getValue(channel.valueType)
+        val flag = writeToChannel(channel, value)
+        if (flag !== Flag.VALID) {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_CONFLICT, logger,
+                "Problems by writing to channel. Flag = " + flag.toString()
+            )
         }
     }
 
-    public static Flag writeToChannel(Channel channel, Value value) {
-        return channel.write(value);
+    private fun setConfigAccess() {
+        this.dataAccess = handleDataAccessService(null)
+        this.configService = handleConfigService(null)
+        this.rootConfig = handleRootConfig(null)
     }
 
-    private void setConfigAccess() {
-        this.dataAccess = handleDataAccessService(null);
-        this.configService = handleConfigService(null);
-        this.rootConfig = handleRootConfig(null);
+    companion object {
+        private const val REQUESTED_REST_PATH_IS_NOT_AVAILABLE = "Requested rest path is not available"
+        private const val serialVersionUID = -702876016040151438L
+        private val logger = LoggerFactory.getLogger(ChannelResourceServlet::class.java)
+        fun writeToChannel(channel: Channel, value: Value?): Flag? {
+            return channel.write(value)
+        }
     }
-
 }

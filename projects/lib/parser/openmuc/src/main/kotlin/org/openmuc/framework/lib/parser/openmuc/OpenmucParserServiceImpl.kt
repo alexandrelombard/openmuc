@@ -18,171 +18,115 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.parser.openmuc
 
-package org.openmuc.framework.lib.parser.openmuc;
-
-import java.lang.reflect.Type;
-import java.util.Base64;
-import java.util.List;
-
-import org.openmuc.framework.data.BooleanValue;
-import org.openmuc.framework.data.ByteArrayValue;
-import org.openmuc.framework.data.ByteValue;
-import org.openmuc.framework.data.DoubleValue;
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.FloatValue;
-import org.openmuc.framework.data.IntValue;
-import org.openmuc.framework.data.LongValue;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.ShortValue;
-import org.openmuc.framework.data.StringValue;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.data.ValueType;
-import org.openmuc.framework.datalogger.spi.LoggingRecord;
-import org.openmuc.framework.parser.spi.ParserService;
-import org.openmuc.framework.parser.spi.SerializationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.InstanceCreator;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
+import com.google.gson.*
+import org.openmuc.framework.data.*
+import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.datalogger.spi.LoggingRecord
+import org.openmuc.framework.parser.spi.ParserService
+import org.openmuc.framework.parser.spi.SerializationException
+import org.slf4j.LoggerFactory
+import java.lang.reflect.Type
+import java.util.*
 
 /**
  * Parser implementation for OpenMUC to OpenMUC communication e.g. for the AMQP driver.
  */
-public class OpenmucParserServiceImpl implements ParserService {
+class OpenmucParserServiceImpl : ParserService {
+    private val logger = LoggerFactory.getLogger(OpenmucParserServiceImpl::class.java)
+    private val gson: Gson
+    private var valueType: ValueType? = null
 
-    private final Logger logger = LoggerFactory.getLogger(OpenmucParserServiceImpl.class);
-
-    private final Gson gson;
-    private ValueType valueType;
-
-    public OpenmucParserServiceImpl() {
-        GsonBuilder gsonBuilder = new GsonBuilder();
-        gsonBuilder.registerTypeAdapter(Record.class, new RecordInstanceCreator());
-        gsonBuilder.registerTypeAdapter(Value.class, new ValueDeserializer());
-        gsonBuilder.registerTypeAdapter(Record.class, new RecordAdapter());
-        gsonBuilder.disableHtmlEscaping();
-        gson = gsonBuilder.create();
+    init {
+        val gsonBuilder = GsonBuilder()
+        gsonBuilder.registerTypeAdapter(Record::class.java, RecordInstanceCreator())
+        gsonBuilder.registerTypeAdapter(Value::class.java, ValueDeserializer())
+        gsonBuilder.registerTypeAdapter(Record::class.java, RecordAdapter())
+        gsonBuilder.disableHtmlEscaping()
+        gson = gsonBuilder.create()
     }
 
-    @Override
-    public synchronized byte[] serialize(LoggingRecord openMucRecord) {
-        String serializedString = gson.toJson(openMucRecord.getRecord());
-
-        return serializedString.getBytes();
+    @Synchronized
+    override fun serialize(openMucRecord: LoggingRecord?): ByteArray? {
+        val serializedString = gson.toJson(openMucRecord!!.record)
+        return serializedString.toByteArray()
     }
 
-    @Override
-    public synchronized byte[] serialize(List<LoggingRecord> openMucRecords) throws SerializationException {
-        StringBuilder sb = new StringBuilder();
-        for (LoggingRecord openMucRecord : openMucRecords) {
-            sb.append(new String(serialize(openMucRecord)));
-            sb.append('\n');
+    @Synchronized
+    @Throws(SerializationException::class)
+    override fun serialize(openMucRecords: List<LoggingRecord?>?): ByteArray? {
+        val sb = StringBuilder()
+        for (openMucRecord in openMucRecords!!) {
+            sb.append(String(serialize(openMucRecord)!!))
+            sb.append('\n')
         }
-        return sb.toString().getBytes();
+        return sb.toString().toByteArray()
     }
 
-    @Override
-    public synchronized Record deserialize(byte[] byteArray, ValueType valueType) {
-        this.valueType = valueType;
-        return gson.fromJson(new String(byteArray), Record.class);
-
+    @Synchronized
+    override fun deserialize(byteArray: ByteArray?, valueType: ValueType?): Record? {
+        this.valueType = valueType
+        return gson.fromJson(String(byteArray!!), Record::class.java)
     }
 
-    private class RecordInstanceCreator implements InstanceCreator<Record> {
-
-        @Override
-        public Record createInstance(Type type) {
-            return new Record(Flag.DISABLED);
+    private inner class RecordInstanceCreator : InstanceCreator<Record> {
+        override fun createInstance(type: Type): Record {
+            return Record(Flag.DISABLED)
         }
     }
 
-    private class RecordAdapter implements JsonSerializer<Record> {
+    private inner class RecordAdapter : JsonSerializer<Record> {
+        override fun serialize(record: Record, typeOfSrc: Type, context: JsonSerializationContext): JsonElement {
+            val obj = JsonObject()
+            val value = record.value
+            obj.addProperty("timestamp", record.timestamp)
+            obj.addProperty("flag", record.flag.toString())
+            if (value != null && record.flag === Flag.VALID) {
+                val valueString = "value"
+                when (value.valueType) {
+                    ValueType.BOOLEAN -> obj.addProperty(valueString, record.value!!.asBoolean())
+                    ValueType.BYTE -> obj.addProperty(valueString, record.value!!.asByte())
+                    ValueType.BYTE_ARRAY -> obj.addProperty(
+                        valueString, Base64.getEncoder().encodeToString(
+                            record.value!!.asByteArray()
+                        )
+                    )
 
-        @Override
-        public JsonElement serialize(Record record, Type typeOfSrc, JsonSerializationContext context) {
-            JsonObject obj = new JsonObject();
-            Value value = record.getValue();
-            obj.addProperty("timestamp", record.getTimestamp());
-            obj.addProperty("flag", record.getFlag().toString());
-
-            if (value != null && record.getFlag() == Flag.VALID) {
-                String valueString = "value";
-
-                switch (value.getValueType()) {
-                case BOOLEAN:
-                    obj.addProperty(valueString, record.getValue().asBoolean());
-                    break;
-                case BYTE:
-                    obj.addProperty(valueString, record.getValue().asByte());
-                    break;
-                case BYTE_ARRAY:
-                    obj.addProperty(valueString, Base64.getEncoder().encodeToString(record.getValue().asByteArray()));
-                    break;
-                case DOUBLE:
-                    obj.addProperty(valueString, record.getValue().asDouble());
-                    break;
-                case FLOAT:
-                    obj.addProperty(valueString, record.getValue().asFloat());
-                    break;
-                case INTEGER:
-                    obj.addProperty(valueString, record.getValue().asInt());
-                    break;
-                case LONG:
-                    obj.addProperty(valueString, record.getValue().asLong());
-                    break;
-                case SHORT:
-                    obj.addProperty(valueString, record.getValue().asShort());
-                    break;
-                case STRING:
-                    obj.addProperty(valueString, record.getValue().asString());
-                    break;
-                default:
-                    break;
+                    ValueType.DOUBLE -> obj.addProperty(valueString, record.value!!.asDouble())
+                    ValueType.FLOAT -> obj.addProperty(valueString, record.value!!.asFloat())
+                    ValueType.INTEGER -> obj.addProperty(valueString, record.value!!.asInt())
+                    ValueType.LONG -> obj.addProperty(valueString, record.value!!.asLong())
+                    ValueType.SHORT -> obj.addProperty(valueString, record.value!!.asShort())
+                    ValueType.STRING -> obj.addProperty(valueString, record.value!!.asString())
+                    else -> {}
                 }
             }
-            return obj;
+            return obj
         }
     }
 
-    private class ValueDeserializer implements JsonDeserializer<Value> {
-        @Override
-        public Value deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
-                throws JsonParseException {
+    private inner class ValueDeserializer : JsonDeserializer<Value?> {
+        @Throws(JsonParseException::class)
+        override fun deserialize(json: JsonElement, typeOfT: Type, context: JsonDeserializationContext): Value? {
+            return when (valueType) {
+                ValueType.BOOLEAN -> BooleanValue(json.asBoolean)
+                ValueType.BYTE_ARRAY -> ByteArrayValue(
+                    Base64.getDecoder().decode(json.asString)
+                )
 
-            switch (valueType) {
-            case BOOLEAN:
-                return new BooleanValue(json.getAsBoolean());
-            case BYTE_ARRAY:
-                return new ByteArrayValue(Base64.getDecoder().decode(json.getAsString()));
-            case BYTE:
-                return new ByteValue(json.getAsByte());
-            case DOUBLE:
-                return new DoubleValue(json.getAsDouble());
-            case FLOAT:
-                return new FloatValue(json.getAsFloat());
-            case INTEGER:
-                return new IntValue(json.getAsInt());
-            case LONG:
-                return new LongValue(json.getAsLong());
-            case SHORT:
-                return new ShortValue(json.getAsShort());
-            case STRING:
-                return new StringValue(json.getAsString());
-            default:
-                logger.warn("Unsupported ValueType: {}", valueType);
-                return null;
+                ValueType.BYTE -> ByteValue(json.asByte)
+                ValueType.DOUBLE -> DoubleValue(json.asDouble)
+                ValueType.FLOAT -> FloatValue(json.asFloat)
+                ValueType.INTEGER -> IntValue(json.asInt)
+                ValueType.LONG -> LongValue(json.asLong)
+                ValueType.SHORT -> ShortValue(json.asShort)
+                ValueType.STRING -> StringValue(json.asString)
+                else -> {
+                    logger.warn("Unsupported ValueType: {}", valueType)
+                    null
+                }
             }
         }
     }
-
 }

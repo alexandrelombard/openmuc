@@ -18,180 +18,172 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.modbus.register;
+package org.openmuc.framework.server.modbus.register
 
-import java.nio.ByteBuffer;
-
-import org.openmuc.framework.data.BooleanValue;
-import org.openmuc.framework.data.ByteArrayValue;
-import org.openmuc.framework.data.ByteValue;
-import org.openmuc.framework.data.DoubleValue;
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.FloatValue;
-import org.openmuc.framework.data.IntValue;
-import org.openmuc.framework.data.LongValue;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.ShortValue;
-import org.openmuc.framework.data.StringValue;
-import org.openmuc.framework.data.TypeConversionException;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.data.ValueType;
-import org.openmuc.framework.dataaccess.Channel;
-
-import com.ghgande.j2mod.modbus.procimg.InputRegister;
-import com.ghgande.j2mod.modbus.procimg.Register;
+import com.ghgande.j2mod.modbus.procimg.InputRegister
+import com.ghgande.j2mod.modbus.procimg.Register
+import org.openmuc.framework.data.*
+import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.dataaccess.Channel
+import java.nio.ByteBuffer
 
 /**
  * This Class implements a linked holding register for Modbus server. The reason behind this class is to collect the
  * input over multiple registers and write into one single channnel. Therefore it is necessary to concatenate the
  * register contents.
- * 
+ *
  * Bytes are submitted from one to next register after receiving. Example: [register1] -&gt; [register2] -&gt;
  * [register3] -&gt; [register4] = (represents 64 bytes Long/Double value) 0x01 0x02 -&gt; 0x03 0x04 -&gt; 0x01 0x02
  * -&gt; 0x03 0x04
- * 
+ *
  * register1 submits 2 bytes to register2 register2 submits 4 bytes to register3 register3 submits 6 bytes to register4
  * register4 writes channel with 8 bytes value.
- * 
+ *
  * The behavior of submission is safe against the order the registers are written.
- * 
+ *
  * @author sfey
  */
-public class LinkedMappingHoldingRegister extends MappingInputRegister implements Register {
+class LinkedMappingHoldingRegister(
+    inputRegister: MappingInputRegister,
+    channel: Channel,
+    private val nextRegister: LinkedMappingHoldingRegister?,
+    private val valueType: ValueType,
+    byteHigh: Int,
+    byteLow: Int
+) : MappingInputRegister(channel, byteHigh, byteLow), Register {
+    private var leadingBytes: ByteArray?
+    private var thisRegisterContent: ByteArray?
+    private var hasLeadingRegister = false
+    private val inputRegister: InputRegister
 
-    private final LinkedMappingHoldingRegister nextRegister;
-    private byte[] leadingBytes;
-    private byte[] thisRegisterContent;
-    private boolean hasLeadingRegister;
-    private final ValueType valueType;
-    private final InputRegister inputRegister;
-
-    public LinkedMappingHoldingRegister(MappingInputRegister inputRegister, Channel channel,
-            LinkedMappingHoldingRegister nextRegister, ValueType valueType, int byteHigh, int byteLow) {
-        super(channel, byteHigh, byteLow);
-        this.nextRegister = nextRegister;
-        this.valueType = valueType;
-        this.inputRegister = inputRegister;
-
+    init {
+        this.inputRegister = inputRegister
         if (nextRegister != null) {
-            nextRegister.hasLeadingRegister = true;
+            nextRegister.hasLeadingRegister = true
         }
     }
 
-    @Override
-    public void setValue(int v) {
-        byte[] fromBytes = { (byte) ((v >> 24) & 0xFF), (byte) ((v >> 16) & 0xFF), (byte) ((v >> 8) & 0xFF),
-                (byte) (v & 0xFF) };
-
-        setValue(fromBytes);
+    override fun setValue(v: Int) {
+        val fromBytes = byteArrayOf(
+            (v shr 24 and 0xFF).toByte(),
+            (v shr 16 and 0xFF).toByte(),
+            (v shr 8 and 0xFF).toByte(),
+            (v and 0xFF).toByte()
+        )
+        setValue(fromBytes)
     }
 
-    @Override
-    public void setValue(short s) {
-        byte[] fromBytes = { (byte) ((s >> 8) & 0xFF), (byte) (s & 0xFF) };
-
-        setValue(fromBytes);
+    override fun setValue(s: Short) {
+        val fromBytes = byteArrayOf((s.toInt() shr 8 and 0xFF).toByte(), (s.toInt() and 0xFF).toByte())
+        setValue(fromBytes)
     }
 
-    @Override
-    public void setValue(byte[] bytes) {
-        this.thisRegisterContent = bytes;
+    override fun setValue(bytes: ByteArray) {
+        thisRegisterContent = bytes
         if (nextRegister != null) {
             if (hasLeadingRegister) {
                 if (leadingBytes != null) {
-                    nextRegister.submit(concatenate(leadingBytes, thisRegisterContent));
+                    nextRegister.submit(concatenate(leadingBytes, thisRegisterContent))
                 }
+            } else {
+                nextRegister.submit(thisRegisterContent)
             }
-            else {
-                nextRegister.submit(thisRegisterContent);
-            }
-        }
-        else {
+        } else {
             if (hasLeadingRegister) {
                 if (leadingBytes != null) {
-                    writeChannel(newValue(valueType, concatenate(leadingBytes, thisRegisterContent)));
+                    writeChannel(newValue(valueType, concatenate(leadingBytes, thisRegisterContent)))
                 } /* else wait for leadingBytes from submit */
-            }
-            else {
-                writeChannel(newValue(valueType, thisRegisterContent));
+            } else {
+                writeChannel(newValue(valueType, thisRegisterContent))
             }
         }
     }
 
-    public void submit(byte[] leading) {
-        this.leadingBytes = leading;
+    fun submit(leading: ByteArray?) {
+        leadingBytes = leading
         if (thisRegisterContent != null) {
             if (nextRegister != null) {
-                nextRegister.submit(concatenate(leadingBytes, thisRegisterContent));
-            }
-            else {
-                writeChannel(newValue(valueType, concatenate(leadingBytes, thisRegisterContent)));
+                nextRegister.submit(concatenate(leadingBytes, thisRegisterContent))
+            } else {
+                writeChannel(newValue(valueType, concatenate(leadingBytes, thisRegisterContent)))
             }
         } /* else wait for thisRegisterContent from setValue */
     }
 
-    public static Value newValue(ValueType fromType, byte[] fromBytes) throws TypeConversionException {
-        switch (fromType) {
-        case BOOLEAN:
-            if (fromBytes[0] == 0x00) {
-                return new BooleanValue(false);
-            }
-            else {
-                return new BooleanValue(true);
-            }
-        case DOUBLE:
-            return new DoubleValue(ByteBuffer.wrap(fromBytes).getDouble());
-        case FLOAT:
-            return new FloatValue(ByteBuffer.wrap(fromBytes).getFloat());
-        case LONG:
-            return new LongValue(ByteBuffer.wrap(fromBytes).getLong());
-        case INTEGER:
-            return new IntValue(ByteBuffer.wrap(fromBytes).getInt());
-        case SHORT:
-            return new ShortValue(ByteBuffer.wrap(fromBytes).getShort());
-        case BYTE:
-            return new ByteValue(fromBytes[0]);
-        case BYTE_ARRAY:
-            return new ByteArrayValue(fromBytes);
-        case STRING:
-            return new StringValue(new String(fromBytes));
-        default:
-            return null;
-        }
-    }
-
-    private byte[] concatenate(byte[] one, byte[] two) {
+    private fun concatenate(one: ByteArray?, two: ByteArray?): ByteArray? {
         if (one == null) {
-            return two;
+            return two
         }
-
         if (two == null) {
-            return one;
+            return one
         }
-
-        byte[] combined = new byte[one.length + two.length];
-
-        for (int i = 0; i < combined.length; ++i) {
-            combined[i] = i < one.length ? one[i] : two[i - one.length];
+        val combined = ByteArray(one.size + two.size)
+        for (i in combined.indices) {
+            combined[i] = if (i < one.size) one[i] else two[i - one.size]
         }
-
-        return combined;
+        return combined
     }
 
-    @Override
-    public byte[] toBytes() {
-        return inputRegister.toBytes();
+    override fun toBytes(): ByteArray {
+        return inputRegister.toBytes()
     }
 
-    private void writeChannel(Value value) {
+    private fun writeChannel(value: Value?) {
         if (value != null) {
             if (useUnscaledValues) {
-                channel.write(new DoubleValue(value.asDouble() * channel.getScalingFactor()));
-            }
-            else {
-                channel.write(value);
+                channel.write(DoubleValue(value.asDouble() * channel.scalingFactor))
+            } else {
+                channel.write(value)
             }
         }
-        channel.setLatestRecord(new Record(Flag.CANNOT_WRITE_NULL_VALUE));
+        channel.latestRecord = Record(Flag.CANNOT_WRITE_NULL_VALUE)
+    }
+
+    companion object {
+        @Throws(TypeConversionException::class)
+        fun newValue(fromType: ValueType?, fromBytes: ByteArray?): Value? {
+            return when (fromType) {
+                ValueType.BOOLEAN -> if (fromBytes!![0].toInt() == 0x00) {
+                    BooleanValue(false)
+                } else {
+                    BooleanValue(true)
+                }
+
+                ValueType.DOUBLE -> DoubleValue(
+                    ByteBuffer.wrap(
+                        fromBytes
+                    ).double
+                )
+
+                ValueType.FLOAT -> FloatValue(
+                    ByteBuffer.wrap(
+                        fromBytes
+                    ).float
+                )
+
+                ValueType.LONG -> LongValue(
+                    ByteBuffer.wrap(
+                        fromBytes
+                    ).long
+                )
+
+                ValueType.INTEGER -> IntValue(
+                    ByteBuffer.wrap(
+                        fromBytes
+                    ).int
+                )
+
+                ValueType.SHORT -> ShortValue(
+                    ByteBuffer.wrap(
+                        fromBytes
+                    ).short
+                )
+
+                ValueType.BYTE -> ByteValue(fromBytes!![0])
+                ValueType.BYTE_ARRAY -> ByteArrayValue(fromBytes!!)
+                ValueType.STRING -> StringValue(String(fromBytes!!))
+                else -> null
+            }
+        }
     }
 }

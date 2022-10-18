@@ -18,22 +18,18 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.webui.channelconfigurator;
+package org.openmuc.framework.webui.channelconfigurator
 
-import org.openmuc.framework.webui.spi.WebUiPluginService;
-import org.osgi.service.component.annotations.Component;
+import org.openmuc.framework.webui.spi.WebUiPluginService
+import org.osgi.service.component.annotations.Component
 
-@Component(service = WebUiPluginService.class)
-public final class ChannelConfigurator extends WebUiPluginService {
-
-    @Override
-    public String getAlias() {
-        return "channelconfigurator";
+@Component(service = [WebUiPluginService::class])
+class ChannelConfigurator : WebUiPluginService() {
+    override fun getAlias(): String {
+        return "channelconfigurator"
     }
 
-    @Override
-    public String getName() {
-        return "Channel Configurator";
+    override fun getName(): String {
+        return "Channel Configurator"
     }
-
 }

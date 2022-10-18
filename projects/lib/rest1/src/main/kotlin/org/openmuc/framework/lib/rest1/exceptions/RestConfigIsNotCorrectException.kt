@@ -18,28 +18,21 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.rest1.exceptions
 
-package org.openmuc.framework.lib.rest1.exceptions;
+class RestConfigIsNotCorrectException : Exception {
+    override var message = "Something was wrong in the json config message. "
+        private set
 
-public class RestConfigIsNotCorrectException extends Exception {
-
-    /**
-     * 
-     */
-    private static final long serialVersionUID = 8768653196104942337L;
-
-    private String message = "Something was wrong in the json config message. ";
-
-    public RestConfigIsNotCorrectException() {
+    constructor() {}
+    constructor(message: String) {
+        this.message = message
     }
 
-    public RestConfigIsNotCorrectException(String message) {
-        this.message = message;
+    companion object {
+        /**
+         *
+         */
+        private const val serialVersionUID = 8768653196104942337L
     }
-
-    @Override
-    public String getMessage() {
-        return message;
-    }
-
 }

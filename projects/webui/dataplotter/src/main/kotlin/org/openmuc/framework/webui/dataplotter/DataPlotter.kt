@@ -18,22 +18,18 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.webui.dataplotter;
+package org.openmuc.framework.webui.dataplotter
 
-import org.openmuc.framework.webui.spi.WebUiPluginService;
-import org.osgi.service.component.annotations.Component;
+import org.openmuc.framework.webui.spi.WebUiPluginService
+import org.osgi.service.component.annotations.Component
 
-@Component(service = WebUiPluginService.class)
-public final class DataPlotter extends WebUiPluginService {
-
-    @Override
-    public String getAlias() {
-        return "dataplotter";
+@Component(service = [WebUiPluginService::class])
+class DataPlotter : WebUiPluginService() {
+    override fun getAlias(): String {
+        return "dataplotter"
     }
 
-    @Override
-    public String getName() {
-        return "Data Plotter";
+    override fun getName(): String {
+        return "Data Plotter"
     }
-
 }

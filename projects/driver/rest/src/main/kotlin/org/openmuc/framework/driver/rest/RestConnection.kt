@@ -18,315 +18,281 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.rest;
+package org.openmuc.framework.driver.rest
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStreamWriter;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.util.List;
+import org.apache.commons.codec.binary.Base64
+import org.openmuc.framework.config.ChannelScanInfo
+import org.openmuc.framework.data.Flag
+import org.openmuc.framework.data.Record
+import org.openmuc.framework.data.Value
+import org.openmuc.framework.data.ValueType
+import org.openmuc.framework.dataaccess.DataAccessService
+import org.openmuc.framework.driver.rest.helper.JsonWrapper
+import org.openmuc.framework.driver.spi.*
+import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.openmuc.framework.lib.rest1.Const
+import java.io.*
+import java.net.HttpURLConnection
+import java.net.MalformedURLException
+import java.net.URL
+import java.net.URLConnection
+import java.security.KeyManagementException
+import java.security.NoSuchAlgorithmException
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
+import javax.net.ssl.*
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+class RestConnection internal constructor(
+    deviceAddress: String, credentials: String, timeout: Int, checkTimestamp: Boolean,
+    dataAccessService: DataAccessService?
+) : Connection {
+    private val wrapper: JsonWrapper
+    private var url: URL? = null
+    private var con: URLConnection? = null
+    private var baseAddress: String? = null
+    private val timeout: Int
+    private var isHTTPS = false
+    private val authString: String
+    private val dataAccessService: DataAccessService?
+    private var connectionAddress: String? = null
+    private val checkTimestamp = false
 
-import org.apache.commons.codec.binary.Base64;
-import org.openmuc.framework.config.ChannelScanInfo;
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.data.ValueType;
-import org.openmuc.framework.dataaccess.Channel;
-import org.openmuc.framework.dataaccess.DataAccessService;
-import org.openmuc.framework.driver.rest.helper.JsonWrapper;
-import org.openmuc.framework.driver.spi.ChannelRecordContainer;
-import org.openmuc.framework.driver.spi.ChannelValueContainer;
-import org.openmuc.framework.driver.spi.Connection;
-import org.openmuc.framework.driver.spi.ConnectionException;
-import org.openmuc.framework.driver.spi.RecordsReceivedListener;
-import org.openmuc.framework.lib.rest1.Const;
-
-public class RestConnection implements Connection {
-
-    private final JsonWrapper wrapper;
-    private URL url;
-    private URLConnection con;
-    private String baseAddress;
-    private final int timeout;
-    private boolean isHTTPS;
-    private final String authString;
-
-    private final DataAccessService dataAccessService;
-    private String connectionAddress;
-
-    private boolean checkTimestamp = false;
-
-    RestConnection(String deviceAddress, String credentials, int timeout, boolean checkTimestamp,
-            DataAccessService dataAccessService) throws ConnectionException {
-
-        this.checkTimestamp = checkTimestamp;
-        this.dataAccessService = dataAccessService;
-        this.timeout = timeout;
-        wrapper = new JsonWrapper();
-        authString = new String(Base64.encodeBase64(credentials.getBytes()));
-
+    init {
+        this.checkTimestamp = checkTimestamp
+        this.dataAccessService = dataAccessService
+        this.timeout = timeout
+        wrapper = JsonWrapper()
+        authString = String(Base64.encodeBase64(credentials.toByteArray()))
         if (!deviceAddress.endsWith("/")) {
-            this.baseAddress = deviceAddress + "/rest/channels/";
-            this.connectionAddress = deviceAddress + "/rest/connect/";
+            baseAddress = "$deviceAddress/rest/channels/"
+            connectionAddress = "$deviceAddress/rest/connect/"
+        } else {
+            baseAddress = deviceAddress + "rest/channels/"
+            connectionAddress = deviceAddress + "rest/connect/"
         }
-        else {
-            this.baseAddress = deviceAddress + "rest/channels/";
-            this.connectionAddress = deviceAddress + "rest/connect/";
+        isHTTPS = if (deviceAddress.startsWith("https://")) {
+            true
+        } else {
+            false
         }
-
-        if (deviceAddress.startsWith("https://")) {
-            isHTTPS = true;
-        }
-        else {
-            isHTTPS = false;
-        }
-
         if (isHTTPS) {
-            TrustManager[] trustManager = getTrustManager();
-
+            val trustManager = trustManager
             try {
-                SSLContext sc = SSLContext.getInstance("SSL");
-                sc.init(null, trustManager, new java.security.SecureRandom());
-                HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-            } catch (KeyManagementException e1) {
-                throw new ConnectionException(e1.getMessage());
-            } catch (NoSuchAlgorithmException e) {
-                throw new ConnectionException(e.getMessage());
+                val sc = SSLContext.getInstance("SSL")
+                sc.init(null, trustManager, SecureRandom())
+                HttpsURLConnection.setDefaultSSLSocketFactory(sc.socketFactory)
+            } catch (e1: KeyManagementException) {
+                throw ConnectionException(e1.message)
+            } catch (e: NoSuchAlgorithmException) {
+                throw ConnectionException(e.message)
             }
 
             // Create all-trusting host name verifier
-            HostnameVerifier allHostsValid = getHostnameVerifier();
-            HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
+            val allHostsValid = hostnameVerifier
+            HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid)
         }
     }
 
-    private HostnameVerifier getHostnameVerifier() {
-        return new HostnameVerifier() {
-            @Override
-            public boolean verify(String hostname, SSLSession session) {
-                return true;
-            }
-        };
-    }
-
-    private TrustManager[] getTrustManager() {
-        return new TrustManager[] { new X509TrustManager() {
-            @Override
-            public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                return null;
+    private val hostnameVerifier: HostnameVerifier
+        private get() = HostnameVerifier { hostname, session -> true }
+    private val trustManager: Array<TrustManager>
+        private get() = arrayOf(object : X509TrustManager {
+            override fun getAcceptedIssuers(): Array<X509Certificate> {
+                return null
             }
 
-            @Override
-            public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) {
+            override fun checkClientTrusted(certs: Array<X509Certificate>, authType: String) {}
+            override fun checkServerTrusted(certs: Array<X509Certificate>, authType: String) {}
+        })
+
+    @Throws(ConnectionException::class)
+    private fun readChannel(channelAddress: String?, valueType: ValueType?): Record? {
+        var newRecord: Record? = null
+        newRecord = try {
+            wrapper.toRecord(get(channelAddress), valueType)
+        } catch (e: IOException) {
+            throw ConnectionException(e.message)
+        }
+        return newRecord
+    }
+
+    @Throws(ConnectionException::class)
+    private fun readChannelTimestamp(channelAddress: String?): Long {
+        var channelAddress = channelAddress
+        var timestamp: Long = -1
+        try {
+            channelAddress += if (channelAddress!!.endsWith("/")) {
+                Const.TIMESTAMP
+            } else {
+                '/'.toString() + Const.TIMESTAMP
             }
-
-            @Override
-            public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) {
-            }
-        } };
-    }
-
-    private Record readChannel(String channelAddress, ValueType valueType) throws ConnectionException {
-        Record newRecord = null;
-        try {
-            newRecord = wrapper.toRecord(get(channelAddress), valueType);
-        } catch (IOException e) {
-            throw new ConnectionException(e.getMessage());
+            timestamp = wrapper.toTimestamp(get(channelAddress))
+        } catch (e: IOException) {
+            throw ConnectionException(e.message)
         }
-        return newRecord;
+        return timestamp
     }
 
-    private long readChannelTimestamp(String channelAddress) throws ConnectionException {
-        long timestamp = -1;
-        try {
-            if (channelAddress.endsWith("/")) {
-                channelAddress += Const.TIMESTAMP;
-            }
-            else {
-                channelAddress += '/' + Const.TIMESTAMP;
-            }
-            timestamp = wrapper.toTimestamp(get(channelAddress));
-        } catch (IOException e) {
-            throw new ConnectionException(e.getMessage());
-        }
-        return timestamp;
-    }
-
-    private List<ChannelScanInfo> readDeviceChannelList() throws ConnectionException {
-        try {
-            return wrapper.tochannelScanInfos(get(""));
-        } catch (IOException e) {
-            throw new ConnectionException(e.getMessage());
+    @Throws(ConnectionException::class)
+    private fun readDeviceChannelList(): List<ChannelScanInfo?>? {
+        return try {
+            wrapper.tochannelScanInfos(get(""))
+        } catch (e: IOException) {
+            throw ConnectionException(e.message)
         }
     }
 
-    private Flag writeChannel(String channelAddress, Value value, ValueType valueType) throws ConnectionException {
-        Record remoteRecord = new Record(value, System.currentTimeMillis(), Flag.VALID);
-        return put(channelAddress, wrapper.fromRecord(remoteRecord, valueType));
+    @Throws(ConnectionException::class)
+    private fun writeChannel(channelAddress: String?, value: Value?, valueType: ValueType?): Flag {
+        val remoteRecord = Record(value, System.currentTimeMillis(), Flag.VALID)
+        return put(channelAddress, wrapper.fromRecord(remoteRecord, valueType))
     }
 
-    void connect() throws ConnectionException {
+    @Throws(ConnectionException::class)
+    fun connect() {
         try {
-            url = new URL(connectionAddress);
-            con = url.openConnection();
-            setConnectionProberties();
-        } catch (MalformedURLException e) {
-            throw new ConnectionException("malformed URL: " + connectionAddress);
-        } catch (IOException e) {
-            throw new ConnectionException(e.getMessage());
+            url = URL(connectionAddress)
+            con = url!!.openConnection()
+            setConnectionProberties()
+        } catch (e: MalformedURLException) {
+            throw ConnectionException("malformed URL: $connectionAddress")
+        } catch (e: IOException) {
+            throw ConnectionException(e.message)
         }
-
         try {
-            con.connect();
-            checkResponseCode(con);
-        } catch (IOException e) {
-            throw new ConnectionException(e.getMessage());
+            con.connect()
+            checkResponseCode(con)
+        } catch (e: IOException) {
+            throw ConnectionException(e.message)
         }
     }
 
-    private InputStream get(String suffix) throws ConnectionException {
-        InputStream stream = null;
+    @Throws(ConnectionException::class)
+    private operator fun get(suffix: String?): InputStream? {
+        var stream: InputStream? = null
         try {
-            url = new URL(baseAddress + suffix);
-            con = url.openConnection();
-            setConnectionProberties();
-            stream = con.getInputStream();
-        } catch (MalformedURLException e) {
-            throw new ConnectionException("malformed URL: " + baseAddress);
-        } catch (IOException e) {
-            throw new ConnectionException(e.getMessage());
+            url = URL(baseAddress + suffix)
+            con = url!!.openConnection()
+            setConnectionProberties()
+            stream = con.getInputStream()
+        } catch (e: MalformedURLException) {
+            throw ConnectionException("malformed URL: $baseAddress")
+        } catch (e: IOException) {
+            throw ConnectionException(e.message)
         }
-
-        checkResponseCode(con);
-        return stream;
+        checkResponseCode(con)
+        return stream
     }
 
-    private Flag put(String suffix, String output) throws ConnectionException {
+    @Throws(ConnectionException::class)
+    private fun put(suffix: String?, output: String?): Flag {
         try {
-            url = new URL(baseAddress + suffix);
-            con = url.openConnection();
-            con.setDoOutput(true);
-            setConnectionProberties();
+            url = URL(baseAddress + suffix)
+            con = url!!.openConnection()
+            con.setDoOutput(true)
+            setConnectionProberties()
             if (isHTTPS) {
-                ((HttpsURLConnection) con).setRequestMethod("PUT");
+                (con as HttpsURLConnection?)!!.requestMethod = "PUT"
+            } else {
+                (con as HttpURLConnection?)!!.requestMethod = "PUT"
             }
-            else {
-                ((HttpURLConnection) con).setRequestMethod("PUT");
-            }
-            OutputStreamWriter out = new OutputStreamWriter(con.getOutputStream());
-            out.write(output);
-            out.close();
-        } catch (MalformedURLException e) {
-            throw new ConnectionException("malformed URL: " + baseAddress);
-        } catch (IOException e) {
-            throw new ConnectionException(e.getMessage());
+            val out = OutputStreamWriter(con.getOutputStream())
+            out.write(output)
+            out.close()
+        } catch (e: MalformedURLException) {
+            throw ConnectionException("malformed URL: $baseAddress")
+        } catch (e: IOException) {
+            throw ConnectionException(e.message)
         }
-
-        return checkResponseCode(con);
+        return checkResponseCode(con)
     }
 
-    private void setConnectionProberties() {
-        con.setConnectTimeout(timeout);
-        con.setReadTimeout(timeout);
-        con.setRequestProperty("Connection", "Keep-Alive");
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setRequestProperty("Accept", "application/json");
-        con.setRequestProperty("Authorization", "Basic " + authString);
+    private fun setConnectionProberties() {
+        con!!.connectTimeout = timeout
+        con!!.readTimeout = timeout
+        con!!.setRequestProperty("Connection", "Keep-Alive")
+        con!!.setRequestProperty("Content-Type", "application/json")
+        con!!.setRequestProperty("Accept", "application/json")
+        con!!.setRequestProperty("Authorization", "Basic $authString")
     }
 
-    private Flag checkResponseCode(URLConnection con) throws ConnectionException {
-        int respCode;
-        try {
+    @Throws(ConnectionException::class)
+    private fun checkResponseCode(con: URLConnection?): Flag {
+        val respCode: Int
+        return try {
             if (isHTTPS) {
-                respCode = ((HttpsURLConnection) con).getResponseCode();
+                respCode = (con as HttpsURLConnection?)!!.responseCode
                 if (!(respCode >= 200 && respCode < 300)) {
-                    throw new ConnectionException(
-                            "HTTPS " + respCode + ":" + ((HttpsURLConnection) con).getResponseMessage());
+                    throw ConnectionException(
+                        "HTTPS " + respCode + ":" + con!!.responseMessage
+                    )
+                }
+            } else {
+                respCode = (con as HttpURLConnection?)!!.responseCode
+                if (!(respCode >= 200 && respCode < 300)) {
+                    throw ConnectionException(
+                        "HTTP " + respCode + ":" + con!!.responseMessage
+                    )
                 }
             }
-            else {
-                respCode = ((HttpURLConnection) con).getResponseCode();
-                if (!(respCode >= 200 && respCode < 300)) {
-                    throw new ConnectionException(
-                            "HTTP " + respCode + ":" + ((HttpURLConnection) con).getResponseMessage());
-                }
-            }
-            return Flag.VALID;
-        } catch (IOException e) {
-            throw new ConnectionException(e.getMessage());
+            Flag.VALID
+        } catch (e: IOException) {
+            throw ConnectionException(e.message)
         }
     }
 
-    @Override
-    public void disconnect() {
-
+    override fun disconnect() {
         if (isHTTPS) {
-            ((HttpsURLConnection) con).disconnect();
-        }
-        else {
-            ((HttpURLConnection) con).disconnect();
+            (con as HttpsURLConnection?)!!.disconnect()
+        } else {
+            (con as HttpURLConnection?)!!.disconnect()
         }
     }
 
-    @Override
-    public Object read(List<ChannelRecordContainer> containerList, Object obj, String arg3) throws ConnectionException {
+    @Throws(ConnectionException::class)
+    override fun read(containerList: List<ChannelRecordContainer?>?, obj: Any?, arg3: String?): Any? {
         // TODO: add grouping (reading device/driver at once)
-        for (ChannelRecordContainer container : containerList) {
-            Record record;
+        for (container in containerList!!) {
+            var record: Record?
             if (checkTimestamp) {
-                String channelId = container.getChannel().getId();
-                Channel channel = dataAccessService.getChannel(channelId);
-                record = channel.getLatestRecord();
-
-                if (record.getTimestamp() == null || record.getFlag() != Flag.VALID
-                        || record.getTimestamp() < readChannelTimestamp(container.getChannelAddress())) {
-                    record = readChannel(container.getChannelAddress(), container.getChannel().getValueType());
+                val channelId = container!!.channel!!.id
+                val channel = dataAccessService!!.getChannel(channelId)
+                record = channel!!.latestRecord
+                if (record!!.timestamp == null || record.flag !== Flag.VALID || record!!.timestamp!! < readChannelTimestamp(
+                        container.channelAddress
+                    )
+                ) {
+                    record = readChannel(container.channelAddress, container.channel!!.valueType)
                 }
-            }
-            else {
-                record = readChannel(container.getChannelAddress(), container.getChannel().getValueType());
+            } else {
+                record = readChannel(container!!.channelAddress, container.channel!!.valueType)
             }
             if (record != null) {
-                container.setRecord(record);
-            }
-            else {
-                container.setRecord(new Record(Flag.DRIVER_ERROR_READ_FAILURE));
+                container.setRecord(record)
+            } else {
+                container.setRecord(Record(Flag.DRIVER_ERROR_READ_FAILURE))
             }
         }
-        return null;
+        return null
     }
 
-    @Override
-    public List<ChannelScanInfo> scanForChannels(String settings) throws ConnectionException {
-        return readDeviceChannelList();
+    @Throws(ConnectionException::class)
+    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+        return readDeviceChannelList()
     }
 
-    @Override
-    public void startListening(List<ChannelRecordContainer> arg1, RecordsReceivedListener arg2)
-            throws ConnectionException {
-        throw new UnsupportedOperationException();
+    @Throws(ConnectionException::class)
+    override fun startListening(arg1: List<ChannelRecordContainer?>?, arg2: RecordsReceivedListener?) {
+        throw UnsupportedOperationException()
     }
 
-    @Override
-    public Object write(List<ChannelValueContainer> container, Object containerListHandle) throws ConnectionException {
-        for (ChannelValueContainer cont : container) {
-            Value value = cont.getValue();
-            Flag flag = writeChannel(cont.getChannelAddress(), value, value.getValueType());
-            cont.setFlag(flag);
+    @Throws(ConnectionException::class)
+    override fun write(container: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+        for (cont in container!!) {
+            val value = cont!!.value
+            val flag = writeChannel(cont.channelAddress, value, value!!.valueType)
+            cont.flag = flag
         }
-        return null;
+        return null
     }
 }

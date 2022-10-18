@@ -18,8 +18,8 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.mqtt;
+package org.openmuc.framework.lib.mqtt
 
-public interface MqttReadyListener {
-    void onReady();
+interface MqttReadyListener {
+    fun onReady()
 }

@@ -18,394 +18,284 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.rest1
 
-package org.openmuc.framework.lib.rest1;
+import com.google.gson.*
+import org.openmuc.framework.config.*
+import org.openmuc.framework.data.*
+import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.dataaccess.Channel
+import org.openmuc.framework.dataaccess.DeviceState
+import org.openmuc.framework.lib.rest1.rest.objects.*
+import java.lang.reflect.Type
 
-import static org.openmuc.framework.lib.rest1.Const.VALUE_STRING;
+class ToJson {
+    private val gson: Gson
+    val jsonObject: JsonObject
 
-import java.lang.reflect.Type;
-import java.util.List;
-
-import org.openmuc.framework.config.ChannelConfig;
-import org.openmuc.framework.config.ChannelScanInfo;
-import org.openmuc.framework.config.DeviceConfig;
-import org.openmuc.framework.config.DeviceScanInfo;
-import org.openmuc.framework.config.DriverConfig;
-import org.openmuc.framework.config.DriverInfo;
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.TypeConversionException;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.data.ValueType;
-import org.openmuc.framework.dataaccess.Channel;
-import org.openmuc.framework.dataaccess.DeviceState;
-import org.openmuc.framework.lib.rest1.rest.objects.RestChannelConfig;
-import org.openmuc.framework.lib.rest1.rest.objects.RestChannelConfigMapper;
-import org.openmuc.framework.lib.rest1.rest.objects.RestDeviceConfig;
-import org.openmuc.framework.lib.rest1.rest.objects.RestDeviceConfigMapper;
-import org.openmuc.framework.lib.rest1.rest.objects.RestDriverConfig;
-import org.openmuc.framework.lib.rest1.rest.objects.RestDriverConfigMapper;
-import org.openmuc.framework.lib.rest1.rest.objects.RestRecord;
-import org.openmuc.framework.lib.rest1.rest.objects.RestScanProgressInfo;
-import org.openmuc.framework.lib.rest1.rest.objects.RestUserConfig;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonNull;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
-
-public class ToJson {
-
-    private final Gson gson;
-    private final JsonObject jsonObject;
-
-    public ToJson() {
-
-        gson = new GsonBuilder().serializeSpecialFloatingPointValues()
-                .registerTypeAdapter(byte[].class, new ByteArraySerializer())
-                .create();
-        jsonObject = new JsonObject();
+    init {
+        gson = GsonBuilder().serializeSpecialFloatingPointValues()
+            .registerTypeAdapter(ByteArray::class.java, ByteArraySerializer())
+            .create()
+        jsonObject = JsonObject()
     }
 
-    public JsonObject getJsonObject() {
-
-        return jsonObject;
+    fun addJsonObject(propertyName: String?, jsonObject: JsonObject?) {
+        this.jsonObject.add(propertyName, jsonObject)
     }
 
-    public void addJsonObject(String propertyName, JsonObject jsonObject) {
-
-        this.jsonObject.add(propertyName, jsonObject);
+    override fun toString(): String {
+        return gson.toJson(jsonObject)
     }
 
-    @Override
-    public String toString() {
-        return gson.toJson(jsonObject);
+    @Throws(ClassCastException::class)
+    fun addRecord(record: Record?, valueType: ValueType?) {
+        jsonObject.add(Const.RECORD, getRecordAsJsonElement(record, valueType))
     }
 
-    public void addRecord(Record record, ValueType valueType) throws ClassCastException {
-
-        jsonObject.add(Const.RECORD, getRecordAsJsonElement(record, valueType));
-    }
-
-    public void addRecordList(List<Record> recordList, ValueType valueType) throws ClassCastException {
-        JsonArray jsa = new JsonArray();
+    @Throws(ClassCastException::class)
+    fun addRecordList(recordList: List<Record?>?, valueType: ValueType?) {
+        val jsa = JsonArray()
         if (recordList != null) {
-            for (Record record : recordList) {
-                jsa.add(getRecordAsJsonElement(record, valueType));
+            for (record in recordList) {
+                jsa.add(getRecordAsJsonElement(record, valueType))
             }
         }
-        jsonObject.add(Const.RECORDS, jsa);
+        jsonObject.add(Const.RECORDS, jsa)
     }
 
-    public void addChannelRecordList(List<Channel> channels) throws ClassCastException {
-
-        JsonArray jsa = new JsonArray();
-
-        for (Channel channel : channels) {
-            jsa.add(channelRecordToJson(channel));
+    @Throws(ClassCastException::class)
+    fun addChannelRecordList(channels: List<Channel>) {
+        val jsa = JsonArray()
+        for (channel in channels) {
+            jsa.add(channelRecordToJson(channel))
         }
-        jsonObject.add(Const.RECORDS, jsa);
+        jsonObject.add(Const.RECORDS, jsa)
     }
 
-    public void addDeviceState(DeviceState deviceState) {
-
-        jsonObject.addProperty(Const.STATE, deviceState.name());
+    fun addDeviceState(deviceState: DeviceState) {
+        jsonObject.addProperty(Const.STATE, deviceState.name)
     }
 
-    public void addNumber(String propertyName, Number value) {
-
-        jsonObject.addProperty(propertyName, value);
+    fun addNumber(propertyName: String?, value: Number?) {
+        jsonObject.addProperty(propertyName, value)
     }
 
-    public void addBoolean(String propertyName, boolean value) {
-
-        jsonObject.addProperty(propertyName, value);
+    fun addBoolean(propertyName: String?, value: Boolean) {
+        jsonObject.addProperty(propertyName, value)
     }
 
-    public void addValue(Value value, ValueType valueType) {
+    fun addValue(value: Value?, valueType: ValueType?) {
         if (value == null) {
-            jsonObject.add(Const.VALUE_STRING, JsonNull.INSTANCE);
-            return;
+            jsonObject.add(Const.VALUE_STRING, JsonNull.INSTANCE)
+            return
         }
-
-        switch (valueType) {
-        case BOOLEAN:
-            jsonObject.addProperty(VALUE_STRING, value.asBoolean());
-            break;
-        case BYTE:
-            jsonObject.addProperty(VALUE_STRING, value.asByte());
-            break;
-        case BYTE_ARRAY:
-            jsonObject.addProperty(VALUE_STRING, gson.toJson(value.asByteArray()));
-            break;
-        case DOUBLE:
-            jsonObject.addProperty(VALUE_STRING, value.asDouble());
-            break;
-        case FLOAT:
-            jsonObject.addProperty(VALUE_STRING, value.asFloat());
-            break;
-        case INTEGER:
-            jsonObject.addProperty(VALUE_STRING, value.asInt());
-            break;
-        case LONG:
-            jsonObject.addProperty(VALUE_STRING, value.asLong());
-            break;
-        case SHORT:
-            jsonObject.addProperty(VALUE_STRING, value.asShort());
-            break;
-        case STRING:
-            jsonObject.addProperty(VALUE_STRING, value.asString());
-            break;
-        default:
-            jsonObject.add(VALUE_STRING, JsonNull.INSTANCE);
-            break;
+        when (valueType) {
+            ValueType.BOOLEAN -> jsonObject.addProperty(Const.VALUE_STRING, value.asBoolean())
+            ValueType.BYTE -> jsonObject.addProperty(Const.VALUE_STRING, value.asByte())
+            ValueType.BYTE_ARRAY -> jsonObject.addProperty(Const.VALUE_STRING, gson.toJson(value.asByteArray()))
+            ValueType.DOUBLE -> jsonObject.addProperty(Const.VALUE_STRING, value.asDouble())
+            ValueType.FLOAT -> jsonObject.addProperty(Const.VALUE_STRING, value.asFloat())
+            ValueType.INTEGER -> jsonObject.addProperty(Const.VALUE_STRING, value.asInt())
+            ValueType.LONG -> jsonObject.addProperty(Const.VALUE_STRING, value.asLong())
+            ValueType.SHORT -> jsonObject.addProperty(Const.VALUE_STRING, value.asShort())
+            ValueType.STRING -> jsonObject.addProperty(Const.VALUE_STRING, value.asString())
+            else -> jsonObject.add(Const.VALUE_STRING, JsonNull.INSTANCE)
         }
     }
 
-    private class ByteArraySerializer implements JsonSerializer<byte[]> {
-        @Override
-        public JsonElement serialize(byte[] src, Type typeOfSrc, JsonSerializationContext context) {
-            JsonArray arr = new JsonArray();
-            for (byte element : src) {
-                arr.add(element & 0xff);
+    private inner class ByteArraySerializer : JsonSerializer<ByteArray> {
+        override fun serialize(src: ByteArray, typeOfSrc: Type, context: JsonSerializationContext): JsonElement {
+            val arr = JsonArray()
+            for (element in src) {
+                arr.add(element.toInt() and 0xff)
             }
-            return arr;
+            return arr
         }
-
     }
 
-    public void addString(String propertyName, String value) {
-
-        jsonObject.addProperty(propertyName, value);
+    fun addString(propertyName: String?, value: String?) {
+        jsonObject.addProperty(propertyName, value)
     }
 
-    public void addStringList(String propertyName, List<String> stringList) {
-
-        jsonObject.add(propertyName, gson.toJsonTree(stringList).getAsJsonArray());
+    fun addStringList(propertyName: String?, stringList: List<String?>?) {
+        jsonObject.add(propertyName, gson.toJsonTree(stringList).asJsonArray)
     }
 
-    public void addDriverList(List<DriverConfig> driverConfigList) {
-
-        JsonArray jsa = new JsonArray();
-
-        for (DriverConfig driverConfig : driverConfigList) {
-            jsa.add(gson.toJsonTree(driverConfig.getId()));
+    fun addDriverList(driverConfigList: List<DriverConfig>) {
+        val jsa = JsonArray()
+        for (driverConfig in driverConfigList) {
+            jsa.add(gson.toJsonTree(driverConfig.id))
         }
-        jsonObject.add(Const.DRIVERS, jsa);
+        jsonObject.add(Const.DRIVERS, jsa)
     }
 
-    public void addDeviceList(List<DeviceConfig> deviceConfigList) {
-
-        JsonArray jsa = new JsonArray();
-
-        for (DeviceConfig deviceConfig : deviceConfigList) {
-            jsa.add(gson.toJsonTree(deviceConfig.getId()));
+    fun addDeviceList(deviceConfigList: List<DeviceConfig>) {
+        val jsa = JsonArray()
+        for (deviceConfig in deviceConfigList) {
+            jsa.add(gson.toJsonTree(deviceConfig.id))
         }
-        jsonObject.add(Const.DEVICES, jsa);
+        jsonObject.add(Const.DEVICES, jsa)
     }
 
-    public void addChannelList(List<Channel> channelList) {
-
-        JsonArray jsa = new JsonArray();
-
-        for (Channel channelConfig : channelList) {
-            jsa.add(gson.toJsonTree(channelConfig.getId()));
+    fun addChannelList(channelList: List<Channel>) {
+        val jsa = JsonArray()
+        for (channelConfig in channelList) {
+            jsa.add(gson.toJsonTree(channelConfig.id))
         }
-        jsonObject.add(Const.CHANNELS, jsa);
+        jsonObject.add(Const.CHANNELS, jsa)
     }
 
-    public void addDriverInfo(DriverInfo driverInfo) {
-
-        jsonObject.add(Const.INFOS, gson.toJsonTree(driverInfo));
+    fun addDriverInfo(driverInfo: DriverInfo?) {
+        jsonObject.add(Const.INFOS, gson.toJsonTree(driverInfo))
     }
 
-    public void addDriverConfig(DriverConfig config) {
-
-        RestDriverConfig restConfig = RestDriverConfigMapper.getRestDriverConfig(config);
-        jsonObject.add(Const.CONFIGS, gson.toJsonTree(restConfig, RestDriverConfig.class).getAsJsonObject());
+    fun addDriverConfig(config: DriverConfig) {
+        val restConfig = RestDriverConfigMapper.getRestDriverConfig(config)
+        jsonObject.add(Const.CONFIGS, gson.toJsonTree(restConfig, RestDriverConfig::class.java).asJsonObject)
     }
 
-    public void addDeviceConfig(DeviceConfig config) {
-
-        RestDeviceConfig restConfig = RestDeviceConfigMapper.getRestDeviceConfig(config);
-        jsonObject.add(Const.CONFIGS, gson.toJsonTree(restConfig, RestDeviceConfig.class).getAsJsonObject());
+    fun addDeviceConfig(config: DeviceConfig) {
+        val restConfig = RestDeviceConfigMapper.getRestDeviceConfig(config)
+        jsonObject.add(Const.CONFIGS, gson.toJsonTree(restConfig, RestDeviceConfig::class.java).asJsonObject)
     }
 
-    public void addChannelConfig(ChannelConfig config) {
-
-        RestChannelConfig restConfig = RestChannelConfigMapper.getRestChannelConfig(config);
-        jsonObject.add(Const.CONFIGS, gson.toJsonTree(restConfig, RestChannelConfig.class).getAsJsonObject());
+    fun addChannelConfig(config: ChannelConfig) {
+        val restConfig = RestChannelConfigMapper.getRestChannelConfig(config)
+        jsonObject.add(Const.CONFIGS, gson.toJsonTree(restConfig, RestChannelConfig::class.java).asJsonObject)
     }
 
-    public void addDeviceScanProgressInfo(RestScanProgressInfo restScanProgressInfo) {
-
-        jsonObject.add(Const.SCAN_PROGRESS_INFO, gson.toJsonTree(restScanProgressInfo));
+    fun addDeviceScanProgressInfo(restScanProgressInfo: RestScanProgressInfo?) {
+        jsonObject.add(Const.SCAN_PROGRESS_INFO, gson.toJsonTree(restScanProgressInfo))
     }
 
-    public void addDeviceScanInfoList(List<DeviceScanInfo> deviceScanInfoList) {
-
-        JsonArray jsa = new JsonArray();
-        for (DeviceScanInfo deviceScanInfo : deviceScanInfoList) {
-            JsonObject jso = new JsonObject();
-            jso.addProperty(Const.ID, deviceScanInfo.getId());
-            jso.addProperty(Const.DEVICEADDRESS, deviceScanInfo.getDeviceAddress());
-            jso.addProperty(Const.SETTINGS, deviceScanInfo.getSettings());
-            jso.addProperty(Const.DESCRIPTION, deviceScanInfo.getDescription());
-            jsa.add(jso);
+    fun addDeviceScanInfoList(deviceScanInfoList: List<DeviceScanInfo>) {
+        val jsa = JsonArray()
+        for (deviceScanInfo in deviceScanInfoList) {
+            val jso = JsonObject()
+            jso.addProperty(Const.ID, deviceScanInfo.id)
+            jso.addProperty(Const.DEVICEADDRESS, deviceScanInfo.deviceAddress)
+            jso.addProperty(Const.SETTINGS, deviceScanInfo.settings)
+            jso.addProperty(Const.DESCRIPTION, deviceScanInfo.description)
+            jsa.add(jso)
         }
-        jsonObject.add(Const.DEVICES, jsa);
+        jsonObject.add(Const.DEVICES, jsa)
     }
 
-    public void addChannelScanInfoList(List<ChannelScanInfo> channelScanInfoList) {
-
-        JsonArray jsa = new JsonArray();
-        for (ChannelScanInfo channelScanInfo : channelScanInfoList) {
-            JsonObject jso = new JsonObject();
-            jso.addProperty(Const.CHANNELADDRESS, channelScanInfo.getChannelAddress());
-            jso.addProperty(Const.VALUETYPE, channelScanInfo.getValueType().name());
-            jso.addProperty(Const.VALUETYPELENGTH, channelScanInfo.getValueTypeLength());
-            jso.addProperty(Const.DESCRIPTION, channelScanInfo.getDescription());
-            jso.addProperty(Const.METADATA, channelScanInfo.getMetaData());
-            jso.addProperty(Const.UNIT, channelScanInfo.getUnit());
-            jsa.add(jso);
+    fun addChannelScanInfoList(channelScanInfoList: List<ChannelScanInfo>) {
+        val jsa = JsonArray()
+        for (channelScanInfo in channelScanInfoList) {
+            val jso = JsonObject()
+            jso.addProperty(Const.CHANNELADDRESS, channelScanInfo.channelAddress)
+            jso.addProperty(Const.VALUETYPE, channelScanInfo.valueType.name)
+            jso.addProperty(Const.VALUETYPELENGTH, channelScanInfo.valueTypeLength)
+            jso.addProperty(Const.DESCRIPTION, channelScanInfo.description)
+            jso.addProperty(Const.METADATA, channelScanInfo.metaData)
+            jso.addProperty(Const.UNIT, channelScanInfo.unit)
+            jsa.add(jso)
         }
-        jsonObject.add(Const.CHANNELS, jsa);
+        jsonObject.add(Const.CHANNELS, jsa)
     }
 
-    public void addRestUserConfig(RestUserConfig restUserConfig) {
-
-        jsonObject.add(Const.CONFIGS, gson.toJsonTree(restUserConfig, RestUserConfig.class).getAsJsonObject());
+    fun addRestUserConfig(restUserConfig: RestUserConfig?) {
+        jsonObject.add(Const.CONFIGS, gson.toJsonTree(restUserConfig, RestUserConfig::class.java).asJsonObject)
     }
 
-    public static JsonObject getDriverConfigAsJsonObject(DriverConfig config) {
-
-        RestDriverConfig restConfig = RestDriverConfigMapper.getRestDriverConfig(config);
-        return new Gson().toJsonTree(restConfig, RestDriverConfig.class).getAsJsonObject();
+    @Throws(ClassCastException::class)
+    private fun channelRecordToJson(channel: Channel): JsonObject {
+        val jso = JsonObject()
+        jso.addProperty(Const.ID, channel.id)
+        jso.addProperty(Const.VALUETYPE, channel.valueType.toString())
+        jso.add(Const.RECORD, getRecordAsJsonElement(channel.latestRecord, channel.valueType))
+        return jso
     }
 
-    public static JsonObject getDeviceConfigAsJsonObject(DeviceConfig config) {
-        RestDeviceConfig restConfig = RestDeviceConfigMapper.getRestDeviceConfig(config);
-        return new Gson().toJsonTree(restConfig, RestDeviceConfig.class).getAsJsonObject();
+    @Throws(ClassCastException::class)
+    private fun getRecordAsJsonElement(record: Record?, valueType: ValueType?): JsonElement {
+        return gson.toJsonTree(getRestRecord(record, valueType), RestRecord::class.java)
     }
 
-    public static JsonObject getChannelConfigAsJsonObject(ChannelConfig config) {
-        RestChannelConfig restConfig = RestChannelConfigMapper.getRestChannelConfig(config);
-        return new Gson().toJsonTree(restConfig, RestChannelConfig.class).getAsJsonObject();
-    }
-
-    private JsonObject channelRecordToJson(Channel channel) throws ClassCastException {
-
-        JsonObject jso = new JsonObject();
-
-        jso.addProperty(Const.ID, channel.getId());
-        jso.addProperty(Const.VALUETYPE, channel.getValueType().toString());
-        jso.add(Const.RECORD, getRecordAsJsonElement(channel.getLatestRecord(), channel.getValueType()));
-        return jso;
-    }
-
-    private JsonElement getRecordAsJsonElement(Record record, ValueType valueType) throws ClassCastException {
-
-        return gson.toJsonTree(getRestRecord(record, valueType), RestRecord.class);
-    }
-
-    private RestRecord getRestRecord(Record rc, ValueType valueType) throws ClassCastException {
-
-        Value value = rc.getValue();
-        Flag flag = rc.getFlag();
-        RestRecord rrc = new RestRecord();
-
-        rrc.setTimestamp(rc.getTimestamp());
-
-        try {
-            flag = handleInfinityAndNaNValue(value, valueType, flag);
-        } catch (TypeConversionException e) {
-            flag = Flag.DRIVER_ERROR_CHANNEL_VALUE_TYPE_CONVERSION_EXCEPTION;
+    @Throws(ClassCastException::class)
+    private fun getRestRecord(rc: Record?, valueType: ValueType?): RestRecord {
+        val value = rc!!.value
+        var flag = rc.flag
+        val rrc = RestRecord()
+        rrc.timestamp = rc.timestamp
+        flag = try {
+            handleInfinityAndNaNValue(value, valueType, flag)
+        } catch (e: TypeConversionException) {
+            Flag.DRIVER_ERROR_CHANNEL_VALUE_TYPE_CONVERSION_EXCEPTION
         }
-        if (flag != Flag.VALID) {
-            rrc.setFlag(flag);
-            rrc.setValue(null);
-            return rrc;
+        if (flag !== Flag.VALID) {
+            rrc.flag = flag
+            rrc.value = null
+            return rrc
         }
-
-        rrc.setFlag(flag);
-        setRestRecordValue(valueType, value, rrc);
-
-        return rrc;
+        rrc.flag = flag
+        setRestRecordValue(valueType, value, rrc)
+        return rrc
     }
 
-    private void setRestRecordValue(ValueType valueType, Value value, RestRecord rrc) throws ClassCastException {
-
+    @Throws(ClassCastException::class)
+    private fun setRestRecordValue(valueType: ValueType?, value: Value?, rrc: RestRecord) {
         if (value == null) {
-            rrc.setValue(null);
-            return;
+            rrc.value = null
+            return
         }
-
-        switch (valueType) {
-        case FLOAT:
-            rrc.setValue(value.asFloat());
-            break;
-        case DOUBLE:
-            rrc.setValue(value.asDouble());
-            break;
-        case SHORT:
-            rrc.setValue(value.asShort());
-            break;
-        case INTEGER:
-            rrc.setValue(value.asInt());
-            break;
-        case LONG:
-            rrc.setValue(value.asLong());
-            break;
-        case BYTE:
-            rrc.setValue(value.asByte());
-            break;
-        case BOOLEAN:
-            rrc.setValue(value.asBoolean());
-            break;
-        case BYTE_ARRAY:
-            rrc.setValue(value.asByteArray());
-            break;
-        case STRING:
-            rrc.setValue(value.asString());
-            break;
-        default:
-            rrc.setValue(null);
-            break;
+        when (valueType) {
+            ValueType.FLOAT -> rrc.value = value.asFloat()
+            ValueType.DOUBLE -> rrc.value = value.asDouble()
+            ValueType.SHORT -> rrc.value = value.asShort()
+            ValueType.INTEGER -> rrc.value = value.asInt()
+            ValueType.LONG -> rrc.value = value.asLong()
+            ValueType.BYTE -> rrc.value = value.asByte()
+            ValueType.BOOLEAN -> rrc.value = value.asBoolean()
+            ValueType.BYTE_ARRAY -> rrc.value = value.asByteArray()
+            ValueType.STRING -> rrc.value = value.asString()
+            else -> rrc.value = null
         }
     }
 
-    private Flag handleInfinityAndNaNValue(Value value, ValueType valueType, Flag flag) {
-
+    private fun handleInfinityAndNaNValue(value: Value?, valueType: ValueType?, flag: Flag): Flag {
         if (value == null) {
-            return flag;
+            return flag
         }
+        when (valueType) {
+            ValueType.DOUBLE -> if (java.lang.Double.isInfinite(value.asDouble())) {
+                return Flag.VALUE_IS_INFINITY
+            } else if (java.lang.Double.isNaN(value.asDouble())) {
+                return Flag.VALUE_IS_NAN
+            }
 
-        switch (valueType) {
-        case DOUBLE:
-            if (Double.isInfinite(value.asDouble())) {
-                return Flag.VALUE_IS_INFINITY;
+            ValueType.FLOAT -> if (java.lang.Float.isInfinite(value.asFloat())) {
+                return Flag.VALUE_IS_INFINITY
+            } else if (java.lang.Float.isNaN(value.asFloat())) {
+                return Flag.VALUE_IS_NAN
             }
-            else if (Double.isNaN(value.asDouble())) {
-                return Flag.VALUE_IS_NAN;
-            }
-            break;
-        case FLOAT:
-            if (Float.isInfinite(value.asFloat())) {
-                return Flag.VALUE_IS_INFINITY;
-            }
-            else if (Float.isNaN(value.asFloat())) {
-                return Flag.VALUE_IS_NAN;
-            }
-            break;
-        default:
-            // is not a floating point number
-            return flag;
+
+            else ->             // is not a floating point number
+                return flag
         }
-        return flag;
+        return flag
     }
 
+    companion object {
+        @JvmStatic
+        fun getDriverConfigAsJsonObject(config: DriverConfig): JsonObject {
+            val restConfig = RestDriverConfigMapper.getRestDriverConfig(config)
+            return Gson().toJsonTree(restConfig, RestDriverConfig::class.java).asJsonObject
+        }
+
+        @JvmStatic
+        fun getDeviceConfigAsJsonObject(config: DeviceConfig): JsonObject {
+            val restConfig = RestDeviceConfigMapper.getRestDeviceConfig(config)
+            return Gson().toJsonTree(restConfig, RestDeviceConfig::class.java).asJsonObject
+        }
+
+        @JvmStatic
+        fun getChannelConfigAsJsonObject(config: ChannelConfig): JsonObject {
+            val restConfig = RestChannelConfigMapper.getRestChannelConfig(config)
+            return Gson().toJsonTree(restConfig, RestChannelConfig::class.java).asJsonObject
+        }
+    }
 }

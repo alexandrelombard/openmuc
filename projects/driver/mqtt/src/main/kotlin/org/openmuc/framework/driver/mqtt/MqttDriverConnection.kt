@@ -18,230 +18,226 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.driver.mqtt
 
-package org.openmuc.framework.driver.mqtt;
+import org.openmuc.framework.config.ArgumentSyntaxException
+import org.openmuc.framework.config.ChannelScanInfo
+import org.openmuc.framework.config.ScanException
+import org.openmuc.framework.data.ByteArrayValue
+import org.openmuc.framework.data.Flag
+import org.openmuc.framework.data.Record
+import org.openmuc.framework.data.ValueType
+import org.openmuc.framework.datalogger.spi.LoggingRecord
+import org.openmuc.framework.driver.spi.*
+import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.openmuc.framework.lib.mqtt.MqttConnection
+import org.openmuc.framework.lib.mqtt.MqttReader
+import org.openmuc.framework.lib.mqtt.MqttSettings
+import org.openmuc.framework.lib.mqtt.MqttWriter
+import org.openmuc.framework.parser.spi.ParserService
+import org.openmuc.framework.parser.spi.SerializationException
+import org.openmuc.framework.security.SslManagerInterface
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import java.io.StringReader
+import java.util.*
 
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+class MqttDriverConnection(host: String?, settings: String?) : Connection {
+    private val mqttConnection: MqttConnection
+    private val mqttWriter: MqttWriter
+    private val mqttReader: MqttReader
+    private val parsers: MutableMap<String, ParserService> = HashMap()
+    private val lastLoggedRecords: MutableMap<String?, Long?> = HashMap()
+    private val recordContainerList: MutableList<ChannelRecordContainer?> = ArrayList()
+    private val settings = Properties()
 
-import org.openmuc.framework.config.ArgumentSyntaxException;
-import org.openmuc.framework.config.ChannelScanInfo;
-import org.openmuc.framework.config.ScanException;
-import org.openmuc.framework.data.ByteArrayValue;
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.ValueType;
-import org.openmuc.framework.dataaccess.Channel;
-import org.openmuc.framework.datalogger.spi.LoggingRecord;
-import org.openmuc.framework.driver.spi.ChannelRecordContainer;
-import org.openmuc.framework.driver.spi.ChannelValueContainer;
-import org.openmuc.framework.driver.spi.Connection;
-import org.openmuc.framework.driver.spi.ConnectionException;
-import org.openmuc.framework.driver.spi.RecordsReceivedListener;
-import org.openmuc.framework.lib.mqtt.MqttConnection;
-import org.openmuc.framework.lib.mqtt.MqttReader;
-import org.openmuc.framework.lib.mqtt.MqttSettings;
-import org.openmuc.framework.lib.mqtt.MqttWriter;
-import org.openmuc.framework.parser.spi.ParserService;
-import org.openmuc.framework.parser.spi.SerializationException;
-import org.openmuc.framework.security.SslManagerInterface;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class MqttDriverConnection implements Connection {
-
-    private static final Logger logger = LoggerFactory.getLogger(MqttDriverConnection.class);
-    private final MqttConnection mqttConnection;
-    private final MqttWriter mqttWriter;
-    private final MqttReader mqttReader;
-    private final Map<String, ParserService> parsers = new HashMap<>();
-    private final Map<String, Long> lastLoggedRecords = new HashMap<>();
-    private final List<ChannelRecordContainer> recordContainerList = new ArrayList<>();
-    private final Properties settings = new Properties();
-
-    public MqttDriverConnection(String host, String settings) throws ArgumentSyntaxException {
-        MqttSettings mqttSettings = getMqttSettings(host, settings);
-        mqttConnection = new MqttConnection(mqttSettings);
-        String pid = "mqttdriver";
-        mqttWriter = new MqttWriter(mqttConnection, pid);
-        mqttReader = new MqttReader(mqttConnection, pid);
-        if (!mqttSettings.isSsl()) {
-            mqttConnection.connect();
+    init {
+        val mqttSettings = getMqttSettings(host, settings)
+        mqttConnection = MqttConnection(mqttSettings)
+        val pid = "mqttdriver"
+        mqttWriter = MqttWriter(mqttConnection, pid)
+        mqttReader = MqttReader(mqttConnection, pid)
+        if (!mqttSettings.isSsl) {
+            mqttConnection.connect()
         }
     }
 
-    private MqttSettings getMqttSettings(String host, String settings) throws ArgumentSyntaxException {
-        settings = settings.replaceAll(";", "\n");
+    @Throws(ArgumentSyntaxException::class)
+    private fun getMqttSettings(host: String?, settings: String?): MqttSettings {
+        var settings = settings
+        settings = settings!!.replace(";".toRegex(), "\n")
         try {
-            this.settings.load(new StringReader(settings));
-        } catch (IOException e) {
-            throw new ArgumentSyntaxException("Could not read settings string");
+            this.settings.load(StringReader(settings))
+        } catch (e: IOException) {
+            throw ArgumentSyntaxException("Could not read settings string")
         }
-
-        int port = Integer.parseInt(this.settings.getProperty("port"));
-        String username = this.settings.getProperty("username");
-        String password = this.settings.getProperty("password");
-        boolean ssl = Boolean.parseBoolean(this.settings.getProperty("ssl"));
-        long maxBufferSize = Long.parseLong(this.settings.getProperty("maxBufferSize", "0"));
-        long maxFileSize = Long.parseLong(this.settings.getProperty("maxFileSize", "0"));
-        int maxFileCount = Integer.parseInt(this.settings.getProperty("maxFileCount", "1"));
-        int connectionRetryInterval = Integer.parseInt(this.settings.getProperty("connectionRetryInterval", "10"));
-        int connectionAliveInterval = Integer.parseInt(this.settings.getProperty("connectionAliveInterval", "10"));
-        String persistenceDirectory = this.settings.getProperty("persistenceDirectory", "data/driver/mqtt");
-        String lastWillTopic = this.settings.getProperty("lastWillTopic", "");
-        byte[] lastWillPayload = this.settings.getProperty("lastWillPayload", "").getBytes();
-        boolean lastWillAlways = Boolean.parseBoolean(this.settings.getProperty("lastWillAlways", "false"));
-        String firstWillTopic = this.settings.getProperty("firstWillTopic", "");
-        byte[] firstWillPayload = this.settings.getProperty("firstWillPayload", "").getBytes();
-        boolean webSocket = Boolean.parseBoolean(this.settings.getProperty("webSocket", "false"));
-
-        return new MqttSettings(host, port, username, password, ssl, maxBufferSize, maxFileSize, maxFileCount,
-                connectionRetryInterval, connectionAliveInterval, persistenceDirectory, lastWillTopic, lastWillPayload,
-                lastWillAlways, firstWillTopic, firstWillPayload, webSocket);
+        val port = this.settings.getProperty("port").toInt()
+        val username = this.settings.getProperty("username")
+        val password = this.settings.getProperty("password")
+        val ssl = java.lang.Boolean.parseBoolean(this.settings.getProperty("ssl"))
+        val maxBufferSize = this.settings.getProperty("maxBufferSize", "0").toLong()
+        val maxFileSize = this.settings.getProperty("maxFileSize", "0").toLong()
+        val maxFileCount = this.settings.getProperty("maxFileCount", "1").toInt()
+        val connectionRetryInterval = this.settings.getProperty("connectionRetryInterval", "10").toInt()
+        val connectionAliveInterval = this.settings.getProperty("connectionAliveInterval", "10").toInt()
+        val persistenceDirectory = this.settings.getProperty("persistenceDirectory", "data/driver/mqtt")
+        val lastWillTopic = this.settings.getProperty("lastWillTopic", "")
+        val lastWillPayload = this.settings.getProperty("lastWillPayload", "").toByteArray()
+        val lastWillAlways = java.lang.Boolean.parseBoolean(this.settings.getProperty("lastWillAlways", "false"))
+        val firstWillTopic = this.settings.getProperty("firstWillTopic", "")
+        val firstWillPayload = this.settings.getProperty("firstWillPayload", "").toByteArray()
+        val webSocket = java.lang.Boolean.parseBoolean(this.settings.getProperty("webSocket", "false"))
+        return MqttSettings(
+            host, port, username, password, ssl, maxBufferSize, maxFileSize, maxFileCount,
+            connectionRetryInterval, connectionAliveInterval, persistenceDirectory, lastWillTopic, lastWillPayload,
+            lastWillAlways, firstWillTopic, firstWillPayload, webSocket
+        )
     }
 
-    @Override
-    public List<ChannelScanInfo> scanForChannels(String settings)
-            throws UnsupportedOperationException, ArgumentSyntaxException, ScanException, ConnectionException {
-        throw new UnsupportedOperationException();
+    @Throws(
+        UnsupportedOperationException::class,
+        ArgumentSyntaxException::class,
+        ScanException::class,
+        ConnectionException::class
+    )
+    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+        throw UnsupportedOperationException()
     }
 
-    @Override
-    public Object read(List<ChannelRecordContainer> containers, Object containerListHandle, String samplingGroup)
-            throws UnsupportedOperationException, ConnectionException {
-        throw new UnsupportedOperationException();
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun read(
+        containers: List<ChannelRecordContainer?>?,
+        containerListHandle: Any?,
+        samplingGroup: String?
+    ): Any? {
+        throw UnsupportedOperationException()
     }
 
-    @Override
-    public void startListening(List<ChannelRecordContainer> containers, RecordsReceivedListener listener)
-            throws UnsupportedOperationException, ConnectionException {
-        List<String> topics = new ArrayList<>();
-        for (ChannelRecordContainer container : containers) {
-            topics.add(container.getChannelAddress());
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+        val topics: MutableList<String?> = ArrayList()
+        for (container in containers!!) {
+            topics.add(container!!.channelAddress)
         }
-
         if (topics.isEmpty()) {
-            return;
+            return
         }
-        mqttReader.listen(topics, (topic, message) -> {
-            Channel channel = containers.get(topics.indexOf(topic)).getChannel();
-            Record record = getRecord(message, channel.getValueType());
-
-            if (recordIsOld(channel.getId(), record)) {
-                return;
+        mqttReader.listen(topics) { topic: String?, message: ByteArray ->
+            val channel = containers[topics.indexOf(topic)]!!.channel
+            val record = getRecord(message, channel!!.valueType)
+            if (recordIsOld(channel.id, record)) {
+                return@listen
             }
-
-            addMessageToContainerList(record, containers.get(topics.indexOf(topic)));
-            if (recordContainerList.size() >= Integer.parseInt(settings.getProperty("recordCollectionSize", "1"))) {
-                notifyListenerAndPurgeList(listener);
+            addMessageToContainerList(record, containers[topics.indexOf(topic)])
+            if (recordContainerList.size >= settings.getProperty("recordCollectionSize", "1").toInt()) {
+                notifyListenerAndPurgeList(listener)
             }
-        });
+        }
     }
 
-    private void notifyListenerAndPurgeList(RecordsReceivedListener listener) {
-        logTraceNewRecord();
-        listener.newRecords(recordContainerList);
-        recordContainerList.clear();
+    private fun notifyListenerAndPurgeList(listener: RecordsReceivedListener?) {
+        logTraceNewRecord()
+        listener!!.newRecords(recordContainerList)
+        recordContainerList.clear()
     }
 
-    private void addMessageToContainerList(Record record, ChannelRecordContainer container) {
-        ChannelRecordContainer copiedContainer = container.copy();
-        copiedContainer.setRecord(record);
-
-        recordContainerList.add(copiedContainer);
+    private fun addMessageToContainerList(record: Record?, container: ChannelRecordContainer?) {
+        val copiedContainer = container!!.copy()
+        copiedContainer!!.setRecord(record)
+        recordContainerList.add(copiedContainer)
     }
 
-    private boolean recordIsOld(String channelId, Record record) {
-        Long lastTimestamp = lastLoggedRecords.get(channelId);
-
+    private fun recordIsOld(channelId: String?, record: Record?): Boolean {
+        val lastTimestamp = lastLoggedRecords[channelId]
         if (lastTimestamp == null) {
-            lastLoggedRecords.put(channelId, record.getTimestamp());
-            return false;
+            lastLoggedRecords[channelId] = record!!.timestamp
+            return false
         }
-
-        if (record.getTimestamp() == null || record.getTimestamp() <= lastTimestamp) {
-            return true;
+        if (record!!.timestamp == null || record.timestamp!! <= lastTimestamp) {
+            return true
         }
-
-        lastLoggedRecords.put(channelId, record.getTimestamp());
-        return false;
+        lastLoggedRecords[channelId] = record.timestamp
+        return false
     }
 
-    private Record getRecord(byte[] message, ValueType valueType) {
-        Record record;
-        if (parsers.containsKey(settings.getProperty("parser"))) {
-            record = parsers.get(settings.getProperty("parser")).deserialize(message, valueType);
+    private fun getRecord(message: ByteArray, valueType: ValueType?): Record? {
+        val record: Record?
+        record = if (parsers.containsKey(settings.getProperty("parser"))) {
+            parsers[settings.getProperty("parser")]!!.deserialize(message, valueType)
+        } else {
+            Record(
+                ByteArrayValue(message),
+                System.currentTimeMillis()
+            )
         }
-        else {
-            record = new Record(new ByteArrayValue(message), System.currentTimeMillis());
-        }
-
-        return record;
+        return record
     }
 
-    @Override
-    public Object write(List<ChannelValueContainer> containers, Object containerListHandle)
-            throws UnsupportedOperationException, ConnectionException {
-        for (ChannelValueContainer container : containers) {
-            Record record = new Record(container.getValue(), System.currentTimeMillis());
-            LoggingRecord loggingRecord = new LoggingRecord(container.getChannelAddress(), record);
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+        for (container in containers!!) {
+            val record = Record(container!!.value, System.currentTimeMillis())
+            val loggingRecord = LoggingRecord(container.channelAddress!!, record)
             if (parsers.containsKey(settings.getProperty("parser"))) {
-                byte[] message;
-                try {
-                    message = parsers.get(settings.getProperty("parser")).serialize(loggingRecord);
-                } catch (SerializationException e) {
-                    logger.error(e.getMessage());
-                    continue;
+                var message: ByteArray?
+                message = try {
+                    parsers[settings.getProperty("parser")]!!.serialize(loggingRecord)
+                } catch (e: SerializationException) {
+                    logger.error(e.message)
+                    continue
                 }
-                mqttWriter.write(container.getChannelAddress(), message);
-                container.setFlag(Flag.VALID);
-            }
-            else {
-                logger.error("A parser is needed to write messages and none have been registered.");
-                throw new UnsupportedOperationException();
+                mqttWriter.write(container.channelAddress, message)
+                container.flag = Flag.VALID
+            } else {
+                logger.error("A parser is needed to write messages and none have been registered.")
+                throw UnsupportedOperationException()
             }
         }
-        return null;
+        return null
     }
 
-    @Override
-    public void disconnect() {
-        mqttWriter.shutdown();
-        mqttConnection.disconnect();
+    override fun disconnect() {
+        mqttWriter.shutdown()
+        mqttConnection.disconnect()
     }
 
-    public void setParser(String parserId, ParserService parser) {
+    fun setParser(parserId: String, parser: ParserService?) {
         if (parser == null) {
-            parsers.remove(parserId);
-            return;
+            parsers.remove(parserId)
+            return
         }
-        parsers.put(parserId, parser);
+        parsers[parserId] = parser
     }
 
-    private void logTraceNewRecord() {
-        if (logger.isTraceEnabled()) {
-            StringBuilder sb = new StringBuilder();
-            sb.append("new records");
-            for (ChannelRecordContainer container : recordContainerList) {
-                sb.append("\ntopic: " + sb.append(container.getChannelAddress()) + "\n");
-                sb.append("record: " + container.getRecord().toString());
+    private fun logTraceNewRecord() {
+        if (logger.isTraceEnabled) {
+            val sb = StringBuilder()
+            sb.append("new records")
+            for (container in recordContainerList) {
+                sb.append(
+                    """
+    
+    topic: ${sb.append(container!!.channelAddress)}
+    
+    """.trimIndent()
+                )
+                sb.append("record: " + container.record.toString())
             }
-            logger.trace(sb.toString());
+            logger.trace(sb.toString())
         }
     }
 
-    public void setSslManager(SslManagerInterface instance) {
-        if (mqttConnection.getSettings().isSsl()) {
-            logger.debug("SSLManager registered in driver");
-            mqttConnection.setSslManager(instance);
-            if (instance.isLoaded()) {
-                mqttConnection.connect();
+    fun setSslManager(instance: SslManagerInterface) {
+        if (mqttConnection.settings.isSsl) {
+            logger.debug("SSLManager registered in driver")
+            mqttConnection.setSslManager(instance)
+            if (instance.isLoaded) {
+                mqttConnection.connect()
             }
         }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(MqttDriverConnection::class.java)
     }
 }

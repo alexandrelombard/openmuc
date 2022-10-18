@@ -18,393 +18,364 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.snmp.implementation;
+package org.openmuc.framework.driver.snmp.implementation
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-
-import org.openmuc.framework.config.ArgumentSyntaxException;
-import org.openmuc.framework.config.ChannelScanInfo;
-import org.openmuc.framework.data.ByteArrayValue;
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.driver.spi.ChannelRecordContainer;
-import org.openmuc.framework.driver.spi.ChannelValueContainer;
-import org.openmuc.framework.driver.spi.Connection;
-import org.openmuc.framework.driver.spi.ConnectionException;
-import org.openmuc.framework.driver.spi.RecordsReceivedListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.snmp4j.AbstractTarget;
-import org.snmp4j.PDU;
-import org.snmp4j.Snmp;
-import org.snmp4j.event.ResponseEvent;
-import org.snmp4j.mp.MPv3;
-import org.snmp4j.security.SecurityModels;
-import org.snmp4j.security.SecurityProtocols;
-import org.snmp4j.security.USM;
-import org.snmp4j.smi.Address;
-import org.snmp4j.smi.GenericAddress;
-import org.snmp4j.smi.OID;
-import org.snmp4j.smi.OctetString;
-import org.snmp4j.smi.VariableBinding;
-import org.snmp4j.transport.DefaultUdpTransportMapping;
+import org.openmuc.framework.config.ArgumentSyntaxException
+import org.openmuc.framework.config.ChannelScanInfo
+import org.openmuc.framework.data.ByteArrayValue
+import org.openmuc.framework.data.Flag
+import org.openmuc.framework.data.Record
+import org.openmuc.framework.driver.spi.*
+import org.slf4j.LoggerFactory
+import org.snmp4j.AbstractTarget
+import org.snmp4j.PDU
+import org.snmp4j.Snmp
+import org.snmp4j.event.ResponseEvent
+import org.snmp4j.mp.MPv3
+import org.snmp4j.security.SecurityModels
+import org.snmp4j.security.SecurityProtocols
+import org.snmp4j.security.USM
+import org.snmp4j.smi.*
+import org.snmp4j.transport.DefaultUdpTransportMapping
+import java.io.IOException
+import java.util.*
 
 /**
- * 
+ *
  * Super class for defining SNMP enabled devices.
  */
-public abstract class SnmpDevice implements Connection {
-
-    private static final Logger logger = LoggerFactory.getLogger(SnmpDevice.class);
-
-    public enum SNMPVersion {
-        V1,
-        V2c,
-        V3
+abstract class SnmpDevice : Connection {
+    enum class SNMPVersion {
+        V1, V2c, V3
     }
 
-    protected Address targetAddress;
-    protected Snmp snmp;
-    protected USM usm;
-    protected int timeout = 3000; // in milliseconds
-    protected int retries = 3;
-    protected String authenticationPassphrase;
-    protected AbstractTarget target;
-
-    protected List<SnmpDiscoveryListener> listeners = new ArrayList<>();
-
-    protected static final Map<String, String> ScanOIDs = new HashMap<>();
-
-    static {
-        // some general OIDs that are valid in almost every MIB
-        ScanOIDs.put("Device name: ", "1.3.6.1.2.1.1.5.0");
-        ScanOIDs.put("Description: ", "1.3.6.1.2.1.1.1.0");
-        ScanOIDs.put("Location: ", "1.3.6.1.2.1.1.6.0");
-    }
+    protected var targetAddress: Address? = null
+    protected var snmp: Snmp? = null
+    protected var usm: USM? = null
+    protected var timeout = 3000 // in milliseconds
+    protected var retries = 3
+    protected var authenticationPassphrase: String? = null
+    protected var target: AbstractTarget? = null
+    protected var listeners: MutableList<SnmpDiscoveryListener> = ArrayList()
 
     /**
      * snmp constructor takes primary parameters in order to create snmp object. this implementation uses UDP protocol
-     * 
+     *
      * @param address
-     *            Contains ip and port. accepted string "X.X.X.X/portNo"
+     * Contains ip and port. accepted string "X.X.X.X/portNo"
      * @param authenticationPassphrase
-     *            the authentication pass phrase. If not <code>null</code>, <code>authenticationProtocol</code> must
-     *            also be not <code>null</code>. RFC3414 &sect;11.2 requires pass phrases to have a minimum length of 8
-     *            bytes. If the length of <code>authenticationPassphrase</code> is less than 8 bytes an
-     *            <code>IllegalArgumentException</code> is thrown. [required by snmp4j library]
-     * 
+     * the authentication pass phrase. If not `null`, `authenticationProtocol` must
+     * also be not `null`. RFC3414 11.2 requires pass phrases to have a minimum length of 8
+     * bytes. If the length of `authenticationPassphrase` is less than 8 bytes an
+     * `IllegalArgumentException` is thrown. [required by snmp4j library]
+     *
      * @throws ConnectionException
-     *             thrown if SNMP listen or initialization failed
+     * thrown if SNMP listen or initialization failed
      * @throws ArgumentSyntaxException
-     *             thrown if Device address foramt is wrong
+     * thrown if Device address foramt is wrong
      */
-    public SnmpDevice(String address, String authenticationPassphrase)
-            throws ConnectionException, ArgumentSyntaxException {
+    constructor(address: String?, authenticationPassphrase: String?) {
 
         // start snmp compatible with all versions
-        try {
-            snmp = new Snmp(new DefaultUdpTransportMapping());
-        } catch (IOException e) {
-            throw new ConnectionException("SNMP initialization failed! \n" + e.getMessage());
+        snmp = try {
+            Snmp(DefaultUdpTransportMapping())
+        } catch (e: IOException) {
+            throw ConnectionException(
+                """
+    SNMP initialization failed! 
+    ${e.message}
+    """.trimIndent()
+            )
         }
-        usm = new USM(SecurityProtocols.getInstance(), new OctetString(MPv3.createLocalEngineID()), 0);
-        SecurityModels.getInstance().addSecurityModel(usm);
+        usm = USM(SecurityProtocols.getInstance(), OctetString(MPv3.createLocalEngineID()), 0)
+        SecurityModels.getInstance().addSecurityModel(usm)
         try {
-            snmp.listen();
-        } catch (IOException e) {
-            throw new ConnectionException("SNMP listen failed! \n" + e.getMessage());
+            snmp!!.listen()
+        } catch (e: IOException) {
+            throw ConnectionException(
+                """
+    SNMP listen failed! 
+    ${e.message}
+    """.trimIndent()
+            )
         }
 
         // set address
-        try {
-            targetAddress = GenericAddress.parse(address);
-        } catch (IllegalArgumentException e) {
-            throw new ArgumentSyntaxException("Device address foramt is wrong! (eg. 1.1.1.1/1)");
+        targetAddress = try {
+            GenericAddress.parse(address)
+        } catch (e: IllegalArgumentException) {
+            throw ArgumentSyntaxException("Device address foramt is wrong! (eg. 1.1.1.1/1)")
         }
-
-        this.authenticationPassphrase = authenticationPassphrase;
-
+        this.authenticationPassphrase = authenticationPassphrase
     }
 
     /**
      * Default constructor useful for scanner
      */
-    public SnmpDevice() {
-    }
+    constructor() {}
 
     /**
      * set target parameters. Implementations are different in SNMP v1, v2c and v3
      */
-    abstract void setTarget();
+    abstract fun setTarget()
 
     /**
      * Receives a list of all OIDs in string format, creates PDU and sends GET request to defined target. This method is
      * a blocking method. It waits for response.
-     * 
+     *
      * @param OIDs
-     *            list of OIDs that should be read from target
+     * list of OIDs that should be read from target
      * @return Map&lt;String, String&gt; returns a Map of OID as Key and received value corresponding to that OID from
-     *         the target as Value
-     * 
+     * the target as Value
+     *
      * @throws SnmpTimeoutException
-     *             thrown if Target doesn't responses
+     * thrown if Target doesn't responses
      * @throws ConnectionException
-     *             thrown if SNMP get request fails
+     * thrown if SNMP get request fails
      */
-    public Map<String, String> getRequestsList(List<String> OIDs) throws SnmpTimeoutException, ConnectionException {
-
-        Map<String, String> result = new HashMap<>();
+    @Throws(SnmpTimeoutException::class, ConnectionException::class)
+    fun getRequestsList(OIDs: List<String?>): Map<String?, String?> {
+        val result: MutableMap<String?, String?> = HashMap()
 
         // set PDU
-        PDU pdu = new PDU();
-        pdu.setType(PDU.GET);
-
-        for (String oid : OIDs) {
-            pdu.add(new VariableBinding(new OID(oid)));
+        val pdu = PDU()
+        pdu.type = PDU.GET
+        for (oid in OIDs) {
+            pdu.add(VariableBinding(OID(oid)))
         }
 
         // send GET request
-        ResponseEvent response;
+        val response: ResponseEvent
         try {
-            response = snmp.send(pdu, target);
-            PDU responsePDU = response.getResponse();
-            @SuppressWarnings("rawtypes")
-            List<? extends VariableBinding> vbs = responsePDU.getVariableBindings();
-            for (VariableBinding vb : vbs) {
-                result.put(vb.getOid().toString(), vb.getVariable().toString());
+            response = snmp!!.send(pdu, target)
+            val responsePDU = response.response
+            val vbs: List<VariableBinding> = responsePDU.variableBindings
+            for (vb in vbs) {
+                result[vb.oid.toString()] = vb.variable.toString()
             }
-        } catch (IOException e) {
-            throw new ConnectionException("SNMP get request failed! " + e.getMessage());
-        } catch (NullPointerException e) {
-            throw new SnmpTimeoutException("Timeout: Target doesn't respond!");
+        } catch (e: IOException) {
+            throw ConnectionException("SNMP get request failed! " + e.message)
+        } catch (e: NullPointerException) {
+            throw SnmpTimeoutException("Timeout: Target doesn't respond!")
         }
-
-        return result;
+        return result
     }
 
     /**
      * Receives one single OID in string format, creates PDU and sends GET request to defined target. This method is a
      * blocking method. It waits for response.
-     * 
+     *
      * @param OID
-     *            OID that should be read from target
+     * OID that should be read from target
      * @return String containing read value
-     * 
+     *
      * @throws SnmpTimeoutException
-     *             thrown if Target doesn't responses
+     * thrown if Target doesn't responses
      * @throws ConnectionException
-     *             thrown if SNMP get request failsn
+     * thrown if SNMP get request failsn
      */
-    public String getSingleRequests(String OID) throws SnmpTimeoutException, ConnectionException {
-
-        String result = null;
+    @Throws(SnmpTimeoutException::class, ConnectionException::class)
+    fun getSingleRequests(OID: String?): String {
+        var result: String? = null
 
         // set PDU
-        PDU pdu = new PDU();
-        pdu.setType(PDU.GET);
-
-        pdu.add(new VariableBinding(new OID(OID)));
+        val pdu = PDU()
+        pdu.type = PDU.GET
+        pdu.add(VariableBinding(OID(OID)))
 
         // send GET request
-        ResponseEvent response;
+        val response: ResponseEvent
         try {
-            response = snmp.send(pdu, target);
-            PDU responsePDU = response.getResponse();
-            @SuppressWarnings("rawtypes")
-            List<? extends VariableBinding> vbs = responsePDU.getVariableBindings();
-            result = ((VariableBinding) vbs.get(0)).getVariable().toString();
-        } catch (IOException e) {
-            throw new ConnectionException("SNMP get request failed! " + e.getMessage());
-        } catch (NullPointerException e) {
-            throw new SnmpTimeoutException("Timeout: Target doesn't respond!");
+            response = snmp!!.send(pdu, target)
+            val responsePDU = response.response
+            val vbs: List<VariableBinding> = responsePDU.variableBindings
+            result = vbs[0].variable.toString()
+        } catch (e: IOException) {
+            throw ConnectionException("SNMP get request failed! " + e.message)
+        } catch (e: NullPointerException) {
+            throw SnmpTimeoutException("Timeout: Target doesn't respond!")
         }
-
-        return result;
+        return result
     }
 
-    public String getDeviceAddress() {
-        return targetAddress.toString();
+    open val deviceAddress: String
+        get() = targetAddress.toString()
+
+    @Synchronized
+    fun addEventListener(listener: SnmpDiscoveryListener) {
+        listeners.add(listener)
     }
 
-    public synchronized void addEventListener(SnmpDiscoveryListener listener) {
-        listeners.add(listener);
-    }
-
-    public synchronized void removeEventListener(SnmpDiscoveryListener listener) {
-        listeners.remove(listener);
+    @Synchronized
+    fun removeEventListener(listener: SnmpDiscoveryListener) {
+        listeners.remove(listener)
     }
 
     /**
      * This method will call all listeners for given new device
-     * 
+     *
      * @param address
-     *            address of device
+     * address of device
      * @param version
-     *            version of snmp that this device support
+     * version of snmp that this device support
      * @param description
-     *            other extra information which can be useful
-     * 
+     * other extra information which can be useful
      */
-    protected synchronized void NotifyForNewDevice(Address address, SNMPVersion version, String description) {
-        SnmpDiscoveryEvent event = new SnmpDiscoveryEvent(this, address, version, description);
-        @SuppressWarnings("rawtypes")
-        Iterator i = listeners.iterator();
+    @Synchronized
+    protected fun NotifyForNewDevice(address: Address, version: SNMPVersion?, description: String?) {
+        val event = SnmpDiscoveryEvent(this, address, version, description)
+        val i: Iterator<*> = listeners.iterator()
         while (i.hasNext()) {
-            ((SnmpDiscoveryListener) i.next()).onNewDeviceFound(event);
+            (i.next() as SnmpDiscoveryListener).onNewDeviceFound(event)
         }
     }
 
-    /**
-     * Calculate and return next broadcast address. (eg. if ip=1.2.3.x, returns 1.2.4.255)
-     * 
-     * @param ip
-     *            IP
-     * @return String the next broadcast address as String
-     */
-    public static String getNextBroadcastIPV4Address(String ip) {
-        String[] nums = ip.split("\\.");
-        int i = (Integer.parseInt(nums[0]) << 24 | Integer.parseInt(nums[2]) << 8 | Integer.parseInt(nums[1]) << 16
-                | Integer.parseInt(nums[3])) + 256;
-
-        return String.format("%d.%d.%d.%d", i >>> 24 & 0xFF, i >> 16 & 0xFF, i >> 8 & 0xFF, 255);
-    }
+    override fun disconnect() {}
 
     /**
-     * Helper function in order to parse response vector to map structure
-     * 
-     * @param responseVector
-     *            response vector
-     * @return HashMap&lt;String, String&gt;
-     */
-    public static HashMap<String, String> parseResponseVectorToHashMap(List<? extends VariableBinding> responseVector) {
-
-        HashMap<String, String> map = new HashMap<>();
-        for (VariableBinding elem : responseVector) {
-            map.put(elem.getOid().toString(), elem.getVariable().toString());
-        }
-        return map;
-    }
-
-    protected static String scannerMakeDescriptionString(HashMap<String, String> scannerResult) {
-
-        StringBuilder desc = new StringBuilder();
-        for (String key : ScanOIDs.keySet()) {
-            desc.append('[')
-                    .append(key)
-                    .append('(')
-                    .append(ScanOIDs.get(key))
-                    .append(")=")
-                    .append(scannerResult.get(ScanOIDs.get(key)))
-                    .append("] ");
-        }
-        return desc.toString();
-    }
-
-    /**
-     * Returns respective SNMPVersion enum value based on given SnmpConstant version value
-     * 
-     * @param version
-     *            the version as int
-     * @return SNMPVersion or null if given value is not valid
-     */
-    protected static SNMPVersion getSnmpVersionFromSnmpConstantsValue(int version) {
-        switch (version) {
-        case 0:
-            return SNMPVersion.V1;
-        case 1:
-            return SNMPVersion.V2c;
-        case 3:
-            return SNMPVersion.V3;
-        }
-        return null;
-    }
-
-    @Override
-    public void disconnect() {
-    }
-
-    /**
-     * At least device address and channel address must be specified in the container.<br>
-     * <br>
-     * containers.deviceAddress = device address (eg. 1.1.1.1/161) <br>
+     * At least device address and channel address must be specified in the container.<br></br>
+     * <br></br>
+     * containers.deviceAddress = device address (eg. 1.1.1.1/161) <br></br>
      * containers.channelAddress = OID (eg. 1.3.6.1.2.1.1.0)
-     * 
+     *
      */
-    @Override
-    public Object read(List<ChannelRecordContainer> containers, Object containerListHandle, String samplingGroup)
-            throws ConnectionException {
-
-        return readChannelGroup(containers, timeout);
+    @Throws(ConnectionException::class)
+    override fun read(
+        containers: List<ChannelRecordContainer?>?,
+        containerListHandle: Any?,
+        samplingGroup: String?
+    ): Any? {
+        return readChannelGroup(containers, timeout)
     }
 
-    @Override
-    public Object write(List<ChannelValueContainer> containers, Object containerListHandle)
-            throws UnsupportedOperationException, ConnectionException {
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
         // TODO snmp set request will be implemented here
-        throw new UnsupportedOperationException();
+        throw UnsupportedOperationException()
     }
 
     /**
      * Read all the channels of the device at once.
-     * 
+     *
      * @param device
      * @param containers
      * @param timeout
      * @return Object
      * @throws ConnectionException
      */
-    private Object readChannelGroup(List<ChannelRecordContainer> containers, int timeout) throws ConnectionException {
-
-        new Date().getTime();
-
-        List<String> oids = new ArrayList<>();
-
-        for (ChannelRecordContainer container : containers) {
-            if (getDeviceAddress().equalsIgnoreCase(container.getChannel().getDeviceAddress())) {
-                oids.add(container.getChannelAddress());
+    @Throws(ConnectionException::class)
+    private fun readChannelGroup(containers: List<ChannelRecordContainer?>?, timeout: Int): Any? {
+        Date().time
+        val oids: MutableList<String?> = ArrayList()
+        for (container in containers!!) {
+            if (deviceAddress.equals(container!!.channel!!.deviceAddress, ignoreCase = true)) {
+                oids.add(container.channelAddress)
             }
         }
-
-        Map<String, String> values;
-
+        val values: Map<String?, String?>
         try {
-            values = getRequestsList(oids);
-            long receiveTime = System.currentTimeMillis();
-
-            for (ChannelRecordContainer container : containers) {
+            values = getRequestsList(oids)
+            val receiveTime = System.currentTimeMillis()
+            for (container in containers) {
                 // make sure the value exists for corresponding channel
-                if (values.get(container.getChannelAddress()) != null) {
-                    logger.debug("{}: value = '{}'", container.getChannelAddress(),
-                            values.get(container.getChannelAddress()));
-                    container.setRecord(new Record(
-                            new ByteArrayValue(values.get(container.getChannelAddress()).getBytes()), receiveTime));
+                if (values[container!!.channelAddress] != null) {
+                    logger.debug(
+                        "{}: value = '{}'", container.channelAddress,
+                        values[container.channelAddress]
+                    )
+                    container.setRecord(
+                        Record(
+                            ByteArrayValue(values[container.channelAddress]!!.toByteArray()), receiveTime
+                        )
+                    )
                 }
             }
-        } catch (SnmpTimeoutException e) {
-            for (ChannelRecordContainer container : containers) {
-                container.setRecord(new Record(Flag.TIMEOUT));
+        } catch (e: SnmpTimeoutException) {
+            for (container in containers) {
+                container!!.setRecord(Record(Flag.TIMEOUT))
             }
         }
-
-        return null;
+        return null
     }
 
-    @Override
-    public void startListening(List<ChannelRecordContainer> containers, RecordsReceivedListener listener)
-            throws UnsupportedOperationException {
-        throw new UnsupportedOperationException();
+    @Throws(UnsupportedOperationException::class)
+    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+        throw UnsupportedOperationException()
     }
 
-    @Override
-    public List<ChannelScanInfo> scanForChannels(String settings)
-            throws UnsupportedOperationException, ConnectionException {
-        throw new UnsupportedOperationException();
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+        throw UnsupportedOperationException()
     }
 
+    companion object {
+        private val logger = LoggerFactory.getLogger(SnmpDevice::class.java)
+        protected val ScanOIDs: MutableMap<String, String> = HashMap()
+
+        init {
+            // some general OIDs that are valid in almost every MIB
+            ScanOIDs["Device name: "] = "1.3.6.1.2.1.1.5.0"
+            ScanOIDs["Description: "] = "1.3.6.1.2.1.1.1.0"
+            ScanOIDs["Location: "] = "1.3.6.1.2.1.1.6.0"
+        }
+
+        /**
+         * Calculate and return next broadcast address. (eg. if ip=1.2.3.x, returns 1.2.4.255)
+         *
+         * @param ip
+         * IP
+         * @return String the next broadcast address as String
+         */
+        fun getNextBroadcastIPV4Address(ip: String): String {
+            val nums = ip.split("\\.".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            val i = (nums[0].toInt() shl 24 or (nums[2].toInt() shl 8) or (nums[1].toInt() shl 16
+                    ) or nums[3].toInt()) + 256
+            return String.format("%d.%d.%d.%d", i ushr 24 and 0xFF, i shr 16 and 0xFF, i shr 8 and 0xFF, 255)
+        }
+
+        /**
+         * Helper function in order to parse response vector to map structure
+         *
+         * @param responseVector
+         * response vector
+         * @return HashMap&lt;String, String&gt;
+         */
+        fun parseResponseVectorToHashMap(responseVector: List<VariableBinding>): HashMap<String?, String> {
+            val map = HashMap<String?, String>()
+            for (elem in responseVector) {
+                map[elem.oid.toString()] = elem.variable.toString()
+            }
+            return map
+        }
+
+        protected fun scannerMakeDescriptionString(scannerResult: HashMap<String?, String>): String {
+            val desc = StringBuilder()
+            for (key in ScanOIDs.keys) {
+                desc.append('[')
+                    .append(key)
+                    .append('(')
+                    .append(ScanOIDs[key])
+                    .append(")=")
+                    .append(scannerResult[ScanOIDs[key]])
+                    .append("] ")
+            }
+            return desc.toString()
+        }
+
+        /**
+         * Returns respective SNMPVersion enum value based on given SnmpConstant version value
+         *
+         * @param version
+         * the version as int
+         * @return SNMPVersion or null if given value is not valid
+         */
+        protected fun getSnmpVersionFromSnmpConstantsValue(version: Int): SNMPVersion? {
+            when (version) {
+                0 -> return SNMPVersion.V1
+                1 -> return SNMPVersion.V2c
+                3 -> return SNMPVersion.V3
+            }
+            return null
+        }
+    }
 }

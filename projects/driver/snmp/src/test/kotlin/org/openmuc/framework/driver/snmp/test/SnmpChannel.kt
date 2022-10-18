@@ -18,200 +18,87 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.snmp.test;
+package org.openmuc.framework.driver.snmp.test
 
-import java.io.IOException;
-import java.util.List;
+import org.openmuc.framework.data.*
+import org.openmuc.framework.dataaccess.*
+import java.io.IOException
 
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.FutureValue;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.data.ValueType;
-import org.openmuc.framework.dataaccess.Channel;
-import org.openmuc.framework.dataaccess.ChannelState;
-import org.openmuc.framework.dataaccess.DataLoggerNotAvailableException;
-import org.openmuc.framework.dataaccess.DeviceState;
-import org.openmuc.framework.dataaccess.ReadRecordContainer;
-import org.openmuc.framework.dataaccess.RecordListener;
-import org.openmuc.framework.dataaccess.WriteValueContainer;
+class SnmpChannel : Channel {
+    override val id: String? = null
+    override var channelAddress: String? = null
+        private set
+    override val description: String? = null
+    override val unit: String? = null
+    override val valueType: ValueType? = null
+    override val samplingInterval = 0
+    override val samplingTimeOffset = 0
+    override val samplingTimeout = 0
+    override var deviceAddress: String? = null
+        private set
+    override val settings: String? = null
 
-public class SnmpChannel implements Channel {
-
-    private String id;
-    private String address;
-    private String description;
-    private String unit;
-    private ValueType valueType;
-    private int samplingInterval;
-    private int samplingTimeOffset;
-    private int samplingTimeout;
-    private String deviceAddress;
-    private String settings;
-
-    SnmpChannel() {
+    internal constructor() {}
+    internal constructor(deviceAddress: String?, address: String?) {
+        channelAddress = address
+        this.deviceAddress = deviceAddress
     }
 
-    SnmpChannel(String deviceAddress, String address) {
-        this.address = address;
-        this.deviceAddress = deviceAddress;
+    override val loggingSettings: String
+        get() = ""
+    override val loggingInterval: Int
+        get() = 0
+    override val loggingTimeOffset: Int
+        get() = 0
+    override val driverName: String?
+        get() = null
+    override val deviceName: String?
+        get() = null
+    override val deviceDescription: String?
+        get() = null
+    override val channelState: ChannelState?
+        get() = null
+    override val deviceState: DeviceState?
+        get() = null
+
+    override fun addListener(listener: RecordListener?) {}
+    override fun removeListener(listener: RecordListener?) {}
+    override val isConnected: Boolean
+        get() = false
+    override var latestRecord: Record?
+        get() = null
+        set(record) {}
+
+    override fun write(value: Value?): Flag? {
+        return null
     }
 
-    @Override
-    public String getId() {
-        return id;
+    override fun writeFuture(values: List<FutureValue?>?) {}
+    override val writeContainer: WriteValueContainer?
+        get() = null
+
+    override fun read(): Record? {
+        return null
     }
 
-    @Override
-    public String getChannelAddress() {
-        return address;
+    override val readContainer: ReadRecordContainer?
+        get() = null
+
+    @Throws(DataLoggerNotAvailableException::class, IOException::class)
+    override fun getLoggedRecord(time: Long): Record? {
+        return null
     }
 
-    @Override
-    public String getDescription() {
-        return description;
+    @Throws(DataLoggerNotAvailableException::class, IOException::class)
+    override fun getLoggedRecords(startTime: Long): List<Record?>? {
+        return null
     }
 
-    @Override
-    public String getSettings() {
-        return settings;
+    @Throws(DataLoggerNotAvailableException::class, IOException::class)
+    override fun getLoggedRecords(startTime: Long, endTime: Long): List<Record?>? {
+        return null
     }
 
-    @Override
-    public String getLoggingSettings() {
-        return "";
-    }
-
-    @Override
-    public String getUnit() {
-        return unit;
-    }
-
-    @Override
-    public ValueType getValueType() {
-        return valueType;
-    }
-
-    @Override
-    public int getSamplingInterval() {
-        return samplingInterval;
-    }
-
-    @Override
-    public int getSamplingTimeOffset() {
-        return samplingTimeOffset;
-    }
-
-    @Override
-    public int getSamplingTimeout() {
-        return samplingTimeout;
-    }
-
-    @Override
-    public int getLoggingInterval() {
-        return 0;
-    }
-
-    @Override
-    public int getLoggingTimeOffset() {
-        return 0;
-    }
-
-    @Override
-    public String getDriverName() {
-        return null;
-    }
-
-    @Override
-    public String getDeviceAddress() {
-        return deviceAddress;
-    }
-
-    @Override
-    public String getDeviceName() {
-        return null;
-    }
-
-    @Override
-    public String getDeviceDescription() {
-        return null;
-    }
-
-    @Override
-    public ChannelState getChannelState() {
-        return null;
-    }
-
-    @Override
-    public DeviceState getDeviceState() {
-        return null;
-    }
-
-    @Override
-    public void addListener(RecordListener listener) {
-    }
-
-    @Override
-    public void removeListener(RecordListener listener) {
-    }
-
-    @Override
-    public boolean isConnected() {
-        return false;
-    }
-
-    @Override
-    public Record getLatestRecord() {
-        return null;
-    }
-
-    @Override
-    public void setLatestRecord(Record record) {
-    }
-
-    @Override
-    public Flag write(Value value) {
-        return null;
-    }
-
-    @Override
-    public void writeFuture(List<FutureValue> values) {
-    }
-
-    @Override
-    public WriteValueContainer getWriteContainer() {
-        return null;
-    }
-
-    @Override
-    public Record read() {
-        return null;
-    }
-
-    @Override
-    public ReadRecordContainer getReadContainer() {
-        return null;
-    }
-
-    @Override
-    public Record getLoggedRecord(long time) throws DataLoggerNotAvailableException, IOException {
-        return null;
-    }
-
-    @Override
-    public List<Record> getLoggedRecords(long startTime) throws DataLoggerNotAvailableException, IOException {
-        return null;
-    }
-
-    @Override
-    public List<Record> getLoggedRecords(long startTime, long endTime)
-            throws DataLoggerNotAvailableException, IOException {
-        return null;
-    }
-
-    @Override
-    public double getScalingFactor() {
-        return 0;
-    }
-
+    override val scalingFactor: Double
+        get() = 0
 }

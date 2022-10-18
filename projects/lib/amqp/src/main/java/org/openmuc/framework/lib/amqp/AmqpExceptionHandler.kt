@@ -18,32 +18,33 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.amqp;
+package org.openmuc.framework.lib.amqp
 
-import java.net.ConnectException;
+import com.rabbitmq.client.Connection
+import com.rabbitmq.client.ExceptionHandler
+import com.rabbitmq.client.impl.ForgivingExceptionHandler
+import org.slf4j.LoggerFactory
+import java.net.ConnectException
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.ExceptionHandler;
-import com.rabbitmq.client.impl.ForgivingExceptionHandler;
-
-class AmqpExceptionHandler extends ForgivingExceptionHandler implements ExceptionHandler {
-    private static final Logger logger = LoggerFactory.getLogger(AmqpExceptionHandler.class);
-
-    @Override
-    public void handleUnexpectedConnectionDriverException(Connection conn, Throwable exception) {
-        logger.error("[{}:{}] Exception detected: {}", conn.getAddress().getHostName(), conn.getPort(),
-                exception.getMessage());
+internal class AmqpExceptionHandler : ForgivingExceptionHandler(), ExceptionHandler {
+    override fun handleUnexpectedConnectionDriverException(conn: Connection, exception: Throwable) {
+        logger.error(
+            "[{}:{}] Exception detected: {}", conn.address.hostName, conn.port,
+            exception.message
+        )
     }
 
-    @Override
-    public void handleConnectionRecoveryException(Connection conn, Throwable exception) {
+    override fun handleConnectionRecoveryException(conn: Connection, exception: Throwable) {
         // ConnectExceptions are expected during recovery
-        if (!(exception instanceof ConnectException)) {
-            logger.error("[{}:{}] Exception in recovery: {}", conn.getAddress().getHostName(), conn.getPort(),
-                    exception.toString());
+        if (exception !is ConnectException) {
+            logger.error(
+                "[{}:{}] Exception in recovery: {}", conn.address.hostName, conn.port,
+                exception.toString()
+            )
         }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(AmqpExceptionHandler::class.java)
     }
 }

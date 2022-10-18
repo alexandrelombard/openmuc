@@ -18,22 +18,6 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.amqp;
+package org.openmuc.framework.lib.amqp
 
-public class AmqpMessageTuple {
-    private final String routingKey;
-    private final byte[] message;
-
-    AmqpMessageTuple(String routingKey, byte[] message) {
-        this.routingKey = routingKey;
-        this.message = message;
-    }
-
-    public String getRoutingKey() {
-        return routingKey;
-    }
-
-    public byte[] getMessage() {
-        return message;
-    }
-}
+class AmqpMessageTuple internal constructor(val routingKey: String?, val message: ByteArray?)

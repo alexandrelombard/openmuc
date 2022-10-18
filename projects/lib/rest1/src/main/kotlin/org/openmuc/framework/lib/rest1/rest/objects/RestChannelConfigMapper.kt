@@ -18,81 +18,73 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.rest1.rest.objects;
+package org.openmuc.framework.lib.rest1.rest.objects
 
-import java.util.List;
+import org.openmuc.framework.config.ChannelConfig
+import org.openmuc.framework.config.IdCollisionException
+import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException
 
-import org.openmuc.framework.config.ChannelConfig;
-import org.openmuc.framework.config.IdCollisionException;
-import org.openmuc.framework.config.ServerMapping;
-import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException;
-
-public class RestChannelConfigMapper {
-
-    public static RestChannelConfig getRestChannelConfig(ChannelConfig cc) {
-
-        RestChannelConfig rcc = new RestChannelConfig();
-        rcc.setChannelAddress(cc.getChannelAddress());
-        rcc.setDescription(cc.getDescription());
-        rcc.setDisabled(cc.isDisabled());
-        rcc.setId(cc.getId());
-        rcc.setListening(cc.isListening());
-        rcc.setLoggingInterval(cc.getLoggingInterval());
-        rcc.setLoggingTimeOffset(cc.getLoggingTimeOffset());
-        rcc.setLoggingSettings(cc.getLoggingSettings());
-        rcc.setSamplingGroup(cc.getSamplingGroup());
-        rcc.setSamplingInterval(cc.getSamplingInterval());
-        rcc.setSamplingTimeOffset(cc.getSamplingTimeOffset());
-        rcc.setScalingFactor(cc.getScalingFactor());
-        rcc.setServerMappings(cc.getServerMappings());
-        rcc.setSettings(cc.getSettings());
-        rcc.setUnit(cc.getUnit());
-        rcc.setValueOffset(cc.getValueOffset());
-        rcc.setValueType(cc.getValueType());
-        rcc.setValueTypeLength(cc.getValueTypeLength());
-        rcc.setLoggingEvent(cc.isLoggingEvent());
-        return rcc;
+object RestChannelConfigMapper {
+    fun getRestChannelConfig(cc: ChannelConfig): RestChannelConfig {
+        val rcc = RestChannelConfig()
+        rcc.channelAddress = cc.channelAddress
+        rcc.description = cc.description
+        rcc.isDisabled = cc.isDisabled
+        rcc.id = cc.id
+        rcc.isListening = cc.isListening
+        rcc.loggingInterval = cc.loggingInterval
+        rcc.loggingTimeOffset = cc.loggingTimeOffset
+        rcc.loggingSettings = cc.loggingSettings
+        rcc.samplingGroup = cc.samplingGroup
+        rcc.samplingInterval = cc.samplingInterval
+        rcc.samplingTimeOffset = cc.samplingTimeOffset
+        rcc.scalingFactor = cc.scalingFactor
+        rcc.serverMappings = cc.serverMappings
+        rcc.settings = cc.settings
+        rcc.unit = cc.unit
+        rcc.valueOffset = cc.valueOffset
+        rcc.valueType = cc.valueType
+        rcc.valueTypeLength = cc.valueTypeLength
+        rcc.isLoggingEvent = cc.isLoggingEvent
+        return rcc
     }
 
-    public static void setChannelConfig(ChannelConfig cc, RestChannelConfig rcc, String idFromUrl)
-            throws IdCollisionException, RestConfigIsNotCorrectException {
+    @Throws(IdCollisionException::class, RestConfigIsNotCorrectException::class)
+    fun setChannelConfig(cc: ChannelConfig?, rcc: RestChannelConfig?, idFromUrl: String) {
         if (cc == null) {
-            throw new RestConfigIsNotCorrectException("ChannelConfig is null!");
+            throw RestConfigIsNotCorrectException("ChannelConfig is null!")
         }
-
         if (rcc == null) {
-            throw new RestConfigIsNotCorrectException();
+            throw RestConfigIsNotCorrectException()
         }
-
-        if (rcc.getId() != null && !rcc.getId().isEmpty() && !idFromUrl.equals(rcc.getId())) {
-            cc.setId(rcc.getId());
+        if (rcc.id != null && !rcc.id.isEmpty() && idFromUrl != rcc.id) {
+            cc.id = rcc.id
         }
-        cc.setChannelAddress(rcc.getChannelAddress());
-        cc.setDescription(rcc.getDescription());
-        cc.setDisabled(rcc.isDisabled());
-        cc.setListening(rcc.isListening());
-        cc.setLoggingInterval(rcc.getLoggingInterval());
-        cc.setLoggingTimeOffset(rcc.getLoggingTimeOffset());
-        cc.setLoggingEvent(rcc.isLoggingEvent());
-        cc.setLoggingSettings(rcc.getLoggingSettings());
-        cc.setSamplingGroup(rcc.getSamplingGroup());
-        cc.setSamplingInterval(rcc.getSamplingInterval());
-        cc.setSamplingTimeOffset(rcc.getSamplingTimeOffset());
-        cc.setScalingFactor(rcc.getScalingFactor());
-        List<ServerMapping> serverMappings = rcc.getServerMappings();
+        cc.channelAddress = rcc.channelAddress
+        cc.description = rcc.description
+        cc.isDisabled = rcc.isDisabled
+        cc.isListening = rcc.isListening
+        cc.loggingInterval = rcc.loggingInterval
+        cc.loggingTimeOffset = rcc.loggingTimeOffset
+        cc.isLoggingEvent = rcc.isLoggingEvent
+        cc.loggingSettings = rcc.loggingSettings
+        cc.samplingGroup = rcc.samplingGroup
+        cc.samplingInterval = rcc.samplingInterval
+        cc.samplingTimeOffset = rcc.samplingTimeOffset
+        cc.scalingFactor = rcc.scalingFactor
+        val serverMappings = rcc.serverMappings
         if (serverMappings != null) {
-            for (ServerMapping serverMapping : cc.getServerMappings()) {
-                cc.deleteServerMappings(serverMapping.getId());
+            for (serverMapping in cc.serverMappings!!) {
+                cc.deleteServerMappings(serverMapping!!.id)
             }
-            for (ServerMapping restServerMapping : serverMappings) {
-                cc.addServerMapping(restServerMapping);
+            for (restServerMapping in serverMappings) {
+                cc.addServerMapping(restServerMapping)
             }
         }
-        cc.setSettings(rcc.getSettings());
-        cc.setUnit(rcc.getUnit());
-        cc.setValueOffset(rcc.getValueOffset());
-        cc.setValueType(rcc.getValueType());
-        cc.setValueTypeLength(rcc.getValueTypeLength());
+        cc.settings = rcc.settings
+        cc.unit = rcc.unit
+        cc.valueOffset = rcc.valueOffset
+        cc.valueType = rcc.valueType
+        cc.valueTypeLength = rcc.valueTypeLength
     }
-
 }

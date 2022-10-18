@@ -18,115 +18,99 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.driver.modbus
 
-package org.openmuc.framework.driver.modbus;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.openmuc.framework.data.BooleanValue;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.driver.spi.ChannelRecordContainer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ghgande.j2mod.modbus.procimg.InputRegister;
-import com.ghgande.j2mod.modbus.util.BitVector;
+import com.ghgande.j2mod.modbus.procimg.InputRegister
+import com.ghgande.j2mod.modbus.util.BitVector
+import org.openmuc.framework.data.BooleanValue
+import org.openmuc.framework.data.Record
+import org.openmuc.framework.driver.spi.ChannelRecordContainer
+import org.slf4j.LoggerFactory
 
 /**
  * Represents a group of channels which is used for a multiple read request
  */
-public class ModbusChannelGroup {
+class ModbusChannelGroup(val samplingGroup: String, val channels: ArrayList<ModbusChannel?>) {
+    var primaryTable: EPrimaryTable? = null
+        private set
 
-    private static final Logger logger = LoggerFactory.getLogger(ModbusChannelGroup.class);
+    /** Start address to read from  */
+    var startAddress = 0
+        private set
 
-    private static final int INVALID = -1;
+    /** Number of Registers/Coils to be read from startAddress  */
+    var count = 0
+        private set
+    var unitId = 0
+        private set
+    var functionCode: EFunctionCode? = null
+        private set
 
-    private EPrimaryTable primaryTable;
-    private final ArrayList<ModbusChannel> channels;
-
-    /** Start address to read from */
-    private int startAddress;
-
-    /** Number of Registers/Coils to be read from startAddress */
-    private int count;
-
-    private int unitId;
-    private EFunctionCode functionCode;
-    private final String samplingGroup;
-
-    public ModbusChannelGroup(String samplingGroup, ArrayList<ModbusChannel> channels) {
-        this.samplingGroup = samplingGroup;
-        this.channels = channels;
-        setPrimaryTable();
-        setUnitId();
-        setStartAddress();
-        setCount();
-        setFunctionCode();
+    init {
+        setPrimaryTable()
+        setUnitId()
+        setStartAddress()
+        setCount()
+        setFunctionCode()
     }
 
-    public String getInfo() {
-        String info = "SamplingGroup: '" + samplingGroup + "' Channels: ";
-        for (ModbusChannel channel : channels) {
-            info += channel.getStartAddress() + ":" + channel.getDatatype() + ", ";
-        }
-        return info;
-    }
-
-    private void setFunctionCode() {
-
-        boolean init = false;
-        EFunctionCode tempFunctionCode = null;
-
-        for (ModbusChannel channel : channels) {
-            if (!init) {
-                tempFunctionCode = channel.getFunctionCode();
-                init = true;
+    val info: String
+        get() {
+            var info = "SamplingGroup: '$samplingGroup' Channels: "
+            for (channel in channels) {
+                info += channel.getStartAddress().toString() + ":" + channel.getDatatype() + ", "
             }
-            else {
-                if (!tempFunctionCode.equals(channel.getFunctionCode())) {
-                    throw new RuntimeException("FunctionCodes of all channels within the samplingGroup '"
-                            + samplingGroup + "' are not equal! Change your openmuc config.");
+            return info
+        }
+
+    private fun setFunctionCode() {
+        var init = false
+        var tempFunctionCode: EFunctionCode? = null
+        for (channel in channels) {
+            if (!init) {
+                tempFunctionCode = channel.getFunctionCode()
+                init = true
+            } else {
+                if (tempFunctionCode != channel.getFunctionCode()) {
+                    throw RuntimeException(
+                        "FunctionCodes of all channels within the samplingGroup '"
+                                + samplingGroup + "' are not equal! Change your openmuc config."
+                    )
                 }
             }
         }
-
-        functionCode = tempFunctionCode;
+        functionCode = tempFunctionCode
     }
 
     /**
      * Checks if the primary table of all channels of the sampling group is equal and sets the value for the channel
      * group.
      */
-    private void setPrimaryTable() {
-
-        boolean init = false;
-        EPrimaryTable tempPrimaryTable = null;
-
-        for (ModbusChannel channel : channels) {
+    private fun setPrimaryTable() {
+        var init = false
+        var tempPrimaryTable: EPrimaryTable? = null
+        for (channel in channels) {
             if (!init) {
-                tempPrimaryTable = channel.getPrimaryTable();
-                init = true;
-            }
-            else {
-                if (!tempPrimaryTable.equals(channel.getPrimaryTable())) {
-                    throw new RuntimeException("Primary tables of all channels within the samplingGroup '"
-                            + samplingGroup + "' are not equal! Change your openmuc config.");
+                tempPrimaryTable = channel.getPrimaryTable()
+                init = true
+            } else {
+                if (tempPrimaryTable != channel.getPrimaryTable()) {
+                    throw RuntimeException(
+                        "Primary tables of all channels within the samplingGroup '"
+                                + samplingGroup + "' are not equal! Change your openmuc config."
+                    )
                 }
             }
         }
-
-        primaryTable = tempPrimaryTable;
+        primaryTable = tempPrimaryTable
     }
 
-    private void setUnitId() {
-        int idOfFirstChannel = INVALID;
-        for (ModbusChannel channel : channels) {
+    private fun setUnitId() {
+        var idOfFirstChannel = INVALID
+        for (channel in channels) {
             if (idOfFirstChannel == INVALID) {
-                idOfFirstChannel = channel.getUnitId();
-            }
-            else {
+                idOfFirstChannel = channel.getUnitId()
+            } else {
                 if (channel.getUnitId() != idOfFirstChannel) {
 
                     // TODO ???
@@ -135,26 +119,26 @@ public class ModbusChannelGroup {
                     // Does openmuc calls the read method for channels of different devices?
                     // If so, then the check for UnitID has to be modified. Only channels of the same device
                     // need to have the same unitId...
-                    throw new RuntimeException("UnitIds of all channels within the samplingGroup '" + samplingGroup
-                            + "' are not equal! Change your openmuc config.");
+                    throw RuntimeException(
+                        "UnitIds of all channels within the samplingGroup '" + samplingGroup
+                                + "' are not equal! Change your openmuc config."
+                    )
                 }
             }
         }
-        unitId = idOfFirstChannel;
+        unitId = idOfFirstChannel
     }
 
     /**
      * StartAddress is the smallest channel address of the group
      */
-    private void setStartAddress() {
-
-        startAddress = INVALID;
-        for (ModbusChannel channel : channels) {
-            if (startAddress == INVALID) {
-                startAddress = channel.getStartAddress();
-            }
-            else {
-                startAddress = Math.min(startAddress, channel.getStartAddress());
+    private fun setStartAddress() {
+        startAddress = INVALID
+        for (channel in channels) {
+            startAddress = if (startAddress == INVALID) {
+                channel.getStartAddress()
+            } else {
+                Math.min(startAddress, channel.getStartAddress())
             }
         }
     }
@@ -162,100 +146,69 @@ public class ModbusChannelGroup {
     /**
      *
      */
-    private void setCount() {
-
-        int maximumAddress = startAddress;
-
-        for (ModbusChannel channel : channels) {
-            maximumAddress = Math.max(maximumAddress, channel.getStartAddress() + channel.getCount());
+    private fun setCount() {
+        var maximumAddress = startAddress
+        for (channel in channels) {
+            maximumAddress = Math.max(maximumAddress, channel.getStartAddress() + channel.getCount())
         }
-
-        count = maximumAddress - startAddress;
+        count = maximumAddress - startAddress
     }
 
-    public void setChannelValues(InputRegister[] inputRegisters, List<ChannelRecordContainer> containers) {
-
-        for (ModbusChannel channel : channels) {
+    fun setChannelValues(inputRegisters: Array<InputRegister?>?, containers: List<ChannelRecordContainer>) {
+        for (channel in channels) {
             // determine start index of the registers which contain the values of the channel
-            int registerIndex = channel.getStartAddress() - getStartAddress();
+            val registerIndex = channel.getStartAddress() - startAddress
             // create a temporary register array
-            InputRegister[] registers = new InputRegister[channel.getCount()];
+            val registers = arrayOfNulls<InputRegister>(channel.getCount())
             // copy relevant registers for the channel
-            System.arraycopy(inputRegisters, registerIndex, registers, 0, channel.getCount());
+            System.arraycopy(inputRegisters, registerIndex, registers, 0, channel.getCount())
 
             // now we have a register array which contains the value of the channel
-            ChannelRecordContainer container = searchContainer(channel.getChannelAddress(), containers);
-
-            long receiveTime = System.currentTimeMillis();
-
-            Value value = ModbusDriverUtil.getRegistersValue(registers, channel.getDatatype());
-
-            if (logger.isTraceEnabled()) {
-                logger.trace("response value channel " + channel.getChannelAddress() + ": " + value.toString());
+            val container = searchContainer(channel.getChannelAddress(), containers)
+            val receiveTime = System.currentTimeMillis()
+            val value = ModbusDriverUtil.getRegistersValue(registers, channel.getDatatype())
+            if (logger.isTraceEnabled) {
+                logger.trace("response value channel " + channel.getChannelAddress() + ": " + value.toString())
             }
-
-            container.setRecord(new Record(value, receiveTime));
+            container.setRecord(Record(value, receiveTime))
         }
     }
 
-    public void setChannelValues(BitVector bitVector, List<ChannelRecordContainer> containers) {
-
-        for (ModbusChannel channel : channels) {
-
-            long receiveTime = System.currentTimeMillis();
+    fun setChannelValues(bitVector: BitVector, containers: List<ChannelRecordContainer>) {
+        for (channel in channels) {
+            val receiveTime = System.currentTimeMillis()
 
             // determine start index of the registers which contain the values of the channel
-            int index = channel.getStartAddress() - getStartAddress();
-
-            BooleanValue value = new BooleanValue(bitVector.getBit(index));
-            ChannelRecordContainer container = searchContainer(channel.getChannelAddress(), containers);
-            container.setRecord(new Record(value, receiveTime));
+            val index = channel.getStartAddress() - startAddress
+            val value = BooleanValue(bitVector.getBit(index))
+            val container = searchContainer(channel.getChannelAddress(), containers)
+            container.setRecord(Record(value, receiveTime))
         }
     }
 
-    private ChannelRecordContainer searchContainer(String channelAddress, List<ChannelRecordContainer> containers) {
-        for (ChannelRecordContainer container : containers) {
-            if (container.getChannelAddress().equalsIgnoreCase(channelAddress)) {
-                return container;
+    private fun searchContainer(
+        channelAddress: String?,
+        containers: List<ChannelRecordContainer>
+    ): ChannelRecordContainer {
+        for (container in containers) {
+            if (container.channelAddress.equals(channelAddress, ignoreCase = true)) {
+                return container
             }
         }
-        throw new RuntimeException("No ChannelRecordContainer found for channelAddress " + channelAddress);
+        throw RuntimeException("No ChannelRecordContainer found for channelAddress $channelAddress")
     }
 
-    public boolean isEmpty() {
-        boolean result = true;
-        if (channels.size() != 0) {
-            result = false;
+    val isEmpty: Boolean
+        get() {
+            var result = true
+            if (channels.size != 0) {
+                result = false
+            }
+            return result
         }
-        return result;
-    }
 
-    public EPrimaryTable getPrimaryTable() {
-        return primaryTable;
+    companion object {
+        private val logger = LoggerFactory.getLogger(ModbusChannelGroup::class.java)
+        private const val INVALID = -1
     }
-
-    public int getStartAddress() {
-        return startAddress;
-    }
-
-    public int getCount() {
-        return count;
-    }
-
-    public int getUnitId() {
-        return unitId;
-    }
-
-    public String getSamplingGroup() {
-        return samplingGroup;
-    }
-
-    public EFunctionCode getFunctionCode() {
-        return functionCode;
-    }
-
-    public ArrayList<ModbusChannel> getChannels() {
-        return channels;
-    }
-
 }

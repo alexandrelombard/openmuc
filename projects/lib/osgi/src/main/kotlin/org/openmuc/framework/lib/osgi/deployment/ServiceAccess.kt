@@ -18,17 +18,15 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-package org.openmuc.framework.lib.osgi.deployment;
+package org.openmuc.framework.lib.osgi.deployment
 
 /**
  * Helper interface to set services
  */
-public interface ServiceAccess {
-
+interface ServiceAccess {
     /**
      * @param serviceRef
-     *            The service to set
+     * The service to set
      */
-    public void setService(Object serviceRef);
+    fun setService(serviceRef: Any?)
 }

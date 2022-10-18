@@ -18,29 +18,21 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.modbus.register;
+package org.openmuc.framework.server.modbus.register
 
-import org.openmuc.framework.data.FloatValue;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.dataaccess.Channel;
+import org.openmuc.framework.data.FloatValue
+import org.openmuc.framework.dataaccess.Channel
 
-public class FloatMappingInputRegister extends MappingInputRegister {
-
-    public FloatMappingInputRegister(Channel channel, int byteHigh, int byteLow) {
-        super(channel, byteHigh, byteLow);
-    }
-
-    @Override
-    public byte[] toBytes() {
-        byte[] bytes;
-        if (useUnscaledValues) {
-            Value value = channel.getLatestRecord().getValue();
-            bytes = new FloatValue(value.asFloat() / (float) channel.getScalingFactor()).asByteArray();
+class FloatMappingInputRegister(channel: Channel, byteHigh: Int, byteLow: Int) :
+    MappingInputRegister(channel, byteHigh, byteLow) {
+    override fun toBytes(): ByteArray {
+        val bytes: ByteArray?
+        bytes = if (useUnscaledValues) {
+            val value = channel.latestRecord!!.value
+            FloatValue(value!!.asFloat() / channel.scalingFactor.toFloat()).asByteArray()
+        } else {
+            FloatValue(channel.latestRecord!!.value!!.asFloat()).asByteArray()
         }
-        else {
-            bytes = new FloatValue(channel.getLatestRecord().getValue().asFloat()).asByteArray();
-        }
-        return new byte[] { bytes[highByte], bytes[lowByte] };
+        return byteArrayOf(bytes!![highByte], bytes[lowByte])
     }
-
 }

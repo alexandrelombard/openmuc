@@ -18,29 +18,21 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.modbus.register;
+package org.openmuc.framework.server.modbus.register
 
-import org.openmuc.framework.data.DoubleValue;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.dataaccess.Channel;
+import org.openmuc.framework.data.DoubleValue
+import org.openmuc.framework.dataaccess.Channel
 
-public class DoubleMappingInputRegister extends MappingInputRegister {
-
-    public DoubleMappingInputRegister(Channel channel, int byteHigh, int byteLow) {
-        super(channel, byteHigh, byteLow);
-    }
-
-    @Override
-    public byte[] toBytes() {
-        byte[] bytes;
-        if (useUnscaledValues) {
-            Value value = channel.getLatestRecord().getValue();
-            bytes = new DoubleValue(value.asDouble() / channel.getScalingFactor()).asByteArray();
+class DoubleMappingInputRegister(channel: Channel, byteHigh: Int, byteLow: Int) :
+    MappingInputRegister(channel, byteHigh, byteLow) {
+    override fun toBytes(): ByteArray {
+        val bytes: ByteArray?
+        bytes = if (useUnscaledValues) {
+            val value = channel.latestRecord!!.value
+            DoubleValue(value!!.asDouble() / channel.scalingFactor).asByteArray()
+        } else {
+            DoubleValue(channel.latestRecord!!.value!!.asDouble()).asByteArray()
         }
-        else {
-            bytes = new DoubleValue(channel.getLatestRecord().getValue().asDouble()).asByteArray();
-        }
-        return new byte[] { bytes[highByte], bytes[lowByte] };
+        return byteArrayOf(bytes!![highByte], bytes[lowByte])
     }
-
 }

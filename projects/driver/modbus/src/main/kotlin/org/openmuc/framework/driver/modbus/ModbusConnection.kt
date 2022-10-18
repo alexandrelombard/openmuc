@@ -18,69 +18,46 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.modbus;
+package org.openmuc.framework.driver.modbus
 
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.List;
+import com.ghgande.j2mod.modbus.ModbusException
+import com.ghgande.j2mod.modbus.ModbusIOException
+import com.ghgande.j2mod.modbus.ModbusSlaveException
+import com.ghgande.j2mod.modbus.io.ModbusSerialTransaction
+import com.ghgande.j2mod.modbus.io.ModbusTCPTransaction
+import com.ghgande.j2mod.modbus.io.ModbusTransaction
+import com.ghgande.j2mod.modbus.msg.*
+import com.ghgande.j2mod.modbus.procimg.InputRegister
+import com.ghgande.j2mod.modbus.procimg.Register
+import com.ghgande.j2mod.modbus.procimg.SimpleRegister
+import com.ghgande.j2mod.modbus.util.BitVector
+import org.openmuc.framework.data.Flag
+import org.openmuc.framework.data.Record
+import org.openmuc.framework.data.Value
+import org.openmuc.framework.driver.modbus.ModbusChannel.EAccess
+import org.openmuc.framework.driver.spi.*
+import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.slf4j.LoggerFactory
+import java.util.*
 
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.driver.modbus.ModbusChannel.EAccess;
-import org.openmuc.framework.driver.spi.ChannelRecordContainer;
-import org.openmuc.framework.driver.spi.Connection;
-import org.openmuc.framework.driver.spi.ConnectionException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+abstract class ModbusConnection : Connection {
+    private var transaction: ModbusTransaction? = null
 
-import com.ghgande.j2mod.modbus.ModbusException;
-import com.ghgande.j2mod.modbus.ModbusIOException;
-import com.ghgande.j2mod.modbus.ModbusSlaveException;
-import com.ghgande.j2mod.modbus.io.ModbusSerialTransaction;
-import com.ghgande.j2mod.modbus.io.ModbusTCPTransaction;
-import com.ghgande.j2mod.modbus.io.ModbusTransaction;
-import com.ghgande.j2mod.modbus.msg.ModbusRequest;
-import com.ghgande.j2mod.modbus.msg.ModbusResponse;
-import com.ghgande.j2mod.modbus.msg.ReadCoilsRequest;
-import com.ghgande.j2mod.modbus.msg.ReadCoilsResponse;
-import com.ghgande.j2mod.modbus.msg.ReadInputDiscretesRequest;
-import com.ghgande.j2mod.modbus.msg.ReadInputDiscretesResponse;
-import com.ghgande.j2mod.modbus.msg.ReadInputRegistersRequest;
-import com.ghgande.j2mod.modbus.msg.ReadInputRegistersResponse;
-import com.ghgande.j2mod.modbus.msg.ReadMultipleRegistersRequest;
-import com.ghgande.j2mod.modbus.msg.ReadMultipleRegistersResponse;
-import com.ghgande.j2mod.modbus.msg.WriteCoilRequest;
-import com.ghgande.j2mod.modbus.msg.WriteMultipleCoilsRequest;
-import com.ghgande.j2mod.modbus.msg.WriteMultipleRegistersRequest;
-import com.ghgande.j2mod.modbus.msg.WriteSingleRegisterRequest;
-import com.ghgande.j2mod.modbus.procimg.InputRegister;
-import com.ghgande.j2mod.modbus.procimg.Register;
-import com.ghgande.j2mod.modbus.procimg.SimpleRegister;
-import com.ghgande.j2mod.modbus.util.BitVector;
-
-public abstract class ModbusConnection implements Connection {
-
-    private static final Logger logger = LoggerFactory.getLogger(ModbusConnection.class);
-
-    private ModbusTransaction transaction;
     // List do manage Channel Objects to avoid to check the syntax of each channel address for every read or write
-    private final Hashtable<String, ModbusChannel> modbusChannels;
+    private val modbusChannels: Hashtable<String?, ModbusChannel>
+    private var requestTransactionId = 0
+    private val MAX_RETRIES_FOR_JAMOD = 0
+    private val MAX_RETRIES_FOR_DRIVER = 3
+    @Throws(ConnectionException::class)
+    abstract fun connect()
 
-    private int requestTransactionId;
-    private final int MAX_RETRIES_FOR_JAMOD = 0;
-    private final int MAX_RETRIES_FOR_DRIVER = 3;
-
-    public abstract void connect() throws ConnectionException;
-
-    public ModbusConnection() {
-
-        transaction = null;
-        modbusChannels = new Hashtable<>();
+    init {
+        modbusChannels = Hashtable()
     }
 
-    public synchronized void setTransaction(ModbusTransaction transaction) {
-        this.transaction = transaction;
+    @Synchronized
+    fun setTransaction(transaction: ModbusTransaction?) {
+        this.transaction = transaction
 
         // WORKAROUND: The jamod ModbusTCPTransaction.execute() tries maximum 3 times (default) to sent request and read
         // response. Problematic is a "java.net.SocketTimeoutException: Read timed out" while trying to get the
@@ -91,181 +68,174 @@ public abstract class ModbusConnection implements Connection {
         // handle it, according to our needs
         // TODO: We might need to implement our own retry mechanism within the driver so that the first timeout doesn't
         // directly causes a ConnectionException
-        this.transaction.setRetries(MAX_RETRIES_FOR_JAMOD);
+        this.transaction!!.retries = MAX_RETRIES_FOR_JAMOD
     }
 
-    public Value readChannel(ModbusChannel channel) throws ModbusException {
-
-        if (logger.isDebugEnabled()) {
-            logger.debug("read channel: " + channel.getChannelAddress());
+    @Throws(ModbusException::class)
+    fun readChannel(channel: ModbusChannel): Value? {
+        if (logger.isDebugEnabled) {
+            logger.debug("read channel: " + channel.channelAddress)
         }
+        var value: Value? = null
+        value = when (channel.functionCode) {
+            EFunctionCode.FC_01_READ_COILS -> ModbusDriverUtil.getBitVectorsValue(readCoils(channel))
+            EFunctionCode.FC_02_READ_DISCRETE_INPUTS -> ModbusDriverUtil.getBitVectorsValue(readDiscreteInputs(channel))
+            EFunctionCode.FC_03_READ_HOLDING_REGISTERS -> ModbusDriverUtil.getRegistersValue(
+                readHoldingRegisters(channel),
+                channel.datatype
+            )
 
-        Value value = null;
+            EFunctionCode.FC_04_READ_INPUT_REGISTERS -> ModbusDriverUtil.getRegistersValue(
+                readInputRegisters(channel),
+                channel.datatype
+            )
 
-        switch (channel.getFunctionCode()) {
-        case FC_01_READ_COILS:
-            value = ModbusDriverUtil.getBitVectorsValue(readCoils(channel));
-            break;
-        case FC_02_READ_DISCRETE_INPUTS:
-            value = ModbusDriverUtil.getBitVectorsValue(readDiscreteInputs(channel));
-            break;
-        case FC_03_READ_HOLDING_REGISTERS:
-            value = ModbusDriverUtil.getRegistersValue(readHoldingRegisters(channel), channel.getDatatype());
-            break;
-        case FC_04_READ_INPUT_REGISTERS:
-            value = ModbusDriverUtil.getRegistersValue(readInputRegisters(channel), channel.getDatatype());
-            break;
-        default:
-            throw new RuntimeException("FunctionCode " + channel.getFunctionCode() + " not supported yet");
+            else -> throw RuntimeException("FunctionCode " + channel.functionCode + " not supported yet")
         }
-
-        return value;
+        return value
     }
 
-    public Object readChannelGroupHighLevel(List<ChannelRecordContainer> containers, Object containerListHandle,
-            String samplingGroup) throws ConnectionException {
+    @Throws(ConnectionException::class)
+    fun readChannelGroupHighLevel(
+        containers: List<ChannelRecordContainer>, containerListHandle: Any?,
+        samplingGroup: String
+    ): Any {
 
         // NOTE: containerListHandle is null if something changed in configuration!!!
-
-        ModbusChannelGroup channelGroup = null;
+        var channelGroup: ModbusChannelGroup? = null
 
         // use existing channelGroup
         if (containerListHandle != null) {
-            if (containerListHandle instanceof ModbusChannelGroup) {
-                channelGroup = (ModbusChannelGroup) containerListHandle;
+            if (containerListHandle is ModbusChannelGroup) {
+                channelGroup = containerListHandle
             }
         }
 
         // create new channelGroup
         if (channelGroup == null) {
-            ArrayList<ModbusChannel> channelList = new ArrayList<>();
-            for (ChannelRecordContainer container : containers) {
-                channelList.add(getModbusChannel(container.getChannelAddress(), EAccess.READ));
+            val channelList = ArrayList<ModbusChannel?>()
+            for (container in containers) {
+                channelList.add(getModbusChannel(container.channelAddress, EAccess.READ))
             }
-            channelGroup = new ModbusChannelGroup(samplingGroup, channelList);
+            channelGroup = ModbusChannelGroup(samplingGroup, channelList)
         }
 
         // read all channels of the group
         try {
-            readChannelGroup(channelGroup, containers);
-
-        } catch (ModbusIOException e) {
-            logger.error("ModbusIOException while reading samplingGroup:" + samplingGroup, e);
-            disconnect();
-            throw new ConnectionException(e);
-        } catch (ModbusException e) {
-            logger.error("Unable to read ChannelGroup " + samplingGroup, e);
+            readChannelGroup(channelGroup, containers)
+        } catch (e: ModbusIOException) {
+            logger.error("ModbusIOException while reading samplingGroup:$samplingGroup", e)
+            disconnect()
+            throw ConnectionException(e)
+        } catch (e: ModbusException) {
+            logger.error("Unable to read ChannelGroup $samplingGroup", e)
 
             // set channel values and flag, otherwise the datamanager will throw a null pointer exception
             // and the framework collapses.
-            setChannelsWithErrorFlag(containers);
+            setChannelsWithErrorFlag(containers)
         }
-        return channelGroup;
+        return channelGroup
     }
 
-    private void readChannelGroup(ModbusChannelGroup channelGroup, List<ChannelRecordContainer> containers)
-            throws ModbusException {
+    @Throws(ModbusException::class)
+    private fun readChannelGroup(channelGroup: ModbusChannelGroup, containers: List<ChannelRecordContainer>) {
+        when (channelGroup.functionCode) {
+            EFunctionCode.FC_01_READ_COILS -> {
+                val coils = readCoils(channelGroup)
+                channelGroup.setChannelValues(coils, containers)
+            }
 
-        switch (channelGroup.getFunctionCode()) {
-        case FC_01_READ_COILS:
-            BitVector coils = readCoils(channelGroup);
-            channelGroup.setChannelValues(coils, containers);
-            break;
-        case FC_02_READ_DISCRETE_INPUTS:
-            BitVector discretInput = readDiscreteInputs(channelGroup);
-            channelGroup.setChannelValues(discretInput, containers);
-            break;
-        case FC_03_READ_HOLDING_REGISTERS:
-            Register[] registers = readHoldingRegisters(channelGroup);
-            channelGroup.setChannelValues(registers, containers);
-            break;
-        case FC_04_READ_INPUT_REGISTERS:
-            InputRegister[] inputRegisters = readInputRegisters(channelGroup);
-            channelGroup.setChannelValues(inputRegisters, containers);
-            break;
-        default:
-            throw new RuntimeException("FunctionCode " + channelGroup.getFunctionCode() + " not supported yet");
-        }
-    }
+            EFunctionCode.FC_02_READ_DISCRETE_INPUTS -> {
+                val discretInput = readDiscreteInputs(channelGroup)
+                channelGroup.setChannelValues(discretInput, containers)
+            }
 
-    public void writeChannel(ModbusChannel channel, Value value) throws ModbusException, RuntimeException {
+            EFunctionCode.FC_03_READ_HOLDING_REGISTERS -> {
+                val registers = readHoldingRegisters(channelGroup)
+                channelGroup.setChannelValues(registers, containers)
+            }
 
-        if (logger.isDebugEnabled()) {
-            logger.debug("write channel: {}", channel.getChannelAddress());
-        }
+            EFunctionCode.FC_04_READ_INPUT_REGISTERS -> {
+                val inputRegisters = readInputRegisters(channelGroup)
+                channelGroup.setChannelValues(inputRegisters, containers)
+            }
 
-        switch (channel.getFunctionCode()) {
-        case FC_05_WRITE_SINGLE_COIL:
-            writeSingleCoil(channel, value.asBoolean());
-            break;
-        case FC_15_WRITE_MULITPLE_COILS:
-            writeMultipleCoils(channel, ModbusDriverUtil.getBitVectorFromByteArray(value));
-            break;
-        case FC_06_WRITE_SINGLE_REGISTER:
-            writeSingleRegister(channel, new SimpleRegister(value.asShort()));
-            break;
-        case FC_16_WRITE_MULTIPLE_REGISTERS:
-            writeMultipleRegisters(channel, ModbusDriverUtil.valueToRegisters(value, channel.getDatatype()));
-            break;
-        default:
-            throw new RuntimeException("FunctionCode " + channel.getFunctionCode().toString() + " not supported yet");
+            else -> throw RuntimeException("FunctionCode " + channelGroup.functionCode + " not supported yet")
         }
     }
 
-    public void setChannelsWithErrorFlag(List<ChannelRecordContainer> containers) {
-        for (ChannelRecordContainer container : containers) {
-            container.setRecord(new Record(null, null, Flag.DRIVER_ERROR_CHANNEL_TEMPORARILY_NOT_ACCESSIBLE));
+    @Throws(ModbusException::class, RuntimeException::class)
+    fun writeChannel(channel: ModbusChannel, value: Value) {
+        if (logger.isDebugEnabled) {
+            logger.debug("write channel: {}", channel.channelAddress)
+        }
+        when (channel.functionCode) {
+            EFunctionCode.FC_05_WRITE_SINGLE_COIL -> writeSingleCoil(channel, value.asBoolean())
+            EFunctionCode.FC_15_WRITE_MULITPLE_COILS -> writeMultipleCoils(
+                channel,
+                ModbusDriverUtil.getBitVectorFromByteArray(value)
+            )
+
+            EFunctionCode.FC_06_WRITE_SINGLE_REGISTER -> writeSingleRegister(
+                channel,
+                SimpleRegister(value.asShort().toInt())
+            )
+
+            EFunctionCode.FC_16_WRITE_MULTIPLE_REGISTERS -> writeMultipleRegisters(
+                channel,
+                ModbusDriverUtil.valueToRegisters(value, channel.datatype)
+            )
+
+            else -> throw RuntimeException("FunctionCode " + channel.functionCode.toString() + " not supported yet")
         }
     }
 
-    protected ModbusChannel getModbusChannel(String channelAddress, EAccess access) {
+    fun setChannelsWithErrorFlag(containers: List<ChannelRecordContainer>) {
+        for (container in containers) {
+            container.setRecord(Record(null, null, Flag.DRIVER_ERROR_CHANNEL_TEMPORARILY_NOT_ACCESSIBLE))
+        }
+    }
 
-        ModbusChannel modbusChannel = null;
+    protected fun getModbusChannel(channelAddress: String?, access: EAccess): ModbusChannel? {
+        var modbusChannel: ModbusChannel? = null
 
         // check if the channel object already exists in the list
         if (modbusChannels.containsKey(channelAddress)) {
-            modbusChannel = modbusChannels.get(channelAddress);
+            modbusChannel = modbusChannels[channelAddress]
 
             // if the channel object exists the access flag might has to be updated
             // (this is case occurs when the channel is readable and writable)
-            if (!modbusChannel.getAccessFlag().equals(access)) {
-                modbusChannel.update(access);
+            if (modbusChannel.getAccessFlag() != access) {
+                modbusChannel!!.update(access)
             }
+        } else {
+            modbusChannel = ModbusChannel(channelAddress, access)
+            modbusChannels[channelAddress] = modbusChannel
         }
-        // create a new channel object
-        else {
-            modbusChannel = new ModbusChannel(channelAddress, access);
-            modbusChannels.put(channelAddress, modbusChannel);
-        }
-
-        return modbusChannel;
-
+        return modbusChannel
     }
 
     // TODO refactoring - to evaluate the transaction id the execution should be part of the modbus tcp connection and
     // not part of the common modbusConnection since RTU has no transaction id
-    private ModbusResponse executeReadTransaction() throws ModbusException {
-
-        ModbusResponse response = null;
+    @Throws(ModbusException::class)
+    private fun executeReadTransaction(): ModbusResponse {
+        var response: ModbusResponse? = null
 
         // see: performModbusTCPReadTransactionWithRetry()
-        response = performModbusReadTransaction();
-
+        response = performModbusReadTransaction()
         if (response == null) {
-            throw new ModbusException("received response object is null");
+            throw ModbusException("received response object is null")
+        } else {
+            printResponseTraceMsg(response)
         }
-        else {
-            printResponseTraceMsg(response);
-        }
-
-        return response;
+        return response
     }
 
-    private ModbusResponse performModbusReadTransaction() throws ModbusException {
-        printRequestTraceMsg();
-        transaction.execute();
-        ModbusResponse response = transaction.getResponse();
-        return response;
+    @Throws(ModbusException::class)
+    private fun performModbusReadTransaction(): ModbusResponse {
+        printRequestTraceMsg()
+        transaction!!.execute()
+        return transaction!!.response
     }
 
     // FIXME concept with retry is not working after a java.net.SocketTimeoutException: Read timed out
@@ -274,319 +244,344 @@ public abstract class ModbusConnection implements Connection {
     // request. the jamod increases the transaction id again to 31 but then it receives the response for id 30. From the
     // time a timeout happened the response id will be always smaller than the request id, since the jamod doesn't
     // provide a method to read a response without sending a request.
-    private ModbusResponse performModbusTCPReadTransactionWithRetry() throws ModbusException {
-
-        ModbusResponse response = null;
+    @Throws(ModbusException::class)
+    private fun performModbusTCPReadTransactionWithRetry(): ModbusResponse? {
+        var response: ModbusResponse? = null
 
         // NOTE: see comments about max retries in setTransaction()
-        int retries = 0;
-
+        var retries = 0
         while (retries < MAX_RETRIES_FOR_DRIVER) {
             // +1 because id is incremented within transaction execution
 
             // int requestId = transaction.getTransactionID() + 1;
-            printRequestTraceMsg();
-
+            printRequestTraceMsg()
             try {
-                transaction.execute();
-            } catch (ModbusIOException e) {
+                transaction!!.execute()
+            } catch (e: ModbusIOException) {
                 // logger.trace("caught ModbusIOException, probably timeout, retry");
-                retries++;
-                checkRetryCondition(retries);
-                continue;
+                retries++
+                checkRetryCondition(retries)
+                continue
             }
-
-            if (isTransactionIdMatching()) {
-                response = transaction.getResponse();
-                break;
+            if (isTransactionIdMatching) {
+                response = transaction!!.response
+                break
+            } else {
+                retries++
+                checkRetryCondition(retries)
             }
-            else {
-                retries++;
-                checkRetryCondition(retries);
-            }
-
         }
-
-        return response;
+        return response
     }
 
     /**
-     * 
+     *
      * @param retries
      * @throws ModbusIOException
-     *             if max number of retries is reached, which indicates an IO problem.
+     * if max number of retries is reached, which indicates an IO problem.
      */
-    private void checkRetryCondition(int retries) throws ModbusIOException {
-        logger.trace("Failed to get response. Retry {}/{}", retries, MAX_RETRIES_FOR_DRIVER);
+    @Throws(ModbusIOException::class)
+    private fun checkRetryCondition(retries: Int) {
+        logger.trace("Failed to get response. Retry {}/{}", retries, MAX_RETRIES_FOR_DRIVER)
         if (retries == MAX_RETRIES_FOR_DRIVER) {
-            throw new ModbusIOException("Unable to get response. Max number of retries reached");
+            throw ModbusIOException("Unable to get response. Max number of retries reached")
         }
     }
 
-    private boolean isTransactionIdMatching() {
-
-        boolean isMatching = false;
-
-        int requestId = transaction.getRequest().getTransactionID();
-        int responseId = transaction.getResponse().getTransactionID();
-
-        if (requestId == responseId) {
-            isMatching = true;
+    private val isTransactionIdMatching: Boolean
+        private get() {
+            var isMatching = false
+            val requestId = transaction!!.request.transactionID
+            val responseId = transaction!!.response.transactionID
+            if (requestId == responseId) {
+                isMatching = true
+            } else {
+                logger.warn(
+                    "Mismatching transaction IDs: request ({}) / response ({}). Retrying transaction...", requestId,
+                    responseId
+                )
+            }
+            return isMatching
         }
-        else {
-            logger.warn("Mismatching transaction IDs: request ({}) / response ({}). Retrying transaction...", requestId,
-                    responseId);
-        }
 
-        return isMatching;
-    }
-
-    private void executeWriteTransaction() throws ModbusException {
-        printRequestTraceMsg();
-        transaction.execute();
+    @Throws(ModbusException::class)
+    private fun executeWriteTransaction() {
+        printRequestTraceMsg()
+        transaction!!.execute()
         // FIXME evaluate response
-        ModbusResponse response = transaction.getResponse();
-        printResponseTraceMsg(response);
+        val response = transaction!!.response
+        printResponseTraceMsg(response)
     }
 
-    private synchronized BitVector readCoils(int startAddress, int count, int unitID) throws ModbusException {
-        ReadCoilsRequest readCoilsRequest = new ReadCoilsRequest();
-        readCoilsRequest.setReference(startAddress);
-        readCoilsRequest.setBitCount(count);
-        readCoilsRequest.setUnitID(unitID);
-
-        if (transaction instanceof ModbusSerialTransaction) {
-            readCoilsRequest.setHeadless();
+    @Synchronized
+    @Throws(ModbusException::class)
+    private fun readCoils(startAddress: Int, count: Int, unitID: Int): BitVector {
+        val readCoilsRequest = ReadCoilsRequest()
+        readCoilsRequest.reference = startAddress
+        readCoilsRequest.bitCount = count
+        readCoilsRequest.unitID = unitID
+        if (transaction is ModbusSerialTransaction) {
+            readCoilsRequest.setHeadless()
         }
-
-        transaction.setRequest(readCoilsRequest);
-        ModbusResponse response = executeReadTransaction();
-        BitVector bitvector = ((ReadCoilsResponse) response).getCoils();
-        bitvector.forceSize(count);
-        return bitvector;
+        transaction!!.request = readCoilsRequest
+        val response = executeReadTransaction()
+        val bitvector = (response as ReadCoilsResponse).coils
+        bitvector.forceSize(count)
+        return bitvector
     }
 
-    public BitVector readCoils(ModbusChannel channel) throws ModbusException {
-        return readCoils(channel.getStartAddress(), channel.getCount(), channel.getUnitId());
+    @Throws(ModbusException::class)
+    fun readCoils(channel: ModbusChannel): BitVector {
+        return readCoils(channel.startAddress, channel.count, channel.unitId)
     }
 
-    public BitVector readCoils(ModbusChannelGroup channelGroup) throws ModbusException {
-        return readCoils(channelGroup.getStartAddress(), channelGroup.getCount(), channelGroup.getUnitId());
+    @Throws(ModbusException::class)
+    fun readCoils(channelGroup: ModbusChannelGroup): BitVector {
+        return readCoils(channelGroup.startAddress, channelGroup.count, channelGroup.unitId)
     }
 
-    private synchronized BitVector readDiscreteInputs(int startAddress, int count, int unitID) throws ModbusException {
-        ReadInputDiscretesRequest readInputDiscretesRequest = new ReadInputDiscretesRequest();
-        readInputDiscretesRequest.setReference(startAddress);
-        readInputDiscretesRequest.setBitCount(count);
-        readInputDiscretesRequest.setUnitID(unitID);
-
-        if (transaction instanceof ModbusSerialTransaction) {
-            readInputDiscretesRequest.setHeadless();
+    @Synchronized
+    @Throws(ModbusException::class)
+    private fun readDiscreteInputs(startAddress: Int, count: Int, unitID: Int): BitVector {
+        val readInputDiscretesRequest = ReadInputDiscretesRequest()
+        readInputDiscretesRequest.reference = startAddress
+        readInputDiscretesRequest.bitCount = count
+        readInputDiscretesRequest.unitID = unitID
+        if (transaction is ModbusSerialTransaction) {
+            readInputDiscretesRequest.setHeadless()
         }
-
-        transaction.setRequest(readInputDiscretesRequest);
-        ModbusResponse response = executeReadTransaction();
-        BitVector bitvector = ((ReadInputDiscretesResponse) response).getDiscretes();
-        bitvector.forceSize(count);
-        return bitvector;
+        transaction!!.request = readInputDiscretesRequest
+        val response = executeReadTransaction()
+        val bitvector = (response as ReadInputDiscretesResponse).discretes
+        bitvector.forceSize(count)
+        return bitvector
     }
 
-    public BitVector readDiscreteInputs(ModbusChannel channel) throws ModbusException {
-        return readDiscreteInputs(channel.getStartAddress(), channel.getCount(), channel.getUnitId());
+    @Throws(ModbusException::class)
+    fun readDiscreteInputs(channel: ModbusChannel): BitVector {
+        return readDiscreteInputs(channel.startAddress, channel.count, channel.unitId)
     }
 
-    public BitVector readDiscreteInputs(ModbusChannelGroup channelGroup) throws ModbusException {
-        return readDiscreteInputs(channelGroup.getStartAddress(), channelGroup.getCount(), channelGroup.getUnitId());
+    @Throws(ModbusException::class)
+    fun readDiscreteInputs(channelGroup: ModbusChannelGroup): BitVector {
+        return readDiscreteInputs(channelGroup.startAddress, channelGroup.count, channelGroup.unitId)
     }
 
-    private synchronized Register[] readHoldingRegisters(int startAddress, int count, int unitID)
-            throws ModbusException {
-        ReadMultipleRegistersRequest readHoldingRegisterRequest = new ReadMultipleRegistersRequest();
-        readHoldingRegisterRequest.setReference(startAddress);
-        readHoldingRegisterRequest.setWordCount(count);
-        readHoldingRegisterRequest.setUnitID(unitID);
-
-        if (transaction instanceof ModbusSerialTransaction) {
-            readHoldingRegisterRequest.setHeadless();
+    @Synchronized
+    @Throws(ModbusException::class)
+    private fun readHoldingRegisters(startAddress: Int, count: Int, unitID: Int): Array<Register?> {
+        val readHoldingRegisterRequest = ReadMultipleRegistersRequest()
+        readHoldingRegisterRequest.reference = startAddress
+        readHoldingRegisterRequest.wordCount = count
+        readHoldingRegisterRequest.unitID = unitID
+        if (transaction is ModbusSerialTransaction) {
+            readHoldingRegisterRequest.setHeadless()
         }
-
-        transaction.setRequest(readHoldingRegisterRequest);
-        ModbusResponse response = executeReadTransaction();
-        return ((ReadMultipleRegistersResponse) response).getRegisters();
+        transaction!!.request = readHoldingRegisterRequest
+        val response = executeReadTransaction()
+        return (response as ReadMultipleRegistersResponse).registers
     }
 
-    public Register[] readHoldingRegisters(ModbusChannel channel) throws ModbusException {
-        return readHoldingRegisters(channel.getStartAddress(), channel.getCount(), channel.getUnitId());
+    @Throws(ModbusException::class)
+    fun readHoldingRegisters(channel: ModbusChannel): Array<Register?> {
+        return readHoldingRegisters(channel.startAddress, channel.count, channel.unitId)
     }
 
-    public Register[] readHoldingRegisters(ModbusChannelGroup channelGroup) throws ModbusException {
-        return readHoldingRegisters(channelGroup.getStartAddress(), channelGroup.getCount(), channelGroup.getUnitId());
+    @Throws(ModbusException::class)
+    fun readHoldingRegisters(channelGroup: ModbusChannelGroup): Array<Register?> {
+        return readHoldingRegisters(channelGroup.startAddress, channelGroup.count, channelGroup.unitId)
     }
 
     /**
      * Read InputRegisters
-     * 
+     *
      */
-    private synchronized InputRegister[] readInputRegisters(int startAddress, int count, int unitID)
-            throws ModbusIOException, ModbusSlaveException, ModbusException {
-        ReadInputRegistersRequest readInputRegistersRequest = new ReadInputRegistersRequest();
-        readInputRegistersRequest.setReference(startAddress);
-        readInputRegistersRequest.setWordCount(count);
-        readInputRegistersRequest.setUnitID(unitID);
-
-        if (transaction instanceof ModbusSerialTransaction) {
-            readInputRegistersRequest.setHeadless();
+    @Synchronized
+    @Throws(ModbusIOException::class, ModbusSlaveException::class, ModbusException::class)
+    private fun readInputRegisters(startAddress: Int, count: Int, unitID: Int): Array<InputRegister?> {
+        val readInputRegistersRequest = ReadInputRegistersRequest()
+        readInputRegistersRequest.reference = startAddress
+        readInputRegistersRequest.wordCount = count
+        readInputRegistersRequest.unitID = unitID
+        if (transaction is ModbusSerialTransaction) {
+            readInputRegistersRequest.setHeadless()
         }
-
-        transaction.setRequest(readInputRegistersRequest);
-        ModbusResponse response = executeReadTransaction();
-        return ((ReadInputRegistersResponse) response).getRegisters();
+        transaction!!.request = readInputRegistersRequest
+        val response = executeReadTransaction()
+        return (response as ReadInputRegistersResponse).registers
     }
 
     /**
      * Read InputRegisters for a channel
-     * 
+     *
      * @param channel
-     *            Modbus channel
+     * Modbus channel
      * @return input register array
      * @throws ModbusException
-     *             if an modbus error occurs
+     * if an modbus error occurs
      */
-    public InputRegister[] readInputRegisters(ModbusChannel channel) throws ModbusException {
-        return readInputRegisters(channel.getStartAddress(), channel.getCount(), channel.getUnitId());
+    @Throws(ModbusException::class)
+    fun readInputRegisters(channel: ModbusChannel): Array<InputRegister?> {
+        return readInputRegisters(channel.startAddress, channel.count, channel.unitId)
     }
 
     /**
      * Read InputRegisters for a channelGroup
-     * 
+     *
      * @param channelGroup
-     *            modbus channel group
+     * modbus channel group
      * @return the input register array
      * @throws ModbusException
-     *             if an modbus error occurs
+     * if an modbus error occurs
      */
-    public InputRegister[] readInputRegisters(ModbusChannelGroup channelGroup) throws ModbusException {
-        return readInputRegisters(channelGroup.getStartAddress(), channelGroup.getCount(), channelGroup.getUnitId());
+    @Throws(ModbusException::class)
+    fun readInputRegisters(channelGroup: ModbusChannelGroup): Array<InputRegister?> {
+        return readInputRegisters(channelGroup.startAddress, channelGroup.count, channelGroup.unitId)
     }
 
-    public synchronized void writeSingleCoil(ModbusChannel channel, boolean state) throws ModbusException {
-        WriteCoilRequest writeCoilRequest = new WriteCoilRequest();
-        writeCoilRequest.setReference(channel.getStartAddress());
-        writeCoilRequest.setCoil(state);
-        writeCoilRequest.setUnitID(channel.getUnitId());
-        transaction.setRequest(writeCoilRequest);
-        executeWriteTransaction();
+    @Synchronized
+    @Throws(ModbusException::class)
+    fun writeSingleCoil(channel: ModbusChannel, state: Boolean) {
+        val writeCoilRequest = WriteCoilRequest()
+        writeCoilRequest.reference = channel.startAddress
+        writeCoilRequest.coil = state
+        writeCoilRequest.unitID = channel.unitId
+        transaction!!.request = writeCoilRequest
+        executeWriteTransaction()
     }
 
-    public synchronized void writeMultipleCoils(ModbusChannel channel, BitVector coils) throws ModbusException {
-        WriteMultipleCoilsRequest writeMultipleCoilsRequest = new WriteMultipleCoilsRequest();
-        writeMultipleCoilsRequest.setReference(channel.getStartAddress());
-        writeMultipleCoilsRequest.setCoils(coils);
-        writeMultipleCoilsRequest.setUnitID(channel.getUnitId());
-        transaction.setRequest(writeMultipleCoilsRequest);
-        executeWriteTransaction();
+    @Synchronized
+    @Throws(ModbusException::class)
+    fun writeMultipleCoils(channel: ModbusChannel, coils: BitVector?) {
+        val writeMultipleCoilsRequest = WriteMultipleCoilsRequest()
+        writeMultipleCoilsRequest.reference = channel.startAddress
+        writeMultipleCoilsRequest.coils = coils
+        writeMultipleCoilsRequest.unitID = channel.unitId
+        transaction!!.request = writeMultipleCoilsRequest
+        executeWriteTransaction()
     }
 
-    public synchronized void writeSingleRegister(ModbusChannel channel, Register register) throws ModbusException {
-        WriteSingleRegisterRequest writeSingleRegisterRequest = new WriteSingleRegisterRequest();
-        writeSingleRegisterRequest.setReference(channel.getStartAddress());
-        writeSingleRegisterRequest.setRegister(register);
-        writeSingleRegisterRequest.setUnitID(channel.getUnitId());
-        transaction.setRequest(writeSingleRegisterRequest);
-        executeWriteTransaction();
+    @Synchronized
+    @Throws(ModbusException::class)
+    fun writeSingleRegister(channel: ModbusChannel, register: Register?) {
+        val writeSingleRegisterRequest = WriteSingleRegisterRequest()
+        writeSingleRegisterRequest.reference = channel.startAddress
+        writeSingleRegisterRequest.register = register
+        writeSingleRegisterRequest.unitID = channel.unitId
+        transaction!!.request = writeSingleRegisterRequest
+        executeWriteTransaction()
     }
 
-    public synchronized void writeMultipleRegisters(ModbusChannel channel, Register[] registers)
-            throws ModbusException {
-        WriteMultipleRegistersRequest writeMultipleRegistersRequest = new WriteMultipleRegistersRequest();
-        writeMultipleRegistersRequest.setReference(channel.getStartAddress());
-        writeMultipleRegistersRequest.setRegisters(registers);
-        writeMultipleRegistersRequest.setUnitID(channel.getUnitId());
-        transaction.setRequest(writeMultipleRegistersRequest);
-        executeWriteTransaction();
+    @Synchronized
+    @Throws(ModbusException::class)
+    fun writeMultipleRegisters(channel: ModbusChannel, registers: Array<Register?>?) {
+        val writeMultipleRegistersRequest = WriteMultipleRegistersRequest()
+        writeMultipleRegistersRequest.reference = channel.startAddress
+        writeMultipleRegistersRequest.registers = registers
+        writeMultipleRegistersRequest.unitID = channel.unitId
+        transaction!!.request = writeMultipleRegistersRequest
+        executeWriteTransaction()
     }
 
     // FIXME transaction ID unsupported by RTU since it is headless... create own debug for RTU
-    private void printRequestTraceMsg() {
-
-        if (logger.isTraceEnabled()) {
-            logger.trace(createRequestTraceMsg());
+    private fun printRequestTraceMsg() {
+        if (logger.isTraceEnabled) {
+            logger.trace(createRequestTraceMsg())
         }
     }
 
     // FIXME: This debug message should be inside the transaction.execute() of the jamod.
     // The problem is, that the hex message (especially the transaction ID) is set within the execute method. The hex
     // message here shows a wrong transaction id.
-    private String createRequestTraceMsg() {
-
-        ModbusRequest request = transaction.getRequest();
+    private fun createRequestTraceMsg(): String {
+        val request = transaction!!.request
 
         // Transaction ID is incremented within the transaction.execute command. To view correct transaction Id in debug
         // output the value is incremented by one
-        requestTransactionId = transaction.getTransactionID() + 1;
-
-        String traceMsg = "";
-
+        requestTransactionId = transaction!!.transactionID + 1
+        var traceMsg = ""
         try {
-            StringBuilder sb = new StringBuilder();
-            sb.append("REQUEST: ").append(request.getHexMessage()).append('\n');
-            sb.append("- transaction ID: ").append(requestTransactionId).append('\n');
-            sb.append("- protocol ID   : ").append(request.getProtocolID()).append('\n');
-            sb.append("- data length   : ").append(request.getDataLength()).append('\n');
-            sb.append("- unit ID       : ").append(request.getUnitID()).append('\n');
-            sb.append("- function code : ").append(request.getFunctionCode()).append('\n');
-            sb.append("- is headless   : ").append(request.isHeadless()).append('\n');
-            sb.append("- max retries   : ").append(transaction.getRetries());
-
-            if (transaction instanceof ModbusTCPTransaction) {
-                sb.append("\n   (NOTE: incorrect transaction Id displayed in hex message due to issue with jamod)");
+            val sb = StringBuilder()
+            sb.append("REQUEST: ").append(request.hexMessage).append('\n')
+            sb.append("- transaction ID: ").append(requestTransactionId).append('\n')
+            sb.append("- protocol ID   : ").append(request.protocolID).append('\n')
+            sb.append("- data length   : ").append(request.dataLength).append('\n')
+            sb.append("- unit ID       : ").append(request.unitID).append('\n')
+            sb.append("- function code : ").append(request.functionCode).append('\n')
+            sb.append("- is headless   : ").append(request.isHeadless).append('\n')
+            sb.append("- max retries   : ").append(transaction!!.retries)
+            if (transaction is ModbusTCPTransaction) {
+                sb.append("\n   (NOTE: incorrect transaction Id displayed in hex message due to issue with jamod)")
             }
-
-            traceMsg = sb.toString();
-        } catch (
-
-        Exception e) {
-            logger.trace("Unable to create debug message from request", e);
+            traceMsg = sb.toString()
+        } catch (e: Exception) {
+            logger.trace("Unable to create debug message from request", e)
         }
-
-        return traceMsg;
+        return traceMsg
     }
 
-    private void printResponseTraceMsg(ModbusResponse response) {
-        if (logger.isTraceEnabled()) {
-            logger.trace(createResponseTraceMsg(response));
+    private fun printResponseTraceMsg(response: ModbusResponse) {
+        if (logger.isTraceEnabled) {
+            logger.trace(createResponseTraceMsg(response))
         }
     }
 
-    private String createResponseTraceMsg(ModbusResponse response) {
-
-        int responseTransactionId = response.getTransactionID();
-
-        if (transaction instanceof ModbusTCPTransaction) {
-            if (responseTransactionId > (requestTransactionId + MAX_RETRIES_FOR_DRIVER)) {
-                logger.warn("responseTransactionId > (lastRequestTransactionId + MAX_RETRIES)");
+    private fun createResponseTraceMsg(response: ModbusResponse): String {
+        val responseTransactionId = response.transactionID
+        if (transaction is ModbusTCPTransaction) {
+            if (responseTransactionId > requestTransactionId + MAX_RETRIES_FOR_DRIVER) {
+                logger.warn("responseTransactionId > (lastRequestTransactionId + MAX_RETRIES)")
             }
         }
-
-        String traceMsg = "";
-
+        var traceMsg = ""
         try {
-            StringBuilder sb = new StringBuilder();
-            sb.append("RESPONSE: " + response.getHexMessage() + "\n");
-            sb.append("- transaction ID: " + responseTransactionId + "\n");
-            sb.append("- protocol ID   : " + response.getProtocolID() + "\n");
-            sb.append("- unit ID       : " + response.getUnitID() + "\n");
-            sb.append("- function code : " + response.getFunctionCode() + "\n");
-            sb.append("- length        : " + response.getDataLength() + "\n");
-            sb.append("- is headless   : " + response.isHeadless() + "\n");
-            sb.append("- max retries   : " + transaction.getRetries());
-
-            traceMsg = sb.toString();
-        } catch (Exception e) {
-            logger.trace("Unable to create debug message from received response", e);
+            val sb = StringBuilder()
+            sb.append(
+                """
+    RESPONSE: ${response.hexMessage}
+    
+    """.trimIndent()
+            )
+            sb.append("- transaction ID: $responseTransactionId\n")
+            sb.append(
+                """
+    - protocol ID   : ${response.protocolID}
+    
+    """.trimIndent()
+            )
+            sb.append(
+                """
+    - unit ID       : ${response.unitID}
+    
+    """.trimIndent()
+            )
+            sb.append(
+                """
+    - function code : ${response.functionCode}
+    
+    """.trimIndent()
+            )
+            sb.append(
+                """
+    - length        : ${response.dataLength}
+    
+    """.trimIndent()
+            )
+            sb.append(
+                """
+    - is headless   : ${response.isHeadless}
+    
+    """.trimIndent()
+            )
+            sb.append("- max retries   : " + transaction!!.retries)
+            traceMsg = sb.toString()
+        } catch (e: Exception) {
+            logger.trace("Unable to create debug message from received response", e)
         }
-
-        return traceMsg;
+        return traceMsg
     }
 
+    companion object {
+        private val logger = LoggerFactory.getLogger(ModbusConnection::class.java)
+    }
 }

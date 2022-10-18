@@ -18,53 +18,43 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.webui.spi
 
-package org.openmuc.framework.webui.spi;
+import org.osgi.framework.Bundle
+import org.osgi.service.component.ComponentContext
+import org.osgi.service.component.annotations.Activate
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.osgi.framework.Bundle;
-import org.osgi.service.component.ComponentContext;
-import org.osgi.service.component.annotations.Activate;
-
-public abstract class WebUiPluginService {
-
-    private Bundle contextBundle;
+abstract class WebUiPluginService {
+    var contextBundle: Bundle? = null
+        private set
 
     @Activate
-    protected void activate(ComponentContext context) {
-        contextBundle = context.getBundleContext().getBundle();
-    }
-
-    public Bundle getContextBundle() {
-        return contextBundle;
+    protected fun activate(context: ComponentContext) {
+        contextBundle = context.bundleContext.bundle
     }
 
     /**
      * @return Name of WebUI-Plugin, displayed in OpenMUC main menu on top
      */
-    public abstract String getName();
+    abstract val name: String?
 
     /**
      * @return Alias of the WebUI-Plugin. The Alias is the identifier in the URL.
      */
-    public abstract String getAlias();
+    abstract val alias: String?
 
     /**
      * add additional resources if needed
-     * 
+     *
      * @return the resources as a hash table.
      */
-    public Map<String, String> getResources() {
-        HashMap<String, String> resources = new HashMap<>();
-
-        resources.put("html", "html");
-        resources.put("css", "css");
-        resources.put("js", "js");
-        resources.put("images", "images");
-
-        return resources;
-    }
-
+    val resources: Map<String, String>
+        get() {
+            val resources = HashMap<String, String>()
+            resources["html"] = "html"
+            resources["css"] = "css"
+            resources["js"] = "js"
+            resources["images"] = "images"
+            return resources
+        }
 }

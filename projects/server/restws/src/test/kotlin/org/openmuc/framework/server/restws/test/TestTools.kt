@@ -18,114 +18,99 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws.test;
+package org.openmuc.framework.server.restws.test
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Assertions
+import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.TypeConversionException
+import org.openmuc.framework.data.Value
+import org.openmuc.framework.data.ValueType
+import java.util.*
 
-import java.util.Arrays;
-
-import org.openmuc.framework.data.TypeConversionException;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.data.ValueType;
-
-public class TestTools {
-
-    public static boolean testValue(String Test_method, ValueType valueType, Value value) {
-        boolean result = true;
-
+object TestTools {
+    fun testValue(Test_method: String, valueType: ValueType?, value: Value?): Boolean {
+        var result = true
         if (value == null) {
-            result = false;
-            System.out.println(Test_method + ": result is \"" + result + "\"; error: Value is null.");
+            result = false
+            println("$Test_method: result is \"$result\"; error: Value is null.")
         }
         try {
-            checkValueConversion(valueType, value);
-        } catch (TypeConversionException e) {
-            result = false;
-            System.out.println(
-                    Test_method + " result is \"" + result + "\"; error: ValueType is wrong;\n errormsg: " + e);
+            checkValueConversion(valueType, value)
+        } catch (e: TypeConversionException) {
+            result = false
+            println(
+                "$Test_method result is \"$result\"; error: ValueType is wrong;\n errormsg: $e"
+            )
         }
-        checkValueValue(Test_method, valueType, value);
-
-        return result;
+        checkValueValue(Test_method, valueType, value)
+        return result
     }
 
-    public static void checkValueConversion(ValueType valueType, Value value) throws TypeConversionException {
-
-        switch (valueType) {
-        case BOOLEAN:
-            value.asBoolean();
-            break;
-        case BYTE:
-            value.asByte();
-            break;
-        case BYTE_ARRAY:
-            value.asByteArray();
-            break;
-        case DOUBLE:
-            value.asDouble();
-            break;
-        case FLOAT:
-            value.asFloat();
-            break;
-        case INTEGER:
-            value.asInt();
-            break;
-        case LONG:
-            value.asLong();
-            break;
-        case SHORT:
-            value.asShort();
-            break;
-        case STRING:
-            value.asString();
-            break;
-        default:
-            // should never happen
-            throw new TypeConversionException("Unknown ValueType");
+    @Throws(TypeConversionException::class)
+    fun checkValueConversion(valueType: ValueType?, value: Value?) {
+        when (valueType) {
+            ValueType.BOOLEAN -> value!!.asBoolean()
+            ValueType.BYTE -> value!!.asByte()
+            ValueType.BYTE_ARRAY -> value!!.asByteArray()
+            ValueType.DOUBLE -> value!!.asDouble()
+            ValueType.FLOAT -> value!!.asFloat()
+            ValueType.INTEGER -> value!!.asInt()
+            ValueType.LONG -> value!!.asLong()
+            ValueType.SHORT -> value!!.asShort()
+            ValueType.STRING -> value!!.asString()
+            else -> throw TypeConversionException("Unknown ValueType")
         }
     }
 
-    public static void checkValueValue(String Test_method, ValueType valueType, Value value) {
+    fun checkValueValue(Test_method: String, valueType: ValueType?, value: Value?) {
+        when (valueType) {
+            ValueType.BOOLEAN -> Assertions.assertEquals(
+                Constants.BOOLEAN_VALUE, value!!.asBoolean(),
+                "$Test_method: Expected boolean is not equal the actual"
+            )
 
-        switch (valueType) {
-        case BOOLEAN:
-            assertEquals(Constants.BOOLEAN_VALUE, value.asBoolean(),
-                    Test_method + ": Expected boolean is not equal the actual");
-            break;
-        case BYTE:
-            assertEquals(Constants.BYTE_VALUE, value.asByte(), Test_method + ": Expected byte is not equal the actual");
-            break;
-        case BYTE_ARRAY:
-            if (!Arrays.equals(Constants.BYTE_ARRAY_VALUE, value.asByteArray())) {
-                assertTrue(false, Test_method + ": Expected byte[] is not equal the actual");
+            ValueType.BYTE -> Assertions.assertEquals(
+                Constants.BYTE_VALUE,
+                value!!.asByte(),
+                "$Test_method: Expected byte is not equal the actual"
+            )
+
+            ValueType.BYTE_ARRAY -> if (!Arrays.equals(Constants.BYTE_ARRAY_VALUE, value!!.asByteArray())) {
+                Assertions.assertTrue(false, "$Test_method: Expected byte[] is not equal the actual")
             }
-            break;
-        case DOUBLE:
-            assertEquals(Constants.DOUBLE_VALUE, value.asDouble(), 0.00001,
-                    Test_method + ": Expected double is not equal the actual");
-            break;
-        case FLOAT:
-            assertEquals(Constants.FLOAT_VALUE, value.asFloat(), 0.00001,
-                    Test_method + ": Expected double is not equal the actual");
-            break;
-        case INTEGER:
-            assertEquals(Constants.INTEGER_VALUE, value.asInt(),
-                    Test_method + ": Expected int is not equal the actual");
-            break;
-        case LONG:
-            assertEquals(Constants.LONG_VALUE, value.asLong(), Test_method + ": Expected long is not equal the actual");
-            break;
-        case SHORT:
-            assertEquals(Constants.SHORT_VALUE, value.asShort(),
-                    Test_method + ": Expected short is not equal the actual");
-            break;
-        case STRING:
-            assertEquals(Constants.STRING_VALUE, value.asString(),
-                    Test_method + ": Expected String is not equal the actual");
-            break;
-        default:
-            // should never happen
+
+            ValueType.DOUBLE -> Assertions.assertEquals(
+                Constants.DOUBLE_VALUE, value!!.asDouble(), 0.00001,
+                "$Test_method: Expected double is not equal the actual"
+            )
+
+            ValueType.FLOAT -> Assertions.assertEquals(
+                Constants.FLOAT_VALUE.toDouble(), value!!.asFloat().toDouble(), 0.00001,
+                "$Test_method: Expected double is not equal the actual"
+            )
+
+            ValueType.INTEGER -> Assertions.assertEquals(
+                Constants.INTEGER_VALUE, value!!.asInt(),
+                "$Test_method: Expected int is not equal the actual"
+            )
+
+            ValueType.LONG -> Assertions.assertEquals(
+                Constants.LONG_VALUE.toLong(),
+                value!!.asLong(),
+                "$Test_method: Expected long is not equal the actual"
+            )
+
+            ValueType.SHORT -> Assertions.assertEquals(
+                Constants.SHORT_VALUE, value!!.asShort(),
+                "$Test_method: Expected short is not equal the actual"
+            )
+
+            ValueType.STRING -> Assertions.assertEquals(
+                Constants.STRING_VALUE, value!!.asString(),
+                "$Test_method: Expected String is not equal the actual"
+            )
+
+            else -> {}
         }
     }
 }

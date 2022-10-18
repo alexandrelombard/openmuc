@@ -18,344 +18,312 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.wmbus;
+package org.openmuc.framework.driver.wmbus
 
-import java.io.IOException;
-import java.text.MessageFormat;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import org.apache.commons.codec.DecoderException
+import org.apache.commons.codec.binary.Hex
+import org.openmuc.framework.config.ArgumentSyntaxException
+import org.openmuc.framework.data.*
+import org.openmuc.framework.driver.spi.*
+import org.openmuc.framework.driver.wmbus.WMBusInterface
+import org.openmuc.jmbus.*
+import org.openmuc.jmbus.DataRecord.DataValueType
+import org.openmuc.jmbus.wireless.WMBusConnection
+import org.openmuc.jmbus.wireless.WMBusConnection.*
+import org.openmuc.jmbus.wireless.WMBusListener
+import org.openmuc.jmbus.wireless.WMBusMessage
+import org.openmuc.jmbus.wireless.WMBusMode
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import java.text.MessageFormat
+import java.util.*
 
 //import javax.xml.bind.DatatypeConverter;
-import org.apache.commons.codec.DecoderException;
-import org.apache.commons.codec.binary.Hex;
-import org.openmuc.framework.config.ArgumentSyntaxException;
-import org.openmuc.framework.data.DoubleValue;
-import org.openmuc.framework.data.LongValue;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.StringValue;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.driver.spi.ChannelRecordContainer;
-import org.openmuc.framework.driver.spi.Connection;
-import org.openmuc.framework.driver.spi.ConnectionException;
-import org.openmuc.framework.driver.spi.RecordsReceivedListener;
-import org.openmuc.jmbus.Bcd;
-import org.openmuc.jmbus.DataRecord;
-import org.openmuc.jmbus.DecodingException;
-import org.openmuc.jmbus.SecondaryAddress;
-import org.openmuc.jmbus.VariableDataStructure;
-import org.openmuc.jmbus.wireless.WMBusConnection;
-import org.openmuc.jmbus.wireless.WMBusConnection.WMBusManufacturer;
-import org.openmuc.jmbus.wireless.WMBusListener;
-import org.openmuc.jmbus.wireless.WMBusMessage;
-import org.openmuc.jmbus.wireless.WMBusMode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
- * Class representing an MBus Connection.<br>
- * This class will bind to the local com-interface.<br>
- * 
+ * Class representing an MBus Connection.<br></br>
+ * This class will bind to the local com-interface.<br></br>
+ *
  */
-public class WMBusInterface {
-    private static final Logger logger = LoggerFactory.getLogger(WMBusInterface.class);
+class WMBusInterface {
+    private val connectionsBySecondaryAddress = HashMap<SecondaryAddress?, DriverConnection>()
+    var listener: RecordsReceivedListener? = null
+    private var con: WMBusConnection? = null
+    private val connectionName: String
+    private val transceiverString: String
+    private val modeString: String
 
-    private static final Map<String, WMBusInterface> interfaces = new HashMap<>();
-    private final HashMap<SecondaryAddress, DriverConnection> connectionsBySecondaryAddress = new HashMap<>();
-    RecordsReceivedListener listener;
-
-    private final WMBusConnection con;
-    private final String connectionName;
-    private final String transceiverString;
-    private final String modeString;
-
-    public class Receiver implements WMBusListener {
-
-        @Override
-        public void discardedBytes(byte[] bytes) {
-            if (logger.isDebugEnabled()) {
-                String bytesAsHexStr = Hex.encodeHexString(bytes);
-                logger.debug("received bytes that will be discarded: {}", bytesAsHexStr);
+    inner class Receiver : WMBusListener {
+        override fun discardedBytes(bytes: ByteArray) {
+            if (logger.isDebugEnabled) {
+                val bytesAsHexStr = Hex.encodeHexString(bytes)
+                logger.debug("received bytes that will be discarded: {}", bytesAsHexStr)
             }
         }
 
-        @Override
-        public void newMessage(WMBusMessage message) {
-
+        override fun newMessage(message: WMBusMessage) {
             try {
-                message.getVariableDataResponse().decode();
-            } catch (DecodingException e) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("Unable to decode header of received message: " + message, e);
+                message.variableDataResponse.decode()
+            } catch (e: DecodingException) {
+                if (logger.isDebugEnabled) {
+                    logger.debug("Unable to decode header of received message: $message", e)
                 }
-                return;
+                return
             }
-
-            synchronized (this) {
-                DriverConnection connection = connectionsBySecondaryAddress.get(message.getSecondaryAddress());
-
+            synchronized(this) {
+                val connection = connectionsBySecondaryAddress[message.secondaryAddress]
                 if (connection == null) {
-                    if (logger.isTraceEnabled()) {
-                        logger.trace("WMBus: connection is null, from device: {} with HashCode: {}",
-                                message.getSecondaryAddress().getDeviceId().toString(), message.getSecondaryAddress());
+                    if (logger.isTraceEnabled) {
+                        logger.trace(
+                            "WMBus: connection is null, from device: {} with HashCode: {}",
+                            message.secondaryAddress.deviceId.toString(), message.secondaryAddress
+                        )
                     }
-                    return;
+                    return
                 }
-
-                List<ChannelRecordContainer> channelContainers = connection.getContainersToListenFor();
-
-                if (channelContainers.isEmpty()) {
-                    if (logger.isTraceEnabled()) {
-                        logger.trace("WMBus: channelContainers.size == 0, from device: "
-                                + message.getSecondaryAddress().getDeviceId().toString());
+                val channelContainers = connection.containersToListenFor
+                if (channelContainers!!.isEmpty()) {
+                    if (logger.isTraceEnabled) {
+                        logger.trace(
+                            "WMBus: channelContainers.size == 0, from device: "
+                                    + message.secondaryAddress.deviceId.toString()
+                        )
                     }
-                    return;
+                    return
                 }
-
-                VariableDataStructure variableDataStructure = message.getVariableDataResponse();
-
+                val variableDataStructure = message.variableDataResponse
                 try {
-                    variableDataStructure.decode();
-                } catch (DecodingException e) {
-                    if (logger.isWarnEnabled()) {
-                        logger.warn("Unable to decode header of variable data response or received message: {}",
-                                message, e);
+                    variableDataStructure.decode()
+                } catch (e: DecodingException) {
+                    if (logger.isWarnEnabled) {
+                        logger.warn(
+                            "Unable to decode header of variable data response or received message: {}",
+                            message, e
+                        )
                     }
-                    return;
+                    return
                 }
-
-                List<DataRecord> dataRecords = message.getVariableDataResponse().getDataRecords();
-                String[] dibvibs = new String[dataRecords.size()];
-
-                int i = 0;
-                for (DataRecord dataRecord : dataRecords) {
-                    String dibHexStr = Hex.encodeHexString(dataRecord.getDib());
-                    String vibHexStr = Hex.encodeHexString(dataRecord.getVib());
-                    dibvibs[i++] = MessageFormat.format("{0}:{1}", dibHexStr, vibHexStr);
+                val dataRecords = message.variableDataResponse.dataRecords
+                val dibvibs = arrayOfNulls<String>(dataRecords.size)
+                var i = 0
+                for (dataRecord in dataRecords) {
+                    val dibHexStr = Hex.encodeHexString(dataRecord.dib)
+                    val vibHexStr = Hex.encodeHexString(dataRecord.vib)
+                    dibvibs[i++] = MessageFormat.format("{0}:{1}", dibHexStr, vibHexStr)
                 }
-
-                List<ChannelRecordContainer> containersReceived = new LinkedList<>();
-
-                final long timestamp = System.currentTimeMillis();
-
-                for (ChannelRecordContainer container : channelContainers) {
-                    i = 0;
-                    setRecords(dataRecords, dibvibs, i, containersReceived, timestamp, container);
+                val containersReceived: MutableList<ChannelRecordContainer?> = LinkedList()
+                val timestamp = System.currentTimeMillis()
+                for (container in channelContainers) {
+                    i = 0
+                    setRecords(dataRecords, dibvibs, i, containersReceived, timestamp, container)
                 }
-                listener.newRecords(containersReceived);
+                listener!!.newRecords(containersReceived)
             }
         }
 
-        private void setRecords(List<DataRecord> dataRecords, String[] dibvibs, int i,
-                List<ChannelRecordContainer> containersReceived, final long timestamp,
-                ChannelRecordContainer container) {
-            for (DataRecord dataRecord : dataRecords) {
+        private fun setRecords(
+            dataRecords: List<DataRecord>, dibvibs: Array<String?>, i: Int,
+            containersReceived: MutableList<ChannelRecordContainer?>, timestamp: Long,
+            container: ChannelRecordContainer?
+        ) {
+            var i = i
+            for (dataRecord in dataRecords) {
+                if (dibvibs[i++].equals(container!!.channelAddress, ignoreCase = true)) {
+                    var value: Value? = null
+                    when (dataRecord.dataValueType) {
+                        DataValueType.DATE -> {
+                            value = DoubleValue((dataRecord.dataValue as Date).time.toDouble())
+                            container.setRecord(Record(value, timestamp))
+                        }
 
-                if (dibvibs[i++].equalsIgnoreCase(container.getChannelAddress())) {
+                        DataValueType.STRING -> {
+                            value = StringValue((dataRecord.dataValue as String))
+                            container.setRecord(Record(value, timestamp))
+                        }
 
-                    Value value = null;
-                    switch (dataRecord.getDataValueType()) {
-                    case DATE:
-                        value = new DoubleValue(((Date) dataRecord.getDataValue()).getTime());
-                        container.setRecord(new Record(value, timestamp));
-                        break;
-                    case STRING:
-                        value = new StringValue((String) dataRecord.getDataValue());
-                        container.setRecord(new Record(value, timestamp));
-                        break;
-                    case DOUBLE:
-                        value = new DoubleValue(dataRecord.getScaledDataValue());
-                        container.setRecord(new Record(value, timestamp));
-                        break;
-                    case LONG:
-                        if (dataRecord.getMultiplierExponent() == 0) {
-                            value = new LongValue((Long) dataRecord.getDataValue());
-                            container.setRecord(new Record(value, timestamp));
+                        DataValueType.DOUBLE -> {
+                            value = DoubleValue(dataRecord.scaledDataValue)
+                            container.setRecord(Record(value, timestamp))
                         }
-                        else {
-                            value = new DoubleValue(dataRecord.getScaledDataValue());
-                            container.setRecord(new Record(value, timestamp));
+
+                        DataValueType.LONG -> if (dataRecord.multiplierExponent == 0) {
+                            value = LongValue((dataRecord.dataValue as Long))
+                            container.setRecord(Record(value, timestamp))
+                        } else {
+                            value = DoubleValue(dataRecord.scaledDataValue)
+                            container.setRecord(Record(value, timestamp))
                         }
-                        break;
-                    case BCD:
-                        if (dataRecord.getMultiplierExponent() == 0) {
-                            value = new LongValue(((Bcd) dataRecord.getDataValue()).longValue());
-                            container.setRecord(new Record(value, timestamp));
+
+                        DataValueType.BCD -> if (dataRecord.multiplierExponent == 0) {
+                            value = LongValue((dataRecord.dataValue as Bcd).toLong())
+                            container.setRecord(Record(value, timestamp))
+                        } else {
+                            value = DoubleValue(
+                                (dataRecord.dataValue as Bcd).toLong()
+                                        * Math.pow(10.0, dataRecord.multiplierExponent.toDouble())
+                            )
+                            container.setRecord(Record(value, timestamp))
                         }
-                        else {
-                            value = new DoubleValue(((Bcd) dataRecord.getDataValue()).longValue()
-                                    * Math.pow(10, dataRecord.getMultiplierExponent()));
-                            container.setRecord(new Record(value, timestamp));
+
+                        DataValueType.NONE -> {
+                            logger.warn("Received data record with <dib>:<vib> = {} has value type NONE.", dibvibs[i])
+                            continue
                         }
-                        break;
-                    case NONE:
-                        logger.warn("Received data record with <dib>:<vib> = {} has value type NONE.", dibvibs[i]);
-                        continue;
                     }
-                    if (logger.isTraceEnabled()) {
-                        String channelId = container.getChannel().getId();
-                        logger.trace("WMBus: Value from channel {} is: {}.", channelId, value);
+                    if (logger.isTraceEnabled) {
+                        val channelId = container.channel!!.id
+                        logger.trace("WMBus: Value from channel {} is: {}.", channelId, value)
                     }
-                    containersReceived.add(container);
-
-                    break;
+                    containersReceived.add(container)
+                    break
                 }
             }
         }
 
-        @Override
-        public void stoppedListening(IOException e) {
-            WMBusInterface.this.stoppedListening();
+        override fun stoppedListening(e: IOException) {
+            this@WMBusInterface.stoppedListening()
         }
     }
 
-    public static WMBusInterface getSerialInstance(String serialPortName, String transceiverString, String modeString)
-            throws ConnectionException, ArgumentSyntaxException {
-        WMBusInterface wmBusInterface;
-
-        synchronized (interfaces) {
-            wmBusInterface = interfaces.get(serialPortName);
-
-            if (wmBusInterface == null) {
-                wmBusInterface = new WMBusInterface(serialPortName, transceiverString, modeString);
-                interfaces.put(serialPortName, wmBusInterface);
-            }
-            else {
-                if (!wmBusInterface.modeString.equals(modeString)
-                        || !wmBusInterface.transceiverString.equals(transceiverString)) {
-                    throw new ConnectionException(
-                            "Connections serial interface is already in use with a different transceiver or mode");
-                }
-            }
-        }
-
-        return wmBusInterface;
-    }
-
-    public static WMBusInterface getTCPInstance(String host, int port, String transceiverString, String modeString)
-            throws ConnectionException, ArgumentSyntaxException {
-        WMBusInterface wmBusInterface;
-        String hostAndPort = host + ':' + port;
-
-        synchronized (interfaces) {
-            wmBusInterface = interfaces.get(hostAndPort);
-
-            if (wmBusInterface == null) {
-                wmBusInterface = new WMBusInterface(host, port, transceiverString, modeString);
-                interfaces.put(hostAndPort, wmBusInterface);
-            }
-            else {
-                if (!wmBusInterface.modeString.equals(modeString)
-                        || !wmBusInterface.transceiverString.equals(transceiverString)) {
-                    throw new ConnectionException(
-                            "Connections TCP interface is already in use with a different transceiver or mode");
-                }
-            }
-        }
-
-        return wmBusInterface;
-    }
-
-    private WMBusInterface(String serialPortName, String transceiverString, String modeString)
-            throws ArgumentSyntaxException, ConnectionException {
-
-        this.connectionName = serialPortName;
-        this.transceiverString = transceiverString;
-        this.modeString = modeString;
-
-        WMBusMode mode = getWMBusModeFromString(modeString);
-        WMBusManufacturer wmBusManufacturer = getWMBusManufactureFromString(transceiverString);
-
-        try {
-            con = new WMBusConnection.WMBusSerialBuilder(wmBusManufacturer, new Receiver(), serialPortName)
-                    .setMode(mode)
-                    .build();
-        } catch (IOException e) {
-            throw new ConnectionException("Failed to open serial interface", e);
+    private constructor(serialPortName: String, transceiverString: String, modeString: String) {
+        connectionName = serialPortName
+        this.transceiverString = transceiverString
+        this.modeString = modeString
+        val mode = getWMBusModeFromString(modeString)
+        val wmBusManufacturer = getWMBusManufactureFromString(transceiverString)
+        con = try {
+            WMBusSerialBuilder(wmBusManufacturer, Receiver(), serialPortName)
+                .setMode(mode)
+                .build()
+        } catch (e: IOException) {
+            throw ConnectionException("Failed to open serial interface", e)
         }
     }
 
-    public WMBusInterface(String host, int port, String transceiverString, String modeString)
-            throws ArgumentSyntaxException, ConnectionException {
-        this.connectionName = host + ':' + port;
-        this.transceiverString = transceiverString;
-        this.modeString = modeString;
-
-        WMBusMode mode = getWMBusModeFromString(modeString);
-        WMBusManufacturer wmBusManufacturer = getWMBusManufactureFromString(transceiverString);
-
-        try {
-            con = new WMBusConnection.WMBusTcpBuilder(wmBusManufacturer, new Receiver(), host, port).setMode(mode)
-                    .build();
-        } catch (IOException e) {
-            throw new ConnectionException("Failed to open TCP interface", e);
+    constructor(host: String, port: Int, transceiverString: String, modeString: String) {
+        connectionName = "$host:$port"
+        this.transceiverString = transceiverString
+        this.modeString = modeString
+        val mode = getWMBusModeFromString(modeString)
+        val wmBusManufacturer = getWMBusManufactureFromString(transceiverString)
+        con = try {
+            WMBusTcpBuilder(wmBusManufacturer, Receiver(), host, port).setMode(mode)
+                .build()
+        } catch (e: IOException) {
+            throw ConnectionException("Failed to open TCP interface", e)
         }
     }
 
-    private WMBusMode getWMBusModeFromString(String modeString) throws ArgumentSyntaxException {
-        WMBusMode mode;
-        try {
-            mode = WMBusMode.valueOf(modeString.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new ArgumentSyntaxException(
-                    "The wireless M-Bus mode is not correctly specified in the device's parameters string. Should be S, T or C but is: "
-                            + modeString);
+    @Throws(ArgumentSyntaxException::class)
+    private fun getWMBusModeFromString(modeString: String): WMBusMode {
+        val mode: WMBusMode
+        mode = try {
+            WMBusMode.valueOf(modeString.uppercase(Locale.getDefault()))
+        } catch (e: IllegalArgumentException) {
+            throw ArgumentSyntaxException(
+                "The wireless M-Bus mode is not correctly specified in the device's parameters string. Should be S, T or C but is: "
+                        + modeString
+            )
         }
-        return mode;
+        return mode
     }
 
-    private static WMBusManufacturer getWMBusManufactureFromString(String transceiverString)
-            throws ArgumentSyntaxException {
-        try {
-            return WMBusManufacturer.valueOf(transceiverString.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new ArgumentSyntaxException(
-                    "The type of transceiver is not correctly specified in the device's parameters string. Should be amber, imst or rc but is: "
-                            + transceiverString);
+    fun connectionClosedIndication(secondaryAddress: SecondaryAddress?) {
+        connectionsBySecondaryAddress.remove(secondaryAddress)
+        if (connectionsBySecondaryAddress.size == 0) {
+            close()
         }
     }
 
-    public void connectionClosedIndication(SecondaryAddress secondaryAddress) {
-        connectionsBySecondaryAddress.remove(secondaryAddress);
-        if (connectionsBySecondaryAddress.size() == 0) {
-            close();
-        }
-    }
-
-    public void close() {
-        synchronized (interfaces) {
+    fun close() {
+        synchronized(interfaces) {
             try {
-                con.close();
-            } catch (IOException e) {
-                logger.warn("Failed to close connection properly", e);
+                con!!.close()
+            } catch (e: IOException) {
+                logger.warn("Failed to close connection properly", e)
             }
-            interfaces.remove(connectionName);
+            interfaces.remove(connectionName)
         }
     }
 
-    public Connection connect(SecondaryAddress secondaryAddress, String keyString)
-            throws ArgumentSyntaxException, DecoderException {
-        DriverConnection connection = new DriverConnection(con, secondaryAddress, keyString, this);
-        if (logger.isTraceEnabled()) {
-            logger.trace("WMBus: connect device with ID {} and HashCode {}", secondaryAddress.getDeviceId(),
-                    secondaryAddress);
+    @Throws(ArgumentSyntaxException::class, DecoderException::class)
+    fun connect(secondaryAddress: SecondaryAddress?, keyString: String?): Connection {
+        val connection = DriverConnection(con, secondaryAddress, keyString, this)
+        if (logger.isTraceEnabled) {
+            logger.trace(
+                "WMBus: connect device with ID {} and HashCode {}", secondaryAddress!!.deviceId,
+                secondaryAddress
+            )
         }
-        connectionsBySecondaryAddress.put(secondaryAddress, connection);
-        return connection;
+        connectionsBySecondaryAddress[secondaryAddress] = connection
+        return connection
     }
 
-    public void stoppedListening() {
-        synchronized (interfaces) {
-            interfaces.remove(connectionName);
-        }
-        synchronized (this) {
-            for (DriverConnection connection : connectionsBySecondaryAddress.values()) {
-                listener.connectionInterrupted("wmbus", connection);
+    fun stoppedListening() {
+        synchronized(interfaces) { interfaces.remove(connectionName) }
+        synchronized(this) {
+            for (connection in connectionsBySecondaryAddress.values) {
+                listener!!.connectionInterrupted("wmbus", connection)
             }
-            connectionsBySecondaryAddress.clear();
+            connectionsBySecondaryAddress.clear()
         }
     }
 
+    companion object {
+        private val logger = LoggerFactory.getLogger(WMBusInterface::class.java)
+        private val interfaces: MutableMap<String, WMBusInterface> = HashMap()
+        @Throws(ConnectionException::class, ArgumentSyntaxException::class)
+        fun getSerialInstance(serialPortName: String, transceiverString: String, modeString: String): WMBusInterface? {
+            var wmBusInterface: WMBusInterface?
+            synchronized(interfaces) {
+                wmBusInterface = interfaces[serialPortName]
+                if (wmBusInterface == null) {
+                    wmBusInterface = WMBusInterface(serialPortName, transceiverString, modeString)
+                    interfaces.put(serialPortName, wmBusInterface!!)
+                } else {
+                    if (wmBusInterface!!.modeString != modeString
+                        || wmBusInterface!!.transceiverString != transceiverString
+                    ) {
+                        throw ConnectionException(
+                            "Connections serial interface is already in use with a different transceiver or mode"
+                        )
+                    }
+                }
+            }
+            return wmBusInterface
+        }
+
+        @Throws(ConnectionException::class, ArgumentSyntaxException::class)
+        fun getTCPInstance(host: String, port: Int, transceiverString: String, modeString: String): WMBusInterface? {
+            var wmBusInterface: WMBusInterface?
+            val hostAndPort = "$host:$port"
+            synchronized(interfaces) {
+                wmBusInterface = interfaces[hostAndPort]
+                if (wmBusInterface == null) {
+                    wmBusInterface = WMBusInterface(host, port, transceiverString, modeString)
+                    interfaces.put(hostAndPort, wmBusInterface!!)
+                } else {
+                    if (wmBusInterface!!.modeString != modeString
+                        || wmBusInterface!!.transceiverString != transceiverString
+                    ) {
+                        throw ConnectionException(
+                            "Connections TCP interface is already in use with a different transceiver or mode"
+                        )
+                    }
+                }
+            }
+            return wmBusInterface
+        }
+
+        @Throws(ArgumentSyntaxException::class)
+        private fun getWMBusManufactureFromString(transceiverString: String): WMBusManufacturer {
+            return try {
+                WMBusManufacturer.valueOf(transceiverString.uppercase(Locale.getDefault()))
+            } catch (e: IllegalArgumentException) {
+                throw ArgumentSyntaxException(
+                    "The type of transceiver is not correctly specified in the device's parameters string. Should be amber, imst or rc but is: "
+                            + transceiverString
+                )
+            }
+        }
+    }
 }

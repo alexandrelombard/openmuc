@@ -18,98 +18,82 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-package org.openmuc.framework.lib.osgi.config;
+package org.openmuc.framework.lib.osgi.config
 
 /**
  * Enriches the classical property (key=value) with meta data. A list of ServiceProperties can be managed by a Settings
- * class extending {@link GenericSettings}
+ * class extending [GenericSettings]
  */
-public class ServiceProperty {
+class ServiceProperty(key: String?, description: String?, defaultValue: String?, mandatory: Boolean) {
+    private var key: String? = null
+    private var description: String? = null
+    private var defaultValue: String
+    val isMandatory: Boolean
+    var value: String
+        private set
 
-    private String key;
-    private String description;
-    private String defaultValue;
-    private final boolean mandatory;
-    private String value;
-
-    public ServiceProperty(String key, String description, String defaultValue, boolean mandatory) {
-        setKey(key);
-        setDescription(description);
-        setDefaultValue(defaultValue);
-        this.mandatory = mandatory;
-        this.value = this.defaultValue;
+    init {
+        setKey(key)
+        setDescription(description)
+        setDefaultValue(defaultValue)
+        isMandatory = mandatory
+        value = this.defaultValue
     }
 
-    public void update(String value) {
+    fun update(value: String?) {
         if (value == null) {
             // avoid later null checks
-            this.value = "";
+            this.value = ""
+        } else {
+            this.value = value
         }
-        else {
-            this.value = value;
-        }
     }
 
-    public String getKey() {
-        return key;
+    fun getKey(): String? {
+        return key
     }
 
-    public String getDescription() {
-        return description;
+    fun getDescription(): String? {
+        return description
     }
 
-    public String getDefaultValue() {
-        return defaultValue;
+    fun getDefaultValue(): String {
+        return defaultValue
     }
 
-    public boolean isMandatory() {
-        return mandatory;
-    }
-
-    public String getValue() {
-        return value;
-    }
-
-    private void setKey(String key) {
-        if (key == null || key.isEmpty()) {
+    private fun setKey(key: String?) {
+        require(!(key == null || key.isEmpty())) {
             // key is important - therefor raise exception
-            throw new IllegalArgumentException("key must not be null or empty!");
+            "key must not be null or empty!"
         }
-        else {
-            this.key = key;
-        }
+        this.key = key
     }
 
-    private void setDescription(String description) {
+    private fun setDescription(description: String?) {
         if (description == null) {
             // description is optional, don't raise exception here, but change it to empty string
             // to avoid countless "null" checks later in classes using this.
-            this.description = "";
-        }
-        else {
-            this.description = description;
+            this.description = ""
+        } else {
+            this.description = description
         }
     }
 
-    private void setDefaultValue(String defaultValue) {
+    private fun setDefaultValue(defaultValue: String?) {
         if (defaultValue == null) {
             // defaultValue is optional, don't raise exception here, but change it to empty string
             // to avoid countless "null" checks later in classes using this.
-            this.defaultValue = "";
-        }
-        else {
-            this.defaultValue = defaultValue;
+            this.defaultValue = ""
+        } else {
+            this.defaultValue = defaultValue
         }
     }
 
-    @Override
-    public String toString() {
-        String optional = "# ";
-        if (!mandatory) {
-            optional += "(Optional) ";
+    override fun toString(): String {
+        var optional = "# "
+        if (!isMandatory) {
+            optional += "(Optional) "
         }
-        return optional + description + "\n" + key + "=" + defaultValue + "\n";
+        return "$optional$description\n$key=$defaultValue\n"
     }
-
 }

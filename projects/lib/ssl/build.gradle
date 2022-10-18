@@ -1,3 +1,6 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+}
 def projectName = "OpenMUC Library - SSL Manager"
 def projectDescription = "SSL manager for the OpenMUC framework."
 
@@ -5,6 +8,7 @@ dependencies {
     implementation project(':openmuc-core-spi')
     implementation project(':openmuc-lib-osgi')
     implementation group: 'org.osgi', name: 'org.osgi.service.cm', version: '1.6.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
 
 jar {
@@ -20,5 +24,18 @@ publishing {
                 description = projectDescription
             }
         }
+    }
+}
+repositories {
+    mavenCentral()
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 }

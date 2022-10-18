@@ -18,76 +18,62 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.rest.helper;
+package org.openmuc.framework.driver.rest.helper
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.List;
+import com.google.gson.JsonElement
+import org.openmuc.framework.data.Record
+import org.openmuc.framework.data.ValueType
+import org.openmuc.framework.lib.rest1.Const
+import java.io.InputStream
 
-import org.openmuc.framework.config.ChannelScanInfo;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.ValueType;
-import org.openmuc.framework.lib.rest1.Const;
-import org.openmuc.framework.lib.rest1.FromJson;
-import org.openmuc.framework.lib.rest1.ToJson;
-import org.openmuc.framework.lib.rest1.rest.objects.RestChannel;
-
-import com.google.gson.JsonElement;
-
-public class JsonWrapper {
-
-    public String fromRecord(Record remoteRecord, ValueType valueType) {
-        ToJson toJson = new ToJson();
-        toJson.addRecord(remoteRecord, valueType);
-
-        return toJson.toString();
+class JsonWrapper {
+    fun fromRecord(remoteRecord: Record?, valueType: ValueType?): String {
+        val toJson = ToJson()
+        toJson.addRecord(remoteRecord, valueType)
+        return toJson.toString()
     }
 
-    public List<ChannelScanInfo> tochannelScanInfos(InputStream stream) throws IOException {
-        String jsonString = getStringFromInputStream(stream);
-        FromJson fromJson = new FromJson(jsonString);
-        List<RestChannel> channelList = fromJson.getRestChannelList();
-        ArrayList<ChannelScanInfo> channelScanInfos = new ArrayList<>();
-
-        for (RestChannel restChannel : channelList) {
+    @Throws(IOException::class)
+    fun tochannelScanInfos(stream: InputStream?): List<ChannelScanInfo> {
+        val jsonString = getStringFromInputStream(stream)
+        val fromJson = FromJson(jsonString)
+        val channelList: List<RestChannel> = fromJson.getRestChannelList()
+        val channelScanInfos: ArrayList<ChannelScanInfo> = ArrayList<ChannelScanInfo>()
+        for (restChannel in channelList) {
             // TODO: get channel config list with valueTypeLength, description, ...
-            ChannelScanInfo channelScanInfo = new ChannelScanInfo(restChannel.getId(), "", restChannel.getValueType(),
-                    0);
-            channelScanInfos.add(channelScanInfo);
+            val channelScanInfo = ChannelScanInfo(
+                restChannel.getId(), "", restChannel.getValueType(),
+                0
+            )
+            channelScanInfos.add(channelScanInfo)
         }
-
-        return channelScanInfos;
+        return channelScanInfos
     }
 
-    public Record toRecord(InputStream stream, ValueType valueType) throws IOException {
-        String jsonString = getStringFromInputStream(stream);
-        FromJson fromJson = new FromJson(jsonString);
-
-        return fromJson.getRecord(valueType);
+    @Throws(IOException::class)
+    fun toRecord(stream: InputStream?, valueType: ValueType?): Record {
+        val jsonString = getStringFromInputStream(stream)
+        val fromJson = FromJson(jsonString)
+        return fromJson.getRecord(valueType)
     }
 
-    public long toTimestamp(InputStream stream) throws IOException {
-        String jsonString = getStringFromInputStream(stream);
-        FromJson fromJson = new FromJson(jsonString);
-        JsonElement timestamp = fromJson.getJsonObject().get(Const.TIMESTAMP);
-        if (timestamp == null) {
-            return -1;
-        }
-        return timestamp.getAsNumber().longValue();
+    @Throws(IOException::class)
+    fun toTimestamp(stream: InputStream?): Long {
+        val jsonString = getStringFromInputStream(stream)
+        val fromJson = FromJson(jsonString)
+        val timestamp: JsonElement = fromJson.getJsonObject().get(Const.TIMESTAMP)
+            ?: return -1
+        return timestamp.getAsNumber().longValue()
     }
 
-    private String getStringFromInputStream(InputStream stream) throws IOException {
-        BufferedReader streamReader = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
-        StringBuilder responseStrBuilder = new StringBuilder();
-
-        String inputStr;
-        while ((inputStr = streamReader.readLine()) != null) {
-            responseStrBuilder.append(inputStr);
+    @Throws(IOException::class)
+    private fun getStringFromInputStream(stream: InputStream?): String {
+        val streamReader = BufferedReader(InputStreamReader(stream, "UTF-8"))
+        val responseStrBuilder = StringBuilder()
+        var inputStr: String?
+        while (streamReader.readLine().also { inputStr = it } != null) {
+            responseStrBuilder.append(inputStr)
         }
-
-        return responseStrBuilder.toString();
+        return responseStrBuilder.toString()
     }
 }

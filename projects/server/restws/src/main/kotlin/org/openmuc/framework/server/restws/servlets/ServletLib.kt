@@ -18,147 +18,147 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws.servlets;
+package org.openmuc.framework.server.restws.servlets
 
-import java.io.BufferedReader;
-import java.io.IOException;
+import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.lib.rest1.FromJson
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+import java.io.BufferedReader
+import java.io.IOException
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.openmuc.framework.lib.rest1.FromJson;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class ServletLib {
-
-    private static final String COULD_NOT_SEND_HTTP_ERROR_MESSAGE = "Could not send HTTP Error message.";
-
-    private static final Logger logger = LoggerFactory.getLogger(ServletLib.class);
-
-    protected static final int PATH_ARRAY_NR = 0;
-    protected static final int QUERRY_ARRAY_NR = 1;
-
-    protected static String buildString(BufferedReader br) {
-        StringBuilder text = new StringBuilder();
+object ServletLib {
+    private const val COULD_NOT_SEND_HTTP_ERROR_MESSAGE = "Could not send HTTP Error message."
+    private val logger = LoggerFactory.getLogger(ServletLib::class.java)
+    const val PATH_ARRAY_NR = 0
+    internal const val QUERRY_ARRAY_NR = 1
+    internal fun buildString(br: BufferedReader): String {
+        val text = StringBuilder()
         try {
-            String line;
-            while ((line = br.readLine()) != null) {
-                text.append(line);
+            var line: String?
+            while (br.readLine().also { line = it } != null) {
+                text.append(line)
             }
-        } catch (IOException e) {
-            logger.error("", e);
+        } catch (e: IOException) {
+            logger.error("", e)
         }
-        return text.toString();
+        return text.toString()
     }
 
-    protected static FromJson getFromJson(HttpServletRequest request, Logger logger, HttpServletResponse response) {
-        FromJson json = null;
+    fun getFromJson(request: HttpServletRequest, logger: Logger, response: HttpServletResponse): FromJson? {
+        var json: FromJson? = null
         try {
-            json = new FromJson(ServletLib.getJsonText(request));
-        } catch (Exception e) {
-            ServletLib.sendHTTPErrorAndLogWarn(response, HttpServletResponse.SC_BAD_REQUEST, logger,
-                    "Malformed JSON message: ", e.getMessage());
+            json = FromJson(getJsonText(request))
+        } catch (e: Exception) {
+            sendHTTPErrorAndLogWarn(
+                response, HttpServletResponse.SC_BAD_REQUEST, logger,
+                "Malformed JSON message: ", e.message
+            )
         }
-        return json;
+        return json
     }
 
     /**
      * Send HTTP Error and log as warning. Only the first String will be sent over HTTP response.
-     * 
+     *
      * @param response
-     *            HttpServletResponse response
+     * HttpServletResponse response
      * @param errorCode
-     *            error code
+     * error code
      * @param logger
-     *            logger
+     * logger
      * @param msg
-     *            message array
+     * message array
      */
-    protected static void sendHTTPErrorAndLogWarn(HttpServletResponse response, int errorCode, Logger logger,
-            String... msg) {
+    internal fun sendHTTPErrorAndLogWarn(
+        response: HttpServletResponse, errorCode: Int, logger: Logger,
+        vararg msg: String?
+    ) {
         try {
-            response.sendError(errorCode, msg[0]);
-        } catch (IOException e) {
-            logger.error(COULD_NOT_SEND_HTTP_ERROR_MESSAGE, e);
+            response.sendError(errorCode, msg[0])
+        } catch (e: IOException) {
+            logger.error(COULD_NOT_SEND_HTTP_ERROR_MESSAGE, e)
         }
-        StringBuilder warnMessage = new StringBuilder();
-        for (String m : msg) {
-            warnMessage.append(m);
+        val warnMessage = StringBuilder()
+        for (m in msg) {
+            warnMessage.append(m)
         }
-        if (logger.isWarnEnabled()) {
-            logger.warn(warnMessage.toString());
+        if (logger.isWarnEnabled) {
+            logger.warn(warnMessage.toString())
         }
     }
 
     /**
      * Send HTTP Error and log as debug. Only the first String will be sent over HTTP response.
-     * 
+     *
      * @param response
-     *            HttpServletResponse response
+     * HttpServletResponse response
      * @param errorCode
-     *            error code
+     * error code
      * @param logger
-     *            logger
+     * logger
      * @param msg
-     *            message array
+     * message array
      */
-    protected static void sendHTTPErrorAndLogDebug(HttpServletResponse response, int errorCode, Logger logger,
-            String... msg) {
+    fun sendHTTPErrorAndLogDebug(
+        response: HttpServletResponse, errorCode: Int, logger: Logger,
+        vararg msg: String?
+    ) {
         try {
-            response.sendError(errorCode, msg[0]);
-        } catch (IOException e) {
-            logger.error(COULD_NOT_SEND_HTTP_ERROR_MESSAGE, e);
+            response.sendError(errorCode, msg[0])
+        } catch (e: IOException) {
+            logger.error(COULD_NOT_SEND_HTTP_ERROR_MESSAGE, e)
         }
-        StringBuilder warnMessage = new StringBuilder();
-        for (String m : msg) {
-            warnMessage.append(m);
+        val warnMessage = StringBuilder()
+        for (m in msg) {
+            warnMessage.append(m)
         }
-        if (logger.isDebugEnabled()) {
-            logger.debug(warnMessage.toString());
+        if (logger.isDebugEnabled) {
+            logger.debug(warnMessage.toString())
         }
     }
 
     /**
      * Send HTTP Error and log as error. Logger and HTTP response are the same message.
-     * 
+     *
      * @param response
-     *            HttpServletResponse response
+     * HttpServletResponse response
      * @param errorCode
-     *            error code
+     * error code
      * @param logger
-     *            logger
+     * logger
      * @param msg
-     *            message array
+     * message array
      */
-    protected static void sendHTTPErrorAndLogErr(HttpServletResponse response, int errorCode, Logger logger,
-            String... msg) {
+    fun sendHTTPErrorAndLogErr(
+        response: HttpServletResponse, errorCode: Int, logger: Logger,
+        vararg msg: String?
+    ) {
         try {
-            StringBuilder sbErrMessage = new StringBuilder();
-            for (String m : msg) {
-                sbErrMessage.append(m);
+            val sbErrMessage = StringBuilder()
+            for (m in msg) {
+                sbErrMessage.append(m)
             }
-            String errMessage = sbErrMessage.toString();
-            response.sendError(errorCode, errMessage);
-            logger.error(errMessage);
-        } catch (IOException e) {
-            logger.error(COULD_NOT_SEND_HTTP_ERROR_MESSAGE, e);
+            val errMessage = sbErrMessage.toString()
+            response.sendError(errorCode, errMessage)
+            logger.error(errMessage)
+        } catch (e: IOException) {
+            logger.error(COULD_NOT_SEND_HTTP_ERROR_MESSAGE, e)
         }
     }
 
-    protected static String getJsonText(HttpServletRequest request) throws IOException {
-        return ServletLib.buildString(request.getReader());
+    @Throws(IOException::class)
+    fun getJsonText(request: HttpServletRequest): String {
+        return buildString(request.reader)
     }
 
-    protected static String[] getPathInfoArray(String pathInfo) {
-        if (pathInfo.length() > 1) {
-            return pathInfo.replaceFirst("/", "").split("/");
+    fun getPathInfoArray(pathInfo: String?): Array<String> {
+        return if (pathInfo!!.length > 1) {
+            pathInfo.replaceFirst("/".toRegex(), "").split("/".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+        } else {
+            arrayOf("/")
         }
-        else {
-            return new String[] { "/" };
-        }
-    }
-
-    private ServletLib() {
     }
 }

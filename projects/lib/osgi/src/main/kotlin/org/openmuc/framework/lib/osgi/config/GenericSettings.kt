@@ -18,40 +18,32 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-package org.openmuc.framework.lib.osgi.config;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
+package org.openmuc.framework.lib.osgi.config
 
 /**
- * Should be inherited by your own settings class.<br>
- * <b>Example:</b>
+ * Should be inherited by your own settings class.<br></br>
+ * **Example:**
  *
  * <pre>
  * public class Settings extends GenericSettings {
  *
- *     public static final String PORT = "port";
- *     public static final String HOST = "host";
+ * public static final String PORT = "port";
+ * public static final String HOST = "host";
  *
- *     public Settings() {
- *         super();
- *         properties.put(PORT, new ServiceProperty(PORT, "port for communication", "1234", true));
- *         properties.put(HOST, new ServiceProperty(HOST, "URL of service", "localhost", true));
- *     }
+ * public Settings() {
+ * super();
+ * properties.put(PORT, new ServiceProperty(PORT, "port for communication", "1234", true));
+ * properties.put(HOST, new ServiceProperty(HOST, "URL of service", "localhost", true));
+ * }
  *
  * }
- * </pre>
+</pre> *
  */
-public class GenericSettings {
+open class GenericSettings protected constructor() {
+    var properties: MutableMap<String, ServiceProperty>
+        protected set
 
-    protected Map<String, ServiceProperty> properties;
-
-    protected GenericSettings() {
-        properties = new LinkedHashMap<>();
-    }
-
-    public Map<String, ServiceProperty> getProperties() {
-        return properties;
+    init {
+        properties = LinkedHashMap()
     }
 }

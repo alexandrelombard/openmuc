@@ -18,131 +18,125 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.amqp;
+package org.openmuc.framework.lib.amqp
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Queue;
+import org.openmuc.framework.lib.filePersistence.FilePersistence
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import java.util.*
 
-import org.openmuc.framework.lib.filePersistence.FilePersistence;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+class AmqpBufferHandler(maxBufferSize: Long, maxFileCount: Int, maxFileSize: Long, persistenceDir: String?) {
+    private val buffer: Queue<AmqpMessageTuple> = LinkedList()
+    private val maxBufferSizeBytes: Long
+    private val maxFileCount: Int
+    private var filePersistence: FilePersistence? = null
+    private var currentBufferSize = 0L
 
-public class AmqpBufferHandler {
-
-    private static final Logger logger = LoggerFactory.getLogger(AmqpBufferHandler.class);
-
-    private final Queue<AmqpMessageTuple> buffer = new LinkedList<>();
-    private final long maxBufferSizeBytes;
-    private final int maxFileCount;
-    private final FilePersistence filePersistence;
-
-    private long currentBufferSize = 0L;
-
-    public AmqpBufferHandler(long maxBufferSize, int maxFileCount, long maxFileSize, String persistenceDir) {
-        maxBufferSizeBytes = maxBufferSize * 1024;
-        this.maxFileCount = maxFileCount;
-        if (isFileBufferEnabled()) {
-            filePersistence = new FilePersistence(persistenceDir, maxFileCount, maxFileSize);
-        }
-        else {
-            filePersistence = null;
+    init {
+        maxBufferSizeBytes = maxBufferSize * 1024
+        this.maxFileCount = maxFileCount
+        filePersistence = if (isFileBufferEnabled) {
+            FilePersistence(persistenceDir, maxFileCount, maxFileSize)
+        } else {
+            null
         }
     }
 
-    private boolean isFileBufferEnabled() {
-        return maxFileCount > 0 && maxBufferSizeBytes > 0;
-    }
+    private val isFileBufferEnabled: Boolean
+        private get() = maxFileCount > 0 && maxBufferSizeBytes > 0
 
-    public void add(String routingKey, byte[] message) {
+    fun add(routingKey: String?, message: ByteArray?) {
         if (isBufferTooFull(message)) {
-            handleFull(routingKey, message);
-        }
-        else {
-            synchronized (buffer) {
-                buffer.add(new AmqpMessageTuple(routingKey, message));
-                currentBufferSize += message.length;
+            handleFull(routingKey, message)
+        } else {
+            synchronized(buffer) {
+                buffer.add(AmqpMessageTuple(routingKey, message))
+                currentBufferSize += message!!.size.toLong()
             }
-
-            if (logger.isTraceEnabled()) {
-                logger.trace("maxBufferSize = {} B, currentBufferSize = {} B, messageSize = {} B", maxBufferSizeBytes,
-                        currentBufferSize, message.length);
+            if (logger.isTraceEnabled) {
+                logger.trace(
+                    "maxBufferSize = {} B, currentBufferSize = {} B, messageSize = {} B", maxBufferSizeBytes,
+                    currentBufferSize, message!!.size
+                )
             }
         }
     }
 
-    private boolean isBufferTooFull(byte[] message) {
-        return currentBufferSize + message.length > maxBufferSizeBytes;
+    private fun isBufferTooFull(message: ByteArray?): Boolean {
+        return currentBufferSize + message!!.size > maxBufferSizeBytes
     }
 
-    private void handleFull(String routingKey, byte[] message) {
-        if (isFileBufferEnabled()) {
-            addToFilePersistence();
-            add(routingKey, message);
-        }
-        else if (message.length <= maxBufferSizeBytes) {
-            removeNextMessage();
-            add(routingKey, message);
+    private fun handleFull(routingKey: String?, message: ByteArray?) {
+        if (isFileBufferEnabled) {
+            addToFilePersistence()
+            add(routingKey, message)
+        } else if (message!!.size <= maxBufferSizeBytes) {
+            removeNextMessage()
+            add(routingKey, message)
         }
     }
 
-    public AmqpMessageTuple removeNextMessage() {
-        AmqpMessageTuple removedMessage;
-        synchronized (buffer) {
-            removedMessage = buffer.remove();
-            currentBufferSize -= removedMessage.getMessage().length;
+    fun removeNextMessage(): AmqpMessageTuple {
+        var removedMessage: AmqpMessageTuple
+        synchronized(buffer) {
+            removedMessage = buffer.remove()
+            currentBufferSize -= removedMessage.message.size.toLong()
         }
-        return removedMessage;
+        return removedMessage
     }
 
-    private void addToFilePersistence() {
-        logger.debug("moving buffered messages from RAM to file");
-        while (!isEmpty()) {
-            AmqpMessageTuple messageTuple = removeNextMessage();
-            writeBufferToFile(messageTuple);
+    private fun addToFilePersistence() {
+        logger.debug("moving buffered messages from RAM to file")
+        while (!isEmpty) {
+            val messageTuple = removeNextMessage()
+            writeBufferToFile(messageTuple)
         }
-        currentBufferSize = 0;
+        currentBufferSize = 0
     }
 
-    private void writeBufferToFile(AmqpMessageTuple messageTuple) {
+    private fun writeBufferToFile(messageTuple: AmqpMessageTuple) {
         try {
-            synchronized (filePersistence) {
-                filePersistence.writeBufferToFile(messageTuple.getRoutingKey(), messageTuple.getMessage());
+            synchronized(filePersistence!!) {
+                filePersistence!!.writeBufferToFile(
+                    messageTuple.routingKey,
+                    messageTuple.message
+                )
             }
-        } catch (IOException e) {
-            logger.error(e.getMessage());
+        } catch (e: IOException) {
+            logger.error(e.message)
         }
     }
 
-    public boolean isEmpty() {
-        return buffer.isEmpty();
-    }
-
-    public String[] getBuffers() {
-        String[] buffers;
-        if (isFileBufferEnabled()) {
-            buffers = filePersistence.getBuffers();
+    val isEmpty: Boolean
+        get() = buffer.isEmpty()
+    val buffers: Array<String>
+        get() {
+            val buffers: Array<String>
+            buffers = if (isFileBufferEnabled) {
+                filePersistence!!.buffers
+            } else {
+                arrayOf()
+            }
+            return buffers
         }
-        else {
-            buffers = new String[] {};
-        }
-        return buffers;
+
+    fun getMessageIterator(buffer: String?): Iterator<AmqpMessageTuple> {
+        return AmqpBufferMessageIterator(buffer, filePersistence)
     }
 
-    public Iterator<AmqpMessageTuple> getMessageIterator(String buffer) {
-        return new AmqpBufferMessageIterator(buffer, filePersistence);
-    }
-
-    public void persist() {
-        if (isFileBufferEnabled()) {
+    fun persist() {
+        if (isFileBufferEnabled) {
             try {
-                filePersistence.restructure();
-                addToFilePersistence();
-            } catch (IOException e) {
-                logger.error("Buffer file restructuring error: {}", e.getMessage());
-                e.printStackTrace();
+                filePersistence!!.restructure()
+                addToFilePersistence()
+            } catch (e: IOException) {
+                logger.error("Buffer file restructuring error: {}", e.message)
+                e.printStackTrace()
             }
         }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(AmqpBufferHandler::class.java)
     }
 }

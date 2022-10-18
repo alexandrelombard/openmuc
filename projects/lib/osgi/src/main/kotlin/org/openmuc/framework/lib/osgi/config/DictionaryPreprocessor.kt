@@ -18,114 +18,99 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.osgi.config
 
-package org.openmuc.framework.lib.osgi.config;
-
-import java.util.Dictionary;
-import java.util.Enumeration;
-import java.util.Hashtable;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.slf4j.LoggerFactory
+import java.util.*
 
 /**
  * Intention of this class is to provide a "Special Case Object" for invalid dictionaries. See
- * {@link #getCleanedUpDeepCopyOfDictionary()}
+ * [.getCleanedUpDeepCopyOfDictionary]
  */
-public class DictionaryPreprocessor {
+class DictionaryPreprocessor(newDictionary: MutableMap<String, *>) {
+    /**
+     * @return a cleaned up, deep copy of dictionary which is not null. It is at least an empty dictionary. NOTE values
+     * to a key might be null)
+     */
+    var cleanedUpDeepCopyOfDictionary: MutableMap<String, String> = hashMapOf()
+    private var osgiInit: Boolean
 
-    private static final Logger logger = LoggerFactory.getLogger(DictionaryPreprocessor.class);
-    private Dictionary<String, String> dictionary;
-    private boolean osgiInit;
-
-    public DictionaryPreprocessor(Dictionary<String, ?> newDictionary) {
+    init {
 
         // call this first before to print original dictionary passed by MangedService updated()
-        logDebugPrintDictionary(newDictionary);
-
-        osgiInit = false;
+        logDebugPrintDictionary(newDictionary)
+        osgiInit = false
         if (newDictionary == null || newDictionary.isEmpty()) {
-            this.dictionary = new Hashtable<>();
-        }
-        else if (!newDictionary.isEmpty()) {
+            cleanedUpDeepCopyOfDictionary = hashMapOf()
+        } else {
             // create deep copy to not manipulate the original dictionary
-            Dictionary<String, String> tempDict = getDeepCopy(newDictionary);
+            val tempDict = getDeepCopy(newDictionary)
 
             // clean up dictionary - remove "osgi" framework related keys which may be inside the dictionary
             // given to the updated() method of ManagedService implementation. These entries can be ignored,
             // since they are not part of the actual configuration. Removing them here safes condition checks later.
-            tempDict.remove("service.pid");
-            tempDict.remove("felix.fileinstall.filename");
-            this.dictionary = tempDict;
+            tempDict.remove("service.pid")
+            tempDict.remove("felix.fileinstall.filename")
+            cleanedUpDeepCopyOfDictionary = tempDict
         }
-
-        if (this.dictionary.isEmpty()) {
+        if (cleanedUpDeepCopyOfDictionary.isEmpty()) {
             // either it was null or empty before or by removing service.pid it became empty
-            osgiInit = true;
+            osgiInit = true
         }
     }
 
     /**
-     * @return <b>true</b> when it was a intermediate updated() call (MangedService) during starting the OSGi framework.
-     *         During start the updated() is called with an dictionary = null or with dictionary which has only one
-     *         entry with service.pid. With this flag you can ignore such calls.
+     * @return **true** when it was a intermediate updated() call (MangedService) during starting the OSGi framework.
+     * During start the updated() is called with an dictionary = null or with dictionary which has only one
+     * entry with service.pid. With this flag you can ignore such calls.
      */
-    public boolean wasIntermediateOsgiInitCall() {
-        return osgiInit;
+    fun wasIntermediateOsgiInitCall(): Boolean {
+        return osgiInit
     }
 
-    /**
-     * @return a cleaned up, deep copy of dictionary which is not null. It is at least an empty dictionary. NOTE values
-     *         to a key might be null)
-     */
-    public Dictionary<String, String> getCleanedUpDeepCopyOfDictionary() {
-        return dictionary;
-    }
-
-    private Dictionary<String, String> getDeepCopy(Dictionary<String, ?> propertyDict) {
-        Dictionary<String, String> propertiesCopy = new Hashtable<>();
-        Enumeration<String> keys = propertyDict.keys();
-        while (keys.hasMoreElements()) {
-            String key = keys.nextElement();
-            propertiesCopy.put(key, (String) propertyDict.get(key));
+    private fun getDeepCopy(propertyDict: MutableMap<String, *>): MutableMap<String, String> {
+        val propertiesCopy: MutableMap<String, String> = hashMapOf()
+        val keys = propertyDict.keys
+        keys.forEach { key ->
+            propertiesCopy[key] = propertyDict[key] as String
         }
-        return propertiesCopy;
+        return propertiesCopy
     }
 
     /**
      * Method for debugging purposes to print whole dictionary
-     * <p>
+     *
+     *
      * If the key contains "password", "*****" is shown instead of the corresponding value (which would be the
      * password).
      *
      * @param propertyDict
      */
-    private void logDebugPrintDictionary(Dictionary<String, ?> propertyDict) {
-        if (logger.isDebugEnabled()) {
+    private fun logDebugPrintDictionary(propertyDict: MutableMap<String, *>) {
+        if (logger.isDebugEnabled) {
             if (propertyDict != null) {
-                StringBuilder sb = new StringBuilder();
-                Enumeration<String> keys = propertyDict.keys();
-                while (keys.hasMoreElements()) {
-                    String key = keys.nextElement();
-                    String dictValue = (String) propertyDict.get(key);
+                val sb = StringBuilder()
+                val keys = propertyDict.keys
+                keys.forEach { key ->
+                    val dictValue = propertyDict[key] as String
                     if (dictValue != null) {
                         if (key != null && key.contains("password")) {
-                            sb.append(key + "=*****\n");
+                            sb.append("$key=*****\n")
+                        } else {
+                            sb.append("$key=$dictValue\n")
                         }
-                        else {
-                            sb.append(key + "=" + dictValue + "\n");
-                        }
-                    }
-                    else {
-                        sb.append(key + "=null" + "\n");
+                    } else {
+                        sb.append("$key=null\n")
                     }
                 }
-                logger.debug("Dictionary given by ManagedService updated(): \n{}", sb.toString());
-            }
-            else {
-                logger.debug("Dictionary given by ManagedService updated(): is null");
+                logger.debug("Dictionary given by ManagedService updated(): \n{}", sb.toString())
+            } else {
+                logger.debug("Dictionary given by ManagedService updated(): is null")
             }
         }
     }
 
+    companion object {
+        private val logger = LoggerFactory.getLogger(DictionaryPreprocessor::class.java)
+    }
 }

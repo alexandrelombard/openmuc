@@ -18,16 +18,6 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.mqtt
 
-package org.openmuc.framework.lib.mqtt;
-
-public class MessageTuple {
-
-    public final String topic;
-    public final byte[] message;
-
-    public MessageTuple(String topic, byte[] message) {
-        this.topic = topic;
-        this.message = message;
-    }
-}
+class MessageTuple(val topic: String?, val message: ByteArray?)

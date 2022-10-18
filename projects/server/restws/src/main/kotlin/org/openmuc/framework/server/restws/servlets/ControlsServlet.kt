@@ -18,120 +18,98 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.restws.servlets;
+package org.openmuc.framework.server.restws.servlets
 
-import java.io.IOException;
+import org.openmuc.framework.lib.rest1.FromJson
+import org.openmuc.framework.lib.rest1.ToJson
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import javax.servlet.ServletException
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.openmuc.framework.lib.rest1.FromJson;
-import org.openmuc.framework.lib.rest1.ToJson;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public class ControlsServlet extends GenericServlet {
-
-    private static final String REQUESTED_REST_PATH_IS_NOT_AVAILABLE = "Requested rest path is not available.";
-    private static final long serialVersionUID = -5635380730045771853L;
-    private static final Logger logger = LoggerFactory.getLogger(DriverResourceServlet.class);
-
-    @Override
-    public void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+class ControlsServlet : GenericServlet() {
+    @Throws(ServletException::class, IOException::class)
+    override fun doGet(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-            ToJson json = new ToJson();
-
-            if (pathInfo.equals("/")) {
-
-            }
-            else {
-                String[] pathInfoArray = ServletLib.getPathInfoArray(pathInfo);
-
-                if (pathInfoArray.length == 1) {
-
+            val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+            val json = ToJson()
+            if (pathInfo == "/") {
+            } else {
+                val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
+                if (pathInfoArray!!.size == 1) {
+                } else {
+                    ServletLib.sendHTTPErrorAndLogDebug(
+                        response, HttpServletResponse.SC_NOT_FOUND, logger,
+                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, " Path Info = ", request.pathInfo
+                    )
                 }
-                else {
-                    ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                            REQUESTED_REST_PATH_IS_NOT_AVAILABLE, " Path Info = ", request.getPathInfo());
-                }
-
             }
-            sendJson(json, response);
+            sendJson(json, response)
         }
     }
 
-    @Override
-    public void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+    @Throws(ServletException::class, IOException::class)
+    override fun doPost(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-            new FromJson(ServletLib.getJsonText(request));
-
-            if (pathInfo.equals("/")) {
-
-            }
-            else {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
+            val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+            FromJson(ServletLib.getJsonText(request))
+            if (pathInfo == "/") {
+            } else {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                )
             }
         }
     }
 
-    @Override
-    public void doPut(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+    @Throws(ServletException::class, IOException::class)
+    override fun doPut(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-            new FromJson(ServletLib.getJsonText(request));
-
-            if (pathInfo.equals("/")) {
-
-            }
-            else {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
+            val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+            FromJson(ServletLib.getJsonText(request))
+            if (pathInfo == "/") {
+            } else {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                )
             }
         }
     }
 
-    @Override
-    public void doDelete(HttpServletRequest request, HttpServletResponse response)
-            throws ServletException, IOException {
-
-        response.setContentType(APPLICATION_JSON);
-        String[] pathAndQueryString = checkIfItIsACorrectRest(request, response, logger);
-
+    @Throws(ServletException::class, IOException::class)
+    override fun doDelete(request: HttpServletRequest, response: HttpServletResponse) {
+        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
-
-            String pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR];
-
-            new FromJson(ServletLib.getJsonText(request));
-
-            if (pathInfo.equals("/")) {
-
+            val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
+            FromJson(ServletLib.getJsonText(request))
+            if (pathInfo == "/") {
+            } else {
+                ServletLib.sendHTTPErrorAndLogDebug(
+                    response, HttpServletResponse.SC_NOT_FOUND, logger,
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                )
             }
-            else {
-                ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                        REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
-            }
-
-        }
-        else {
-            ServletLib.sendHTTPErrorAndLogDebug(response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.getPathInfo());
+        } else {
+            ServletLib.sendHTTPErrorAndLogDebug(
+                response, HttpServletResponse.SC_NOT_FOUND, logger,
+                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+            )
         }
     }
 
+    companion object {
+        private const val REQUESTED_REST_PATH_IS_NOT_AVAILABLE = "Requested rest path is not available."
+        private const val serialVersionUID = -5635380730045771853L
+        private val logger = LoggerFactory.getLogger(DriverResourceServlet::class.java)
+    }
 }

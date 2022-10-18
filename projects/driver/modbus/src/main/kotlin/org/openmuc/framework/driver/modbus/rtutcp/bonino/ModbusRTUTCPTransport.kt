@@ -1,318 +1,303 @@
-package org.openmuc.framework.driver.modbus.rtutcp.bonino;
+package org.openmuc.framework.driver.modbus.rtutcp.bonino
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.net.Socket;
-import java.util.Timer;
-import java.util.TimerTask;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ghgande.j2mod.modbus.Modbus;
-import com.ghgande.j2mod.modbus.ModbusIOException;
-import com.ghgande.j2mod.modbus.io.BytesInputStream;
-import com.ghgande.j2mod.modbus.io.BytesOutputStream;
-import com.ghgande.j2mod.modbus.io.ModbusTransaction;
-import com.ghgande.j2mod.modbus.io.ModbusTransport;
-import com.ghgande.j2mod.modbus.msg.ModbusMessage;
-import com.ghgande.j2mod.modbus.msg.ModbusRequest;
-import com.ghgande.j2mod.modbus.msg.ModbusResponse;
-import com.ghgande.j2mod.modbus.util.ModbusUtil;
+import com.ghgande.j2mod.modbus.Modbus
+import com.ghgande.j2mod.modbus.ModbusIOException
+import com.ghgande.j2mod.modbus.io.BytesInputStream
+import com.ghgande.j2mod.modbus.io.BytesOutputStream
+import com.ghgande.j2mod.modbus.io.ModbusTransaction
+import com.ghgande.j2mod.modbus.io.ModbusTransport
+import com.ghgande.j2mod.modbus.msg.ModbusMessage
+import com.ghgande.j2mod.modbus.msg.ModbusRequest
+import com.ghgande.j2mod.modbus.msg.ModbusResponse
+import com.ghgande.j2mod.modbus.util.ModbusUtil
+import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.slf4j.LoggerFactory
+import java.io.DataInputStream
+import java.io.DataOutputStream
+import java.io.IOException
+import java.net.Socket
+import java.util.*
 
 /**
  * @author bonino
- * 
- *         https://github.com/dog-gateway/jamod-rtu-over-tcp
- * 
+ *
+ * https://github.com/dog-gateway/jamod-rtu-over-tcp
  */
-public class ModbusRTUTCPTransport implements ModbusTransport {
-
-    private static final Logger logger = LoggerFactory.getLogger(ModbusRTUTCPTransport.class);
-
-    public static final String logId = "[ModbusRTUTCPTransport]: ";
-
+class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
     // The input stream from which reading the Modbus frames
-    private DataInputStream inputStream;
+    private var inputStream: DataInputStream? = null
 
     // The output stream to which writing the Modbus frames
-    private DataOutputStream outputStream;
+    private var outputStream: DataOutputStream? = null
 
     // The Bytes output stream to use as output buffer for Modbus frames
-    private BytesOutputStream outputBuffer;
+    private var outputBuffer: BytesOutputStream? = null
 
     // The BytesInputStream wrapper for the transport input stream
-    private BytesInputStream inputBuffer;
+    private var inputBuffer: BytesInputStream? = null
 
     // The last request sent over the transport ?? useful ??
-    private byte[] lastRequest = null;
+    private var lastRequest: ByteArray? = null
 
     // the socket used by this transport
-    private Socket socket;
+    private var socket: Socket? = null
 
     // the read timeout timer
-    private Timer readTimeoutTimer;
+    private var readTimeoutTimer: Timer? = null
 
     // the read timout
-    private final int readTimeout = 5000; // ms
+    private val readTimeout = 5000 // ms
 
     // the timeou flag
-    private boolean isTimedOut;
-
-    private RTUTCPMasterConnection m_Master = null;
-    private final Socket m_Socket = null;
+    private var isTimedOut: Boolean
+    private var m_Master: RTUTCPMasterConnection? = null
+    private val m_Socket: Socket? = null
 
     /**
      * @param socket
-     *            the client socket to close
-     * 
+     * the client socket to close
+     *
      * @throws IOException
-     *             if a I/O exception occurs
-     * 
+     * if a I/O exception occurs
      */
-    public ModbusRTUTCPTransport(Socket socket) throws IOException {
+    init {
         // prepare the input and output streams...
-        if (socket != null) {
-            setSocket(socket);
-        }
+        socket?.let { setSocket(it) }
 
         // set the timed out flag at false
-        this.isTimedOut = false;
+        isTimedOut = false
     }
 
     /**
-     * Stores the given {@link Socket} instance and prepares the related streams to use them for Modbus RTU over TCP
+     * Stores the given [Socket] instance and prepares the related streams to use them for Modbus RTU over TCP
      * communication.
-     * 
+     *
      * @param socket
-     *            the client socket
+     * the client socket
      * @throws IOException
-     *             if a I/O exception occurs
+     * if a I/O exception occurs
      */
-    public void setSocket(Socket socket) throws IOException {
+    @Throws(IOException::class)
+    fun setSocket(socket: Socket?) {
         if (this.socket != null) {
             // TODO: handle clean closure of the streams
-            this.outputBuffer.close();
-            this.inputBuffer.close();
-            this.inputStream.close();
-            this.outputStream.close();
+            outputBuffer!!.close()
+            inputBuffer!!.close()
+            inputStream!!.close()
+            outputStream!!.close()
         }
 
         // store the socket used by this transport
-        this.socket = socket;
+        this.socket = socket
 
         // get the input and output streams
-        this.inputStream = new DataInputStream(socket.getInputStream());
-        this.outputStream = new DataOutputStream(this.socket.getOutputStream());
+        inputStream = DataInputStream(socket!!.getInputStream())
+        outputStream = DataOutputStream(this.socket!!.getOutputStream())
 
         // prepare the buffers
-        this.outputBuffer = new BytesOutputStream(Modbus.MAX_MESSAGE_LENGTH);
-        this.inputBuffer = new BytesInputStream(Modbus.MAX_MESSAGE_LENGTH);
+        outputBuffer = BytesOutputStream(Modbus.MAX_MESSAGE_LENGTH)
+        inputBuffer = BytesInputStream(Modbus.MAX_MESSAGE_LENGTH)
     }
 
     /**
      * writes the given ModbusMessage over the physical transport handled by this object.
-     * 
+     *
      * @param msg
-     *            the {@link ModbusMessage} to be written on the transport.
+     * the [ModbusMessage] to be written on the transport.
      */
-    @Override
-    public synchronized void writeMessage(ModbusMessage msg) throws ModbusIOException {
+    @Synchronized
+    @Throws(ModbusIOException::class)
+    override fun writeMessage(msg: ModbusMessage) {
         try {
             // atomic access to the output buffer
-            synchronized (this.outputBuffer) {
+            synchronized(outputBuffer!!) {
+
 
                 // reset the output buffer
-                this.outputBuffer.reset();
+                outputBuffer!!.reset()
 
                 // prepare the message for "virtual" serial transport
-                msg.setHeadless();
+                msg.setHeadless()
 
                 // write the message to the output buffer
-                msg.writeTo(this.outputBuffer);
+                msg.writeTo(outputBuffer)
 
                 // compute the CRC
-                int[] crc = ModbusUtil.calculateCRC(this.outputBuffer.getBuffer(), 0, this.outputBuffer.size());
+                val crc = ModbusUtil.calculateCRC(outputBuffer!!.buffer, 0, outputBuffer!!.size())
 
                 // write the CRC on the output buffer
-                this.outputBuffer.writeByte(crc[0]);
-                this.outputBuffer.writeByte(crc[1]);
+                outputBuffer!!.writeByte(crc[0])
+                outputBuffer!!.writeByte(crc[1])
 
                 // store the buffer length
-                int bufferLength = this.outputBuffer.size();
+                val bufferLength = outputBuffer!!.size()
 
                 // store the raw output buffer reference
-                byte rawBuffer[] = this.outputBuffer.getBuffer();
+                val rawBuffer = outputBuffer!!.buffer
 
                 // write the buffer on the socket
-                this.outputStream.write(rawBuffer, 0, bufferLength); // PDU +
-                                                                     // CRC
-                this.outputStream.flush();
-
-                if (logger.isTraceEnabled()) {
-                    logger.trace("Sent: " + ModbusUtil.toHex(rawBuffer, 0, bufferLength));
+                outputStream!!.write(rawBuffer, 0, bufferLength) // PDU +
+                // CRC
+                outputStream!!.flush()
+                if (logger.isTraceEnabled) {
+                    logger.trace("Sent: " + ModbusUtil.toHex(rawBuffer, 0, bufferLength))
                 }
 
                 // store the written buffer as the last request
-                this.lastRequest = new byte[bufferLength];
-                System.arraycopy(rawBuffer, 0, this.lastRequest, 0, bufferLength);
+                lastRequest = ByteArray(bufferLength)
+                System.arraycopy(rawBuffer, 0, lastRequest, 0, bufferLength)
 
                 // sleep for the time needed to receive the request at the other
                 // point of the connection
-                this.outputBuffer.wait(bufferLength);
+                outputBuffer.wait(bufferLength.toLong())
             }
-
-        } catch (Exception ex) {
-            throw new ModbusIOException("I/O failed to write");
+        } catch (ex: Exception) {
+            throw ModbusIOException("I/O failed to write")
         }
-
-    }// writeMessage
+    } // writeMessage
 
     // This is required for the slave that is not supported
-    @Override
-    public synchronized ModbusRequest readRequest() throws ModbusIOException {
-        throw new RuntimeException("Operation not supported.");
+    @Synchronized
+    @Throws(ModbusIOException::class)
+    override fun readRequest(): ModbusRequest {
+        throw RuntimeException("Operation not supported.")
     } // readRequest
 
-    @Override
+    @Synchronized
+    @Throws(ModbusIOException::class)
     /**
      * Lazy implementation: avoid CRC validation...
      */
-    public synchronized ModbusResponse readResponse() throws ModbusIOException {
+    override fun readResponse(): ModbusResponse {
         // the received response
-        ModbusResponse response = null;
+        var response: ModbusResponse? = null
 
         // reset the timed out flag
-        this.isTimedOut = false;
+        isTimedOut = false
 
         // init and start the timeout timer
-        this.readTimeoutTimer = new Timer();
-        this.readTimeoutTimer.schedule(new TimerTask() {
-
-            @Override
-            public void run() {
-                isTimedOut = true;
+        readTimeoutTimer = Timer()
+        readTimeoutTimer!!.schedule(object : TimerTask() {
+            override fun run() {
+                isTimedOut = true
             }
-        }, this.readTimeout);
-
+        }, readTimeout.toLong())
         try {
             // atomic access to the input buffer
-            synchronized (inputBuffer) {
+            synchronized(inputBuffer!!) {
+
                 // clean the input buffer
-                inputBuffer.reset(new byte[Modbus.MAX_MESSAGE_LENGTH]);
+                inputBuffer!!.reset(ByteArray(Modbus.MAX_MESSAGE_LENGTH))
 
                 // sleep for the time needed to receive the first part of the
                 // response
-                int available = this.inputStream.available();
-                while ((available < 4) && (!this.isTimedOut)) {
-                    Thread.yield(); // 1ms * #bytes (4bytes in the worst case)
-                    available = this.inputStream.available();
+                var available = inputStream!!.available()
+                while (available < 4 && !isTimedOut) {
+                    Thread.yield() // 1ms * #bytes (4bytes in the worst case)
+                    available = inputStream!!.available()
 
                     // if (logger.isTraceEnabled()) {
                     // logger.trace("Available bytes: " + available);
                     // }
-
                 }
 
                 // check if timedOut
-                if (this.isTimedOut) {
-                    throw new ModbusIOException("I/O exception - read timeout.\n");
+                if (isTimedOut) {
+                    throw ModbusIOException("I/O exception - read timeout.\n")
                 }
 
                 // get a reference to the inner byte buffer
-                byte inBuffer[] = this.inputBuffer.getBuffer();
+                val inBuffer = inputBuffer!!.buffer
 
                 // read the first 2 bytes from the input stream
-                this.inputStream.read(inBuffer, 0, 2);
+                inputStream!!.read(inBuffer, 0, 2)
                 // this.inputStream.readFully(inBuffer);
 
                 // read the progressive id
-                int packetId = inputBuffer.readUnsignedByte();
-
-                if (logger.isTraceEnabled()) {
-                    logger.trace(ModbusRTUTCPTransport.logId + "Read packet with progressive id: " + packetId);
+                val packetId = inputBuffer!!.readUnsignedByte()
+                if (logger.isTraceEnabled) {
+                    logger.trace(logId + "Read packet with progressive id: " + packetId)
                 }
 
                 // read the function code
-                int functionCode = inputBuffer.readUnsignedByte();
-
-                if (logger.isTraceEnabled()) {
-                    logger.trace(" uid: " + packetId + ", function code: " + functionCode);
+                val functionCode = inputBuffer!!.readUnsignedByte()
+                if (logger.isTraceEnabled) {
+                    logger.trace(" uid: $packetId, function code: $functionCode")
                 }
 
                 // compute the number of bytes composing the message (including
                 // the CRC = 2bytes)
-                int packetLength = computePacketLength(functionCode);
+                val packetLength = computePacketLength(functionCode)
 
                 // sleep for the time needed to receive the first part of the
                 // response
-                while ((this.inputStream.available() < (packetLength - 3)) && (!this.isTimedOut)) {
+                while (inputStream!!.available() < packetLength - 3 && !isTimedOut) {
                     try {
-                        inputBuffer.wait(10);
-                    } catch (InterruptedException ie) {
+                        inputBuffer.wait(10)
+                    } catch (ie: InterruptedException) {
                         // do nothing
-                        System.err.println("Sleep interrupted while waiting for response body...\n" + ie);
+                        System.err.println("Sleep interrupted while waiting for response body...\n$ie")
                     }
                 }
 
                 // check if timedOut
-                if (this.isTimedOut) {
-                    throw new ModbusIOException("I/O exception - read timeout.\n");
+                if (isTimedOut) {
+                    throw ModbusIOException("I/O exception - read timeout.\n")
                 }
 
                 // read the remaining bytes
-                this.inputStream.read(inBuffer, 3, packetLength);
-
-                if (logger.isTraceEnabled()) {
-                    logger.trace(" bytes: " + ModbusUtil.toHex(inBuffer, 0, packetLength) + ", desired length: "
-                            + packetLength);
+                inputStream!!.read(inBuffer, 3, packetLength)
+                if (logger.isTraceEnabled) {
+                    logger.trace(
+                        " bytes: " + ModbusUtil.toHex(inBuffer, 0, packetLength) + ", desired length: "
+                                + packetLength
+                    )
                 }
 
                 // compute the CRC
-                int crc[] = ModbusUtil.calculateCRC(inBuffer, 0, packetLength - 2);
+                val crc = ModbusUtil.calculateCRC(inBuffer, 0, packetLength - 2)
 
                 // check the CRC against the received one...
                 if (ModbusUtil.unsignedByteToInt(inBuffer[packetLength - 2]) != crc[0]
-                        || ModbusUtil.unsignedByteToInt(inBuffer[packetLength - 1]) != crc[1]) {
-                    throw new IOException("CRC Error in received frame: " + packetLength + " bytes: "
-                            + ModbusUtil.toHex(inBuffer, 0, packetLength));
+                    || ModbusUtil.unsignedByteToInt(inBuffer[packetLength - 1]) != crc[1]
+                ) {
+                    throw IOException(
+                        "CRC Error in received frame: " + packetLength + " bytes: "
+                                + ModbusUtil.toHex(inBuffer, 0, packetLength)
+                    )
                 }
 
                 // reset the input buffer to the given packet length (excluding
                 // the CRC)
-                this.inputBuffer.reset(inBuffer, packetLength - 2);
+                inputBuffer!!.reset(inBuffer, packetLength - 2)
 
                 // create the response
-                response = ModbusResponse.createModbusResponse(functionCode);
-                response.setHeadless();
+                response = ModbusResponse.createModbusResponse(functionCode)
+                response.setHeadless()
 
                 // read the response
-                response.readFrom(inputBuffer);
+                response.readFrom(inputBuffer)
             }
-        } catch (IOException e) {
+        } catch (e: IOException) {
             // debug
-            System.err.println(ModbusRTUTCPTransport.logId + "Error while reading from socket: " + e);
+            System.err.println(logId + "Error while reading from socket: " + e)
 
             // clean the input stream
             try {
-                while (this.inputStream.read() != -1) {
-
+                while (inputStream!!.read() != -1) {
                 }
-            } catch (IOException e1) {
+            } catch (e1: IOException) {
                 // debug
-                System.err.println(ModbusRTUTCPTransport.logId + "Error while emptying input buffer from socket: " + e);
+                System.err.println(logId + "Error while emptying input buffer from socket: " + e)
             }
-
-            // wrap and re-throw
-            throw new ModbusIOException("I/O exception - failed to read.\n" + e);
+            throw ModbusIOException("I/O exception - failed to read.\n$e")
         }
 
         // reset the timeout timer
-        this.readTimeoutTimer.cancel();
+        readTimeoutTimer!!.cancel()
 
         // return the response read from the socket stream
-        return response;
+        return response!!
 
         /*-------------------------- SERIAL IMPLEMENTATION -----------------------------------
         
@@ -406,81 +391,66 @@ public class ModbusRTUTCPTransport implements ModbusTransport {
         }
         
         ------------------------------------------------------------------------------*/
-    }// readResponse
+    } // readResponse
 
-    private int computePacketLength(int functionCode) throws IOException {
+    @Throws(IOException::class)
+    private fun computePacketLength(functionCode: Int): Int {
         // packet length by function code:
-        int length = 0;
+        var length = 0
+        when (functionCode) {
+            0x01, 0x02, 0x03, 0x04, 0x0C, 0x11, 0x14, 0x15, 0x17 -> {
 
-        switch (functionCode) {
-        case 0x01:
-        case 0x02:
-        case 0x03:
-        case 0x04:
-        case 0x0C:
-        case 0x11: // report slave ID version and run/stop state
-        case 0x14: // read log entry (60000 memory reference)
-        case 0x15: // write log entry (60000 memory reference)
-        case 0x17: {
-            // get a reference to the inner byte buffer
-            byte inBuffer[] = this.inputBuffer.getBuffer();
-            this.inputStream.read(inBuffer, 2, 1);
-            int dataLength = this.inputBuffer.readUnsignedByte();
-            length = dataLength + 5; // UID+FC+CRC(2bytes)
-            break;
-        }
-        case 0x05:
-        case 0x06:
-        case 0x0B:
-        case 0x0F:
-        case 0x10: {
-            // read status: only the CRC remains after address and
-            // function code
-            length = 6;
-            break;
-        }
-        case 0x07:
-        case 0x08: {
-            length = 3;
-            break;
-        }
-        case 0x16: {
-            length = 8;
-            break;
-        }
-        case 0x18: {
-            // get a reference to the inner byte buffer
-            byte inBuffer[] = this.inputBuffer.getBuffer();
-            this.inputStream.read(inBuffer, 2, 2);
-            length = this.inputBuffer.readUnsignedShort() + 6;// UID+FC+CRC(2bytes)
-            break;
-        }
-        case 0x83: {
-            // error code
-            length = 5;
-            break;
-        }
-        }
+                // get a reference to the inner byte buffer
+                val inBuffer = inputBuffer!!.buffer
+                inputStream!!.read(inBuffer, 2, 1)
+                val dataLength = inputBuffer!!.readUnsignedByte()
+                length = dataLength + 5 // UID+FC+CRC(2bytes)
+            }
 
-        return length;
+            0x05, 0x06, 0x0B, 0x0F, 0x10 -> {
+
+                // read status: only the CRC remains after address and
+                // function code
+                length = 6
+            }
+
+            0x07, 0x08 -> {
+                length = 3
+            }
+
+            0x16 -> {
+                length = 8
+            }
+
+            0x18 -> {
+
+                // get a reference to the inner byte buffer
+                val inBuffer = inputBuffer!!.buffer
+                inputStream!!.read(inBuffer, 2, 2)
+                length = inputBuffer!!.readUnsignedShort() + 6 // UID+FC+CRC(2bytes)
+            }
+
+            0x83 -> {
+
+                // error code
+                length = 5
+            }
+        }
+        return length
     }
 
-    @Override
-    public void close() throws IOException {
-        inputStream.close();
-        outputStream.close();
-    }// close
+    @Throws(IOException::class)
+    override fun close() {
+        inputStream!!.close()
+        outputStream!!.close()
+    } // close
 
-    @Override
-    public ModbusTransaction createTransaction() {
+    override fun createTransaction(): ModbusTransaction {
         if (m_Master == null) {
-            m_Master = new RTUTCPMasterConnection(m_Socket.getInetAddress(), m_Socket.getPort());
+            m_Master = RTUTCPMasterConnection(m_Socket!!.inetAddress, m_Socket.port)
         }
-        ModbusRTUTCPTransaction trans = new ModbusRTUTCPTransaction(m_Master);
-        return trans;
-    }
-
-    /*
+        return ModbusRTUTCPTransaction(m_Master!!)
+    } /*
      * private void getResponse(int fn, BytesOutputStream out) throws IOException { int bc = -1, bc2 = -1, bcw = -1; int
      * inpBytes = 0; byte inpBuf[] = new byte[256];
      * 
@@ -504,4 +474,8 @@ public class ModbusRTUTCPTransport implements ModbusTransport {
      * "getResponse serial port exception"); } }// getResponse
      */
 
+    companion object {
+        private val logger = LoggerFactory.getLogger(ModbusRTUTCPTransport::class.java)
+        const val logId = "[ModbusRTUTCPTransport]: "
+    }
 }

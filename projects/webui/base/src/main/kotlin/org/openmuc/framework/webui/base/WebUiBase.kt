@@ -18,147 +18,129 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.webui.base;
+package org.openmuc.framework.webui.base
 
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
-import org.openmuc.framework.authentication.AuthenticationService;
-import org.openmuc.framework.webui.spi.WebUiPluginService;
-import org.osgi.framework.BundleContext;
-import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
-import org.osgi.service.component.annotations.Deactivate;
-import org.osgi.service.component.annotations.Reference;
-import org.osgi.service.component.annotations.ReferenceCardinality;
-import org.osgi.service.component.annotations.ReferencePolicy;
-import org.osgi.service.http.HttpService;
-import org.osgi.service.http.NamespaceException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmuc.framework.authentication.AuthenticationService
+import org.openmuc.framework.webui.spi.WebUiPluginService
+import org.osgi.framework.BundleContext
+import org.osgi.service.component.annotations.*
+import org.osgi.service.http.HttpService
+import org.osgi.service.http.NamespaceException
+import org.slf4j.LoggerFactory
+import java.util.concurrent.ConcurrentHashMap
 
 @Component
-public final class WebUiBase {
-
-    private static final Logger logger = LoggerFactory.getLogger(WebUiBase.class);
-
-    final Map<String, WebUiPluginService> pluginsByAlias = new ConcurrentHashMap<>();
-    final Map<String, WebUiPluginService> pluginsByAliasDeactivated = new ConcurrentHashMap<>();
+class WebUiBase {
+    val pluginsByAlias: MutableMap<String, WebUiPluginService?> = ConcurrentHashMap()
+    val pluginsByAliasDeactivated: MutableMap<String, WebUiPluginService?> = ConcurrentHashMap()
 
     @Reference
-    private HttpService httpService;
+    private val httpService: HttpService? = null
 
     @Reference
-    private AuthenticationService authService;
+    private var authService: AuthenticationService? = null
 
-    private volatile WebUiBaseServlet servlet;
-
+    @Volatile
+    private var servlet: WebUiBaseServlet? = null
     @Activate
-    protected void activate(BundleContext context) {
-        logger.info("Activating WebUI Base");
-
-        servlet = new WebUiBaseServlet(this);
-        servlet.setAuthentification(authService);
-
-        BundleHttpContext bundleHttpContext = new BundleHttpContext(context.getBundle());
-
+    protected fun activate(context: BundleContext) {
+        logger.info("Activating WebUI Base")
+        servlet = WebUiBaseServlet(this)
+        servlet!!.setAuthentification(authService)
+        val bundleHttpContext = BundleHttpContext(context.bundle)
         try {
-            httpService.registerResources("/app", "/app", bundleHttpContext);
-            httpService.registerResources("/assets", "/assets", bundleHttpContext);
-            httpService.registerResources("/openmuc/css", "/css", bundleHttpContext);
-            httpService.registerResources("/openmuc/images", "/images", bundleHttpContext);
-            httpService.registerResources("/openmuc/html", "/html", bundleHttpContext);
-            httpService.registerResources("/openmuc/js", "/js", bundleHttpContext);
-            httpService.registerResources("/media", "/media", bundleHttpContext);
-            httpService.registerResources("/conf/webui", "/conf/webui", bundleHttpContext);
-            httpService.registerServlet("/", servlet, null, bundleHttpContext);
-        } catch (Exception e) {
+            httpService!!.registerResources("/app", "/app", bundleHttpContext)
+            httpService.registerResources("/assets", "/assets", bundleHttpContext)
+            httpService.registerResources("/openmuc/css", "/css", bundleHttpContext)
+            httpService.registerResources("/openmuc/images", "/images", bundleHttpContext)
+            httpService.registerResources("/openmuc/html", "/html", bundleHttpContext)
+            httpService.registerResources("/openmuc/js", "/js", bundleHttpContext)
+            httpService.registerResources("/media", "/media", bundleHttpContext)
+            httpService.registerResources("/conf/webui", "/conf/webui", bundleHttpContext)
+            httpService.registerServlet("/", servlet, null, bundleHttpContext)
+        } catch (e: Exception) {
         }
-
-        synchronized (pluginsByAlias) {
-            for (WebUiPluginService plugin : pluginsByAlias.values()) {
-                registerResources(plugin);
+        synchronized(pluginsByAlias) {
+            for (plugin in pluginsByAlias.values) {
+                registerResources(plugin)
             }
         }
     }
 
     @Deactivate
-    protected void deactivate() {
-        logger.info("Deactivating WebUI Base");
-
-        httpService.unregister("/app");
-        httpService.unregister("/assets");
-        httpService.unregister("/openmuc/css");
-        httpService.unregister("/openmuc/images");
-        httpService.unregister("/openmuc/html");
-        httpService.unregister("/openmuc/js");
-        httpService.unregister("/media");
-        httpService.unregister("/conf/webui");
-        httpService.unregister("/");
+    protected fun deactivate() {
+        logger.info("Deactivating WebUI Base")
+        httpService!!.unregister("/app")
+        httpService.unregister("/assets")
+        httpService.unregister("/openmuc/css")
+        httpService.unregister("/openmuc/images")
+        httpService.unregister("/openmuc/html")
+        httpService.unregister("/openmuc/js")
+        httpService.unregister("/media")
+        httpService.unregister("/conf/webui")
+        httpService.unregister("/")
     }
 
     @Reference(cardinality = ReferenceCardinality.MULTIPLE, policy = ReferencePolicy.DYNAMIC)
-    protected void setWebUiPluginService(WebUiPluginService uiPlugin) {
-
-        synchronized (pluginsByAlias) {
+    protected fun setWebUiPluginService(uiPlugin: WebUiPluginService) {
+        synchronized(pluginsByAlias) {
             if (!pluginsByAlias.containsValue(uiPlugin)) {
-                pluginsByAlias.put(uiPlugin.getAlias(), uiPlugin);
-                registerResources(uiPlugin);
+                pluginsByAlias[uiPlugin.alias] = uiPlugin
+                registerResources(uiPlugin)
             }
         }
     }
 
-    protected void unsetWebUiPluginService(WebUiPluginService uiPlugin) {
-        unregisterResources(uiPlugin);
-        pluginsByAlias.remove(uiPlugin.getAlias());
-        logger.info("WebUI plugin deregistered: {}.", uiPlugin.getName());
+    protected fun unsetWebUiPluginService(uiPlugin: WebUiPluginService) {
+        unregisterResources(uiPlugin)
+        pluginsByAlias.remove(uiPlugin.alias)
+        logger.info("WebUI plugin deregistered: {}.", uiPlugin.name)
     }
 
     @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-    protected void setAuthentificationService(AuthenticationService authService) {
-        this.authService = authService;
+    protected fun setAuthentificationService(authService: AuthenticationService?) {
+        this.authService = authService
     }
 
-    protected void unsetAuthentificationService(AuthenticationService authService) {
-
+    protected fun unsetAuthentificationService(authService: AuthenticationService?) {}
+    fun unsetWebUiPluginServiceByAlias(alias: String) {
+        val toRemovePlugin = pluginsByAlias.remove(alias)
+        pluginsByAliasDeactivated[alias] = toRemovePlugin
     }
 
-    protected void unsetWebUiPluginServiceByAlias(String alias) {
-        WebUiPluginService toRemovePlugin = pluginsByAlias.remove(alias);
-        pluginsByAliasDeactivated.put(alias, toRemovePlugin);
+    fun restoreWebUiPlugin(alias: String) {
+        val toAddPlugin = pluginsByAliasDeactivated.remove(alias)
+        pluginsByAlias[alias] = toAddPlugin
     }
 
-    protected void restoreWebUiPlugin(String alias) {
-        WebUiPluginService toAddPlugin = pluginsByAliasDeactivated.remove(alias);
-        pluginsByAlias.put(alias, toAddPlugin);
-    }
-
-    private void registerResources(WebUiPluginService plugin) {
+    private fun registerResources(plugin: WebUiPluginService?) {
         if (servlet == null || httpService == null) {
-            logger.warn("Can't register WebUI plugin {}.", plugin.getName());
-            return;
+            logger.warn("Can't register WebUI plugin {}.", plugin!!.name)
+            return
         }
-
-        BundleHttpContext bundleHttpContext = new BundleHttpContext(plugin.getContextBundle());
-
-        Set<String> aliases = plugin.getResources().keySet();
-        for (String alias : aliases) {
+        val bundleHttpContext = BundleHttpContext(plugin!!.contextBundle)
+        val aliases: Set<String> = plugin.resources.keys
+        for (alias in aliases) {
             try {
-                httpService.registerResources("/" + plugin.getAlias() + "/" + alias, plugin.getResources().get(alias),
-                        bundleHttpContext);
-            } catch (NamespaceException e) {
-                logger.error("Servlet with alias \"/{}/{}\" already registered.", plugin.getAlias(), alias);
+                httpService.registerResources(
+                    "/" + plugin.alias + "/" + alias, plugin.resources[alias],
+                    bundleHttpContext
+                )
+            } catch (e: NamespaceException) {
+                logger.error("Servlet with alias \"/{}/{}\" already registered.", plugin.alias, alias)
             }
         }
-        logger.info("WebUI plugin registered: " + plugin.getName());
+        logger.info("WebUI plugin registered: " + plugin.name)
     }
 
-    private void unregisterResources(WebUiPluginService plugin) {
-        Set<String> aliases = plugin.getResources().keySet();
-
-        for (String alias : aliases) {
-            httpService.unregister("/" + plugin.getAlias() + "/" + alias);
+    private fun unregisterResources(plugin: WebUiPluginService) {
+        val aliases: Set<String> = plugin.resources.keys
+        for (alias in aliases) {
+            httpService!!.unregister("/" + plugin.alias + "/" + alias)
         }
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(WebUiBase::class.java)
     }
 }

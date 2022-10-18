@@ -1,3 +1,6 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+}
 def projectName = "OpenMUC Driver - SNMP"
 def projectDescription = "SNMP driver for the OpenMUC framework."
 
@@ -13,6 +16,7 @@ dependencies {
     implementation project(':openmuc-core-spi')
     implementation group: 'org.snmp4j', name: 'snmp4j', version: snmp4jVersion
     embed group: 'org.snmp4j', name: 'snmp4j', version: snmp4jVersion
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
 
 jar {
@@ -33,5 +37,15 @@ publishing {
                 description = projectDescription
             }
         }
+    }
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 }

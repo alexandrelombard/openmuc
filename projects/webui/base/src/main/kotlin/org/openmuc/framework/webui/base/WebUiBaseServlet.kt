@@ -18,156 +18,130 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.webui.base;
+package org.openmuc.framework.webui.base
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import org.openmuc.framework.authentication.AuthenticationService
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
+import javax.servlet.ServletException
+import javax.servlet.http.HttpServlet
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-
-import org.openmuc.framework.authentication.AuthenticationService;
-import org.openmuc.framework.webui.spi.WebUiPluginService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-
-@SuppressWarnings("serial")
-public class WebUiBaseServlet extends HttpServlet {
-
-    private static final Logger logger = LoggerFactory.getLogger(WebUiBaseServlet.class);
-
-    /**
-     * 10 minutes.
-     */
-    private static final int SESSION_TIMEOUT = 600;
-
-    private final WebUiBase webUiBase;
-    private boolean isSensitiveMode = true;
-    private AuthenticationService authService;
-
-    public WebUiBaseServlet(WebUiBase webUiBase) {
-        this.webUiBase = webUiBase;
-    }
-
-    public static void copyStream(InputStream input, OutputStream output) throws IOException {
-        byte[] buffer = new byte[1024]; // Adjust if you want
-        int bytesRead;
-        while ((bytesRead = input.read(buffer)) != -1) {
-            output.write(buffer, 0, bytesRead);
-        }
-    }
-
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String servletPath = req.getServletPath();
-
+class WebUiBaseServlet(private val webUiBase: WebUiBase) : HttpServlet() {
+    private var isSensitiveMode = true
+    private var authService: AuthenticationService? = null
+    @Throws(ServletException::class, IOException::class)
+    override fun doGet(req: HttpServletRequest, resp: HttpServletResponse) {
+        val servletPath = req.servletPath
         if (servletPath == null) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Path is null.");
-        }
-        else if ("/applications".equals(servletPath)) {
-
-            if (req.getSession().isNew()) {
-                req.getSession().invalidate();
-                resp.sendError(401);
-                return;
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Path is null.")
+        } else if ("/applications" == servletPath) {
+            if (req.session.isNew) {
+                req.session.invalidate()
+                resp.sendError(401)
+                return
             }
-
-            JsonArray jApplications = new JsonArray();
-            for (WebUiPluginService webUiApp : webUiBase.pluginsByAlias.values()) {
-                JsonObject app = new JsonObject();
-                app.addProperty("alias", webUiApp.getAlias());
-                app.addProperty("name", webUiApp.getName());
-                jApplications.add(app);
+            val jApplications = JsonArray()
+            for (webUiApp in webUiBase.pluginsByAlias.values) {
+                val app = JsonObject()
+                app.addProperty("alias", webUiApp!!.alias)
+                app.addProperty("name", webUiApp.name)
+                jApplications.add(app)
             }
-
-            String applicationsStr = jApplications.toString();
-
-            if (logger.isDebugEnabled()) {
-                logger.debug(applicationsStr);
+            val applicationsStr = jApplications.toString()
+            if (logger.isDebugEnabled) {
+                logger.debug(applicationsStr)
             }
-
-            resp.setContentType("application/json");
-            resp.getWriter().println(applicationsStr);
-            return;
+            resp.contentType = "application/json"
+            resp.writer.println(applicationsStr)
+            return
         }
-
-        InputStream inputStream = getServletContext().getResourceAsStream("page.html");
-        OutputStream outputStream = resp.getOutputStream();
-        resp.setContentType("text/html");
-
-        copyStream(inputStream, outputStream);
-
-        outputStream.close();
-        inputStream.close();
+        val inputStream = servletContext.getResourceAsStream("page.html")
+        val outputStream: OutputStream = resp.outputStream
+        resp.contentType = "text/html"
+        copyStream(inputStream, outputStream)
+        outputStream.close()
+        inputStream.close()
     }
 
-    @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String servletPath = req.getServletPath();
-        if (logger.isInfoEnabled()) {
-            logger.info(servletPath);
+    @Throws(ServletException::class, IOException::class)
+    override fun doPost(req: HttpServletRequest, resp: HttpServletResponse) {
+        val servletPath = req.servletPath
+        if (logger.isInfoEnabled) {
+            logger.info(servletPath)
         }
-        if (!servletPath.equals("/login")) {
-            doGet(req, resp);
-            return;
+        if (servletPath != "/login") {
+            doGet(req, resp)
+            return
         }
-
-        String user = req.getParameter("user");
-        String pwd = req.getParameter("pwd");
-
-        if (authService.login(user, pwd)) {
-            updateView(user);
-            HttpSession session = req.getSession(true); // create a new session
-            session.setMaxInactiveInterval(SESSION_TIMEOUT); // set session timeout
-            session.setAttribute("user", user);
-            resp.setStatus(HttpServletResponse.SC_ACCEPTED);
-        }
-        else {
-            if (logger.isInfoEnabled()) {
-                logger.info("login failed!");
+        val user = req.getParameter("user")
+        val pwd = req.getParameter("pwd")
+        if (authService!!.login(user, pwd)) {
+            updateView(user)
+            val session = req.getSession(true) // create a new session
+            session.maxInactiveInterval = SESSION_TIMEOUT // set session timeout
+            session.setAttribute("user", user)
+            resp.status = HttpServletResponse.SC_ACCEPTED
+        } else {
+            if (logger.isInfoEnabled) {
+                logger.info("login failed!")
             }
-            req.getSession().invalidate(); // invalidate the session
-            resp.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+            req.session.invalidate() // invalidate the session
+            resp.sendError(HttpServletResponse.SC_UNAUTHORIZED)
         }
     }
 
-    private void updateView(String user) {
-        if (!authService.isUserAdmin(user) && isSensitiveMode) {
-            hideSensitiveContent();
-            isSensitiveMode = false;
+    private fun updateView(user: String) {
+        if (!authService!!.isUserAdmin(user) && isSensitiveMode) {
+            hideSensitiveContent()
+            isSensitiveMode = false
+        } else if (authService!!.isUserAdmin(user) && !isSensitiveMode) {
+            showSensitiveContent()
+            isSensitiveMode = true
         }
-        else if (authService.isUserAdmin(user) && !isSensitiveMode) {
-            showSensitiveContent();
-            isSensitiveMode = true;
+    }
+
+    private fun hideSensitiveContent() {
+        webUiBase.unsetWebUiPluginServiceByAlias("channelaccesstool")
+        webUiBase.unsetWebUiPluginServiceByAlias("channelconfigurator")
+        webUiBase.unsetWebUiPluginServiceByAlias("userconfigurator")
+        webUiBase.unsetWebUiPluginServiceByAlias("mediaviewer")
+        webUiBase.unsetWebUiPluginServiceByAlias("dataplotter")
+        webUiBase.unsetWebUiPluginServiceByAlias("dataexporter")
+    }
+
+    private fun showSensitiveContent() {
+        webUiBase.restoreWebUiPlugin("channelaccesstool")
+        webUiBase.restoreWebUiPlugin("channelconfigurator")
+        webUiBase.restoreWebUiPlugin("userconfigurator")
+        webUiBase.restoreWebUiPlugin("mediaviewer")
+        webUiBase.restoreWebUiPlugin("dataplotter")
+        webUiBase.restoreWebUiPlugin("dataexporter")
+    }
+
+    fun setAuthentification(authService: AuthenticationService?) {
+        this.authService = authService
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(WebUiBaseServlet::class.java)
+
+        /**
+         * 10 minutes.
+         */
+        private const val SESSION_TIMEOUT = 600
+        @Throws(IOException::class)
+        fun copyStream(input: InputStream, output: OutputStream) {
+            val buffer = ByteArray(1024) // Adjust if you want
+            var bytesRead: Int
+            while (input.read(buffer).also { bytesRead = it } != -1) {
+                output.write(buffer, 0, bytesRead)
+            }
         }
-    }
-
-    private void hideSensitiveContent() {
-        webUiBase.unsetWebUiPluginServiceByAlias("channelaccesstool");
-        webUiBase.unsetWebUiPluginServiceByAlias("channelconfigurator");
-        webUiBase.unsetWebUiPluginServiceByAlias("userconfigurator");
-        webUiBase.unsetWebUiPluginServiceByAlias("mediaviewer");
-        webUiBase.unsetWebUiPluginServiceByAlias("dataplotter");
-        webUiBase.unsetWebUiPluginServiceByAlias("dataexporter");
-    }
-
-    private void showSensitiveContent() {
-        webUiBase.restoreWebUiPlugin("channelaccesstool");
-        webUiBase.restoreWebUiPlugin("channelconfigurator");
-        webUiBase.restoreWebUiPlugin("userconfigurator");
-        webUiBase.restoreWebUiPlugin("mediaviewer");
-        webUiBase.restoreWebUiPlugin("dataplotter");
-        webUiBase.restoreWebUiPlugin("dataexporter");
-    }
-
-    public void setAuthentification(AuthenticationService authService) {
-        this.authService = authService;
     }
 }

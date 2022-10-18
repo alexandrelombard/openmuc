@@ -18,24 +18,17 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.modbus.register;
+package org.openmuc.framework.server.modbus.register
 
-import org.openmuc.framework.dataaccess.Channel;
+import org.openmuc.framework.dataaccess.Channel
 
-public class BooleanMappingInputRegister extends MappingInputRegister {
-
-    public BooleanMappingInputRegister(Channel channel, int byteHigh, int byteLow) {
-        super(channel, byteHigh, byteLow);
-    }
-
-    @Override
-    public byte[] toBytes() {
-        if (channel.getLatestRecord().getValue().asBoolean()) {
-            return new byte[] { 0x01b };
-        }
-        else {
-            return new byte[] { 0x00b };
+class BooleanMappingInputRegister(channel: Channel, byteHigh: Int, byteLow: Int) :
+    MappingInputRegister(channel, byteHigh, byteLow) {
+    override fun toBytes(): ByteArray {
+        return if (channel.latestRecord!!.value!!.asBoolean()) {
+            byteArrayOf(0x01b)
+        } else {
+            byteArrayOf(0x00b)
         }
     }
-
 }

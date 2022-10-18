@@ -18,43 +18,37 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.rest1.rest.objects;
+package org.openmuc.framework.lib.rest1.rest.objects
 
-import org.openmuc.framework.config.DriverConfig;
-import org.openmuc.framework.config.IdCollisionException;
-import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException;
+import org.openmuc.framework.config.DriverConfig
+import org.openmuc.framework.config.IdCollisionException
+import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException
 
-public class RestDriverConfigMapper {
-
-    public static RestDriverConfig getRestDriverConfig(DriverConfig dc) {
-
-        RestDriverConfig rdc = new RestDriverConfig();
-        rdc.setId(dc.getId());
-        rdc.setConnectRetryInterval(dc.getConnectRetryInterval());
-        rdc.setDisabled(dc.isDisabled());
-        rdc.setSamplingTimeout(dc.getSamplingTimeout());
-        return rdc;
+object RestDriverConfigMapper {
+    fun getRestDriverConfig(dc: DriverConfig): RestDriverConfig {
+        val rdc = RestDriverConfig()
+        rdc.id = dc.id
+        rdc.connectRetryInterval = dc.connectRetryInterval
+        rdc.isDisabled = dc.isDisabled
+        rdc.samplingTimeout = dc.samplingTimeout
+        return rdc
     }
 
-    public static void setDriverConfig(DriverConfig dc, RestDriverConfig rdc, String idFromUrl)
-            throws IdCollisionException, RestConfigIsNotCorrectException {
-
+    @Throws(IdCollisionException::class, RestConfigIsNotCorrectException::class)
+    fun setDriverConfig(dc: DriverConfig?, rdc: RestDriverConfig?, idFromUrl: String) {
         if (dc == null) {
-            throw new RestConfigIsNotCorrectException("DriverConfig is null!");
-        }
-        else {
+            throw RestConfigIsNotCorrectException("DriverConfig is null!")
+        } else {
             if (rdc != null) {
-                if (rdc.getId() != null && !rdc.getId().equals("") && !idFromUrl.equals(rdc.getId())) {
-                    dc.setId(rdc.getId());
+                if (rdc.id != null && rdc.id != "" && idFromUrl != rdc.id) {
+                    dc.id = rdc.id
                 }
-                dc.setConnectRetryInterval(rdc.getConnectRetryInterval());
-                dc.setDisabled(rdc.isDisabled());
-                dc.setSamplingTimeout(rdc.getSamplingTimeout());
-            }
-            else {
-                throw new RestConfigIsNotCorrectException();
+                dc.connectRetryInterval = rdc.connectRetryInterval
+                dc.isDisabled = rdc.isDisabled
+                dc.samplingTimeout = rdc.samplingTimeout
+            } else {
+                throw RestConfigIsNotCorrectException()
             }
         }
-
     }
 }

@@ -1,3 +1,6 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+}
 def projectName = "OpenMUC Driver - AMQP"
 def projectDescription = "AMQP driver for the OpenMUC framework."
 dependencies {
@@ -6,6 +9,7 @@ dependencies {
     implementation project(':openmuc-lib-osgi')
 
     testImplementation group: 'com.rabbitmq', name: 'amqp-client', version: '5.9.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
 
 jar {
@@ -20,5 +24,18 @@ publishing {
                 description = projectDescription
             }
         }
+    }
+}
+repositories {
+    mavenCentral()
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+compileTestKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
     }
 }

@@ -18,25 +18,28 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.ssl;
+package org.openmuc.framework.lib.ssl
 
-import org.openmuc.framework.lib.osgi.deployment.RegistrationHandler;
-import org.openmuc.framework.security.SslManagerInterface;
-import org.osgi.framework.BundleContext;
-import org.osgi.service.component.annotations.Activate;
-import org.osgi.service.component.annotations.Component;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.openmuc.framework.lib.osgi.deployment.RegistrationHandler
+import org.openmuc.framework.security.SslManagerInterface
+import org.osgi.framework.BundleContext
+import org.osgi.service.component.annotations.Activate
+import org.osgi.service.component.annotations.Component
+import org.slf4j.LoggerFactory
 
 @Component
-public class SslManagerComponent {
-    private static final Logger logger = LoggerFactory.getLogger(SslManagerComponent.class);
-
+class SslManagerComponent {
     @Activate
-    protected void activate(BundleContext context) {
-        logger.info("SSL Component activated");
-        RegistrationHandler registrationHandler = new RegistrationHandler(context);
-        registrationHandler.provideInFramework(SslManagerInterface.class.getName(), new SslManager(),
-                SslManager.class.getName());
+    protected fun activate(context: BundleContext?) {
+        logger.info("SSL Component activated")
+        val registrationHandler = RegistrationHandler(context!!)
+        registrationHandler.provideInFramework(
+            SslManagerInterface::class.java.name, SslManager(),
+            SslManager::class.java.name
+        )
+    }
+
+    companion object {
+        private val logger = LoggerFactory.getLogger(SslManagerComponent::class.java)
     }
 }

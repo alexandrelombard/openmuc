@@ -18,50 +18,45 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.modbus.register;
+package org.openmuc.framework.server.modbus.register
 
-import java.nio.ByteBuffer;
+import com.ghgande.j2mod.modbus.procimg.InputRegister
+import org.openmuc.framework.dataaccess.Channel
+import java.lang.Boolean
+import java.nio.ByteBuffer
+import kotlin.Exception
+import kotlin.Int
+import kotlin.Short
 
-import org.openmuc.framework.dataaccess.Channel;
+abstract class MappingInputRegister(
+    protected var channel: Channel,
+    protected var highByte: Int,
+    protected var lowByte: Int
+) : InputRegister {
+    var useUnscaledValues = false
 
-import com.ghgande.j2mod.modbus.procimg.InputRegister;
-
-public abstract class MappingInputRegister implements InputRegister {
-    boolean useUnscaledValues;
-    protected Channel channel;
-    protected int highByte;
-    protected int lowByte;
-
-    public MappingInputRegister(Channel channel, int byteHigh, int byteLow) {
-        this.channel = channel;
-        this.highByte = byteHigh;
-        this.lowByte = byteLow;
-
+    init {
         try {
-            String scalingProperty = System.getProperty("org.openmuc.framework.server.modbus.useUnscaledValues");
-            useUnscaledValues = Boolean.parseBoolean(scalingProperty);
-        } catch (Exception e) {
+            val scalingProperty = System.getProperty("org.openmuc.framework.server.modbus.useUnscaledValues")
+            useUnscaledValues = Boolean.parseBoolean(scalingProperty)
+        } catch (e: Exception) {
             /* will stick to default setting. */
         }
     }
 
-    @Override
-    public int getValue() {
+    override fun getValue(): Int {
         /*
          * toBytes always only contains two bytes. So cast from short.
          */
-        return ByteBuffer.wrap(toBytes()).getShort();
+        return ByteBuffer.wrap(toBytes()).short.toInt()
     }
 
-    @Override
-    public int toUnsignedShort() {
-        short shortVal = ByteBuffer.wrap(toBytes()).getShort();
-        return shortVal & 0xFFFF;
+    override fun toUnsignedShort(): Int {
+        val shortVal = ByteBuffer.wrap(toBytes()).short
+        return shortVal.toInt() and 0xFFFF
     }
 
-    @Override
-    public short toShort() {
-        return ByteBuffer.wrap(toBytes()).getShort();
+    override fun toShort(): Short {
+        return ByteBuffer.wrap(toBytes()).short
     }
-
 }

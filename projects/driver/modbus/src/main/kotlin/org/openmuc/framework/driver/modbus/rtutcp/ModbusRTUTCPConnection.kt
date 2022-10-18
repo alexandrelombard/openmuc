@@ -18,178 +18,157 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.modbus.rtutcp;
+package org.openmuc.framework.driver.modbus.rtutcp
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.List;
-
-import org.openmuc.framework.config.ArgumentSyntaxException;
-import org.openmuc.framework.config.ChannelScanInfo;
-import org.openmuc.framework.config.ScanException;
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.driver.modbus.ModbusChannel;
-import org.openmuc.framework.driver.modbus.ModbusChannel.EAccess;
-import org.openmuc.framework.driver.modbus.ModbusConnection;
-import org.openmuc.framework.driver.modbus.rtutcp.bonino.ModbusRTUTCPTransaction;
-import org.openmuc.framework.driver.modbus.rtutcp.bonino.RTUTCPMasterConnection;
-import org.openmuc.framework.driver.modbus.tcp.ModbusTCPDeviceAddress;
-import org.openmuc.framework.driver.spi.ChannelRecordContainer;
-import org.openmuc.framework.driver.spi.ChannelValueContainer;
-import org.openmuc.framework.driver.spi.ConnectionException;
-import org.openmuc.framework.driver.spi.RecordsReceivedListener;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.ghgande.j2mod.modbus.ModbusException;
-import com.ghgande.j2mod.modbus.ModbusIOException;
+import com.ghgande.j2mod.modbus.ModbusException
+import com.ghgande.j2mod.modbus.ModbusIOException
+import org.openmuc.framework.config.ArgumentSyntaxException
+import org.openmuc.framework.config.ChannelScanInfo
+import org.openmuc.framework.config.ScanException
+import org.openmuc.framework.data.Flag
+import org.openmuc.framework.data.Record
+import org.openmuc.framework.data.Value
+import org.openmuc.framework.driver.modbus.ModbusChannel.EAccess
+import org.openmuc.framework.driver.modbus.ModbusConnection
+import org.openmuc.framework.driver.modbus.rtutcp.bonino.ModbusRTUTCPTransaction
+import org.openmuc.framework.driver.modbus.rtutcp.bonino.RTUTCPMasterConnection
+import org.openmuc.framework.driver.modbus.tcp.ModbusTCPDeviceAddress
+import org.openmuc.framework.driver.spi.ChannelRecordContainer
+import org.openmuc.framework.driver.spi.ChannelValueContainer
+import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.openmuc.framework.driver.spi.ConnectionException
+import org.openmuc.framework.driver.spi.RecordsReceivedListener
+import org.slf4j.LoggerFactory
+import java.net.InetAddress
+import java.net.UnknownHostException
 
 /**
  * TODO
  */
-public class ModbusRTUTCPConnection extends ModbusConnection {
+class ModbusRTUTCPConnection(deviceAddress: String?, timeoutMs: Int) : ModbusConnection() {
+    private var connection: RTUTCPMasterConnection? = null
+    private var transaction: ModbusRTUTCPTransaction? = null
 
-    private static final Logger logger = LoggerFactory.getLogger(ModbusRTUTCPConnection.class);
-
-    private RTUTCPMasterConnection connection;
-    private ModbusRTUTCPTransaction transaction;
-
-    public ModbusRTUTCPConnection(String deviceAddress, int timeoutMs) {
-
-        super();
-        ModbusTCPDeviceAddress address = new ModbusTCPDeviceAddress(deviceAddress);
+    init {
+        val address = ModbusTCPDeviceAddress(deviceAddress)
         try {
-            connection = new RTUTCPMasterConnection(InetAddress.getByName(address.getIp()), address.getPort());
-            connection.setTimeout(timeoutMs);
-            connect();
-        } catch (UnknownHostException e) {
-            throw new RuntimeException(e.getMessage());
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
+            connection = RTUTCPMasterConnection(InetAddress.getByName(address.ip), address.port)
+            connection.setTimeout(timeoutMs)
+            connect()
+        } catch (e: UnknownHostException) {
+            throw RuntimeException(e.message)
+        } catch (e: Exception) {
+            throw RuntimeException(e.message)
         }
-        logger.info("Modbus Device: " + deviceAddress + " connected");
+        logger.info("Modbus Device: $deviceAddress connected")
     }
 
-    @Override
-    public void connect() throws ConnectionException {
-
+    @Throws(ConnectionException::class)
+    override fun connect() {
         if (connection != null && !connection.isConnected()) {
             try {
-                connection.connect();
-            } catch (Exception e) {
-                throw new ConnectionException(e);
+                connection.connect()
+            } catch (e: Exception) {
+                throw ConnectionException(e)
             }
-            transaction = new ModbusRTUTCPTransaction(connection);
-            setTransaction(transaction);
+            transaction = ModbusRTUTCPTransaction(connection)
+            setTransaction(transaction)
             if (!connection.isConnected()) {
-                throw new ConnectionException("unable to connect");
+                throw ConnectionException("unable to connect")
             }
         }
     }
 
-    @Override
-    public void disconnect() {
-        logger.info("Disconnect Modbus TCP device");
+    override fun disconnect() {
+        logger.info("Disconnect Modbus TCP device")
         if (connection != null && connection.isConnected()) {
-            connection.close();
-            transaction = null;
+            connection.close()
+            transaction = null
         }
     }
 
-    @Override
-    public Object read(List<ChannelRecordContainer> containers, Object containerListHandle, String samplingGroup)
-            throws UnsupportedOperationException, ConnectionException {
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun read(
+        containers: List<ChannelRecordContainer?>?,
+        containerListHandle: Any?,
+        samplingGroup: String?
+    ): Any? {
 
         // reads channels one by one
-        if (samplingGroup.isEmpty()) {
-            for (ChannelRecordContainer container : containers) {
-                long receiveTime = System.currentTimeMillis();
-                ModbusChannel channel = getModbusChannel(container.getChannelAddress(), EAccess.READ);
-                Value value;
-
+        if (samplingGroup!!.isEmpty()) {
+            for (container in containers!!) {
+                val receiveTime = System.currentTimeMillis()
+                val channel = getModbusChannel(container!!.channelAddress, EAccess.READ)
+                var value: Value?
                 try {
-                    value = readChannel(channel);
-
-                    if (logger.isTraceEnabled()) {
-                        logger.trace("Value of response: " + value.toString());
+                    value = readChannel(channel!!)
+                    if (logger.isTraceEnabled) {
+                        logger.trace("Value of response: $value")
                     }
-
-                    container.setRecord(new Record(value, receiveTime));
-
-                } catch (ModbusIOException e) {
-                    logger.error("ModbusIOException while reading channel:" + channel.getChannelAddress(), e);
-                    disconnect();
-                    throw new ConnectionException("Try to solve issue with reconnect.");
-
-                } catch (ModbusException e) {
-                    logger.error("ModbusException while reading channel: " + channel.getChannelAddress(), e);
-                    container.setRecord(new Record(Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE));
-
-                } catch (Exception e) {
+                    container.setRecord(Record(value, receiveTime))
+                } catch (e: ModbusIOException) {
+                    logger.error("ModbusIOException while reading channel:" + channel.channelAddress, e)
+                    disconnect()
+                    throw ConnectionException("Try to solve issue with reconnect.")
+                } catch (e: ModbusException) {
+                    logger.error("ModbusException while reading channel: " + channel.channelAddress, e)
+                    container.setRecord(Record(Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE))
+                } catch (e: Exception) {
                     // catch all possible exceptions and provide info about the channel
-                    logger.error("Exception while reading channel: " + channel.getChannelAddress(), e);
-                    container.setRecord(new Record(Flag.UNKNOWN_ERROR));
+                    logger.error("Exception while reading channel: " + channel.channelAddress, e)
+                    container.setRecord(Record(Flag.UNKNOWN_ERROR))
                 }
-                if (!connection.isConnected()) {
-                    throw new ConnectionException("Lost connection.");
+                if (!connection!!.isConnected) {
+                    throw ConnectionException("Lost connection.")
                 }
             }
-        }
-        // reads whole samplingGroup at once
-        else {
-            readChannelGroupHighLevel(containers, containerListHandle, samplingGroup);
-            if (!connection.isConnected()) {
-                throw new ConnectionException("Lost connection.");
+        } else {
+            readChannelGroupHighLevel(containers, containerListHandle, samplingGroup)
+            if (!connection!!.isConnected) {
+                throw ConnectionException("Lost connection.")
             }
         }
-
-        return null;
+        return null
     }
 
-    @Override
-    public Object write(List<ChannelValueContainer> containers, Object containerListHandle)
-            throws UnsupportedOperationException, ConnectionException {
-
-        for (ChannelValueContainer container : containers) {
-
-            ModbusChannel channel = getModbusChannel(container.getChannelAddress(), EAccess.WRITE);
-
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+        for (container in containers!!) {
+            val channel = getModbusChannel(container!!.channelAddress, EAccess.WRITE)
             try {
-                writeChannel(channel, container.getValue());
-                container.setFlag(Flag.VALID);
-
-            } catch (ModbusIOException e) {
-                logger.error("ModbusIOException while writing channel:" + channel.getChannelAddress(), e);
-                disconnect();
-                throw new ConnectionException("Try to solve issue with reconnect.");
-
-            } catch (ModbusException e) {
-                logger.error("ModbusException while writing channel: " + channel.getChannelAddress(), e);
-                container.setFlag(Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE);
-
-            } catch (Exception e) {
-                logger.error("Exception while writing channel: " + channel.getChannelAddress(), e);
-                container.setFlag(Flag.UNKNOWN_ERROR);
+                writeChannel(channel!!, container.value!!)
+                container.flag = Flag.VALID
+            } catch (e: ModbusIOException) {
+                logger.error("ModbusIOException while writing channel:" + channel.channelAddress, e)
+                disconnect()
+                throw ConnectionException("Try to solve issue with reconnect.")
+            } catch (e: ModbusException) {
+                logger.error("ModbusException while writing channel: " + channel.channelAddress, e)
+                container.flag = Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE
+            } catch (e: Exception) {
+                logger.error("Exception while writing channel: " + channel.channelAddress, e)
+                container.flag = Flag.UNKNOWN_ERROR
             }
-
         }
-
-        return null;
-
+        return null
     }
 
-    @Override
-    public List<ChannelScanInfo> scanForChannels(String settings)
-            throws UnsupportedOperationException, ArgumentSyntaxException, ScanException, ConnectionException {
-        throw new UnsupportedOperationException();
+    @Throws(
+        UnsupportedOperationException::class,
+        ArgumentSyntaxException::class,
+        ScanException::class,
+        ConnectionException::class
+    )
+    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+        throw UnsupportedOperationException()
     }
 
-    @Override
-    public void startListening(List<ChannelRecordContainer> containers, RecordsReceivedListener listener)
-            throws UnsupportedOperationException, ConnectionException {
-        throw new UnsupportedOperationException();
+    @Throws(UnsupportedOperationException::class, ConnectionException::class)
+    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+        throw UnsupportedOperationException()
     }
 
+    companion object {
+        private val logger = LoggerFactory.getLogger(ModbusRTUTCPConnection::class.java)
+    }
 }

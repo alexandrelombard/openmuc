@@ -18,22 +18,21 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.amqp
 
-package org.openmuc.framework.lib.amqp;
-
-import java.util.EventListener;
+import java.util.*
 
 /**
  * Gets notified when an AMQP message was received
  */
-public interface AmqpMessageListener extends EventListener {
+interface AmqpMessageListener : EventListener {
     /**
      * Call this when a new message was received
      *
      * @param queue
-     *            the queue from which the message comes from
+     * the queue from which the message comes from
      * @param message
-     *            the received message
+     * the received message
      */
-    void newMessage(String queue, byte[] message);
+    fun newMessage(queue: String?, message: ByteArray?)
 }

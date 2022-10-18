@@ -18,29 +18,20 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.snmp;
+package org.openmuc.framework.driver.snmp
 
-import org.openmuc.framework.config.DeviceScanInfo;
-import org.openmuc.framework.driver.snmp.implementation.SnmpDiscoveryEvent;
-import org.openmuc.framework.driver.snmp.implementation.SnmpDiscoveryListener;
-import org.openmuc.framework.driver.spi.DriverDeviceScanListener;
+import org.openmuc.framework.config.DeviceScanInfo
+import org.openmuc.framework.driver.snmp.implementation.SnmpDiscoveryEvent
+import org.openmuc.framework.driver.snmp.implementation.SnmpDiscoveryListener
+import org.openmuc.framework.driver.spi.DriverDeviceScanListener
 
 /**
  * In scanner we need to notify a listener which is given in arguments and also we have to create another listener in
  * order to listen to SNMP scanner in SnmpDevice. So we notify given listener in callback method of SnmpDevice listener
  */
-public class SnmpDriverDiscoveryListener implements SnmpDiscoveryListener {
-
-    private final DriverDeviceScanListener scannerListener;
-
-    public SnmpDriverDiscoveryListener(DriverDeviceScanListener listener) {
-        scannerListener = listener;
+class SnmpDriverDiscoveryListener(private val scannerListener: DriverDeviceScanListener?) : SnmpDiscoveryListener {
+    override fun onNewDeviceFound(e: SnmpDiscoveryEvent) {
+        val newDevice = DeviceScanInfo(e.deviceAddress.toString(), null, e.description)
+        scannerListener!!.deviceFound(newDevice)
     }
-
-    @Override
-    public void onNewDeviceFound(SnmpDiscoveryEvent e) {
-        DeviceScanInfo newDevice = new DeviceScanInfo(e.getDeviceAddress().toString(), null, e.getDescription());
-        scannerListener.deviceFound(newDevice);
-    }
-
 }

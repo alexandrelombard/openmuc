@@ -18,67 +18,51 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.driver.snmp.test;
+package org.openmuc.framework.driver.snmp.test
 
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.dataaccess.Channel;
-import org.openmuc.framework.driver.spi.ChannelRecordContainer;
+import org.openmuc.framework.data.Record
+import org.openmuc.framework.dataaccess.*
+import org.openmuc.framework.driver.spi.ChannelRecordContainer
 
-public class SnmpChannelRecordContainer implements ChannelRecordContainer {
+class SnmpChannelRecordContainer : ChannelRecordContainer {
+    private var snmpRecord: Record? = null
+    private var snmpChannel: SnmpChannel? = null
 
-    private Record snmpRecord;
-    private SnmpChannel snmpChannel;
-
-    SnmpChannelRecordContainer() {
+    internal constructor() {}
+    internal constructor(channel: SnmpChannel?) {
+        snmpChannel = channel
     }
 
-    SnmpChannelRecordContainer(SnmpChannel channel) {
-        snmpChannel = channel;
+    internal constructor(record: Record?, channel: SnmpChannel?) {
+        snmpChannel = channel
+        snmpRecord = record
     }
 
-    SnmpChannelRecordContainer(Record record, SnmpChannel channel) {
-        snmpChannel = channel;
-        snmpRecord = record;
+    override fun getRecord(): Record? {
+        return snmpRecord
     }
 
-    @Override
-    public Record getRecord() {
-        return snmpRecord;
+    override val channel: Channel?
+        get() = snmpChannel
+    override val channelAddress: String?
+        get() = snmpChannel.getChannelAddress()
+
+    // TODO Auto-generated method stub
+    override var channelHandle: Any?
+        get() =// TODO Auto-generated method stub
+            null
+        set(handle) {
+            snmpChannel = handle as SnmpChannel?
+        }
+
+    override fun setRecord(record: Record?) {
+        snmpRecord = Record(record!!.value, record.timestamp, record.flag)
     }
 
-    @Override
-    public Channel getChannel() {
-        return snmpChannel;
+    override fun copy(): ChannelRecordContainer? {
+        val clone = SnmpChannelRecordContainer()
+        clone.channelHandle = snmpChannel
+        clone.setRecord(snmpRecord)
+        return clone
     }
-
-    @Override
-    public String getChannelAddress() {
-        return snmpChannel.getChannelAddress();
-    }
-
-    @Override
-    public Object getChannelHandle() {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @Override
-    public void setChannelHandle(Object handle) {
-        snmpChannel = (SnmpChannel) handle;
-    }
-
-    @Override
-    public void setRecord(Record record) {
-        snmpRecord = new Record(record.getValue(), record.getTimestamp(), record.getFlag());
-    }
-
-    @Override
-    public ChannelRecordContainer copy() {
-        SnmpChannelRecordContainer clone = new SnmpChannelRecordContainer();
-        clone.setChannelHandle(snmpChannel);
-        clone.setRecord(snmpRecord);
-
-        return clone;
-    }
-
 }

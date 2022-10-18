@@ -18,335 +18,356 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.server.modbus;
+package org.openmuc.framework.server.modbus
 
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.Dictionary;
-import java.util.List;
+import com.ghgande.j2mod.modbus.ModbusException
+import com.ghgande.j2mod.modbus.procimg.Register
+import com.ghgande.j2mod.modbus.procimg.SimpleInputRegister
+import com.ghgande.j2mod.modbus.procimg.SimpleProcessImage
+import com.ghgande.j2mod.modbus.procimg.SimpleRegister
+import com.ghgande.j2mod.modbus.slave.ModbusSlave
+import com.ghgande.j2mod.modbus.slave.ModbusSlaveFactory
+import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.ValueType
+import org.openmuc.framework.dataaccess.Channel
+import org.openmuc.framework.lib.osgi.config.*
+import org.openmuc.framework.server.modbus.register.*
+import org.openmuc.framework.server.spi.ServerMappingContainer
+import org.openmuc.framework.server.spi.ServerService
+import org.osgi.service.cm.ConfigurationException
+import org.osgi.service.cm.ManagedService
+import org.slf4j.LoggerFactory
+import java.io.IOException
+import java.net.InetAddress
+import java.net.UnknownHostException
+import java.util.*
 
-import org.openmuc.framework.data.ValueType;
-import org.openmuc.framework.dataaccess.Channel;
-import org.openmuc.framework.lib.osgi.config.DictionaryPreprocessor;
-import org.openmuc.framework.lib.osgi.config.PropertyHandler;
-import org.openmuc.framework.lib.osgi.config.ServicePropertyException;
-import org.openmuc.framework.server.modbus.register.BooleanMappingInputRegister;
-import org.openmuc.framework.server.modbus.register.DoubleMappingInputRegister;
-import org.openmuc.framework.server.modbus.register.FloatMappingInputRegister;
-import org.openmuc.framework.server.modbus.register.IntegerMappingInputRegister;
-import org.openmuc.framework.server.modbus.register.LinkedMappingHoldingRegister;
-import org.openmuc.framework.server.modbus.register.LongMappingInputRegister;
-import org.openmuc.framework.server.modbus.register.ShortMappingInputRegister;
-import org.openmuc.framework.server.spi.ServerMappingContainer;
-import org.openmuc.framework.server.spi.ServerService;
-import org.osgi.service.cm.ConfigurationException;
-import org.osgi.service.cm.ManagedService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+class ModbusServer : ServerService, ManagedService {
+    private val spi = SimpleProcessImage()
+    private var slave: ModbusSlave? = null
+    private val property: PropertyHandler
+    private val settings: Settings
 
-import com.ghgande.j2mod.modbus.ModbusException;
-import com.ghgande.j2mod.modbus.procimg.Register;
-import com.ghgande.j2mod.modbus.procimg.SimpleInputRegister;
-import com.ghgande.j2mod.modbus.procimg.SimpleProcessImage;
-import com.ghgande.j2mod.modbus.procimg.SimpleRegister;
-import com.ghgande.j2mod.modbus.slave.ModbusSlave;
-import com.ghgande.j2mod.modbus.slave.ModbusSlaveFactory;
-
-public class ModbusServer implements ServerService, ManagedService {
-    private static Logger logger = LoggerFactory.getLogger(ModbusServer.class);
-    private final SimpleProcessImage spi = new SimpleProcessImage();
-    private ModbusSlave slave;
-    private final PropertyHandler property;
-    private final Settings settings;
-
-    public ModbusServer() {
-        String pid = ModbusServer.class.getName();
-        settings = new Settings();
-        property = new PropertyHandler(settings, pid);
+    init {
+        val pid = ModbusServer::class.java.name
+        settings = Settings()
+        property = PropertyHandler(settings, pid)
     }
 
-    private void startServer(SimpleProcessImage spi) throws IOException {
-        String address = property.getString(Settings.ADDRESS);
-        int port = property.getInt(Settings.PORT);
-        String type = property.getString(Settings.TYPE).toLowerCase();
-        boolean isRtuTcp = false;
-
-        logServerSettings();
-
+    @Throws(IOException::class)
+    private fun startServer(spi: SimpleProcessImage) {
+        val address = property.getString(Settings.Companion.ADDRESS)
+        val port = property.getInt(Settings.Companion.PORT)
+        val type = property.getString(Settings.Companion.TYPE)!!.lowercase(Locale.getDefault())
+        var isRtuTcp = false
+        logServerSettings()
         try {
-            switch (type) {
-            case "udp":
-                slave = ModbusSlaveFactory.createUDPSlave(InetAddress.getByName(address), port);
-                break;
-            case "serial":
-                logger.error("Serial connection is not supported, yet. Using RTU over TCP with default values.");
-            case "rtutcp":
-                isRtuTcp = true;
-            case "tcp":
-            default:
-                slave = ModbusSlaveFactory.createTCPSlave(InetAddress.getByName(address), port,
-                        property.getInt(Settings.POOLSIZE), isRtuTcp);
-                break;
+            when (type) {
+                "udp" -> slave = ModbusSlaveFactory.createUDPSlave(InetAddress.getByName(address), port)
+                "serial" -> {
+                    logger.error("Serial connection is not supported, yet. Using RTU over TCP with default values.")
+                    isRtuTcp = true
+                    slave = ModbusSlaveFactory.createTCPSlave(
+                        InetAddress.getByName(address), port,
+                        property.getInt(Settings.Companion.POOLSIZE), isRtuTcp
+                    )
+                }
+
+                "rtutcp" -> {
+                    isRtuTcp = true
+                    slave = ModbusSlaveFactory.createTCPSlave(
+                        InetAddress.getByName(address), port,
+                        property.getInt(Settings.Companion.POOLSIZE), isRtuTcp
+                    )
+                }
+
+                "tcp" -> slave = ModbusSlaveFactory.createTCPSlave(
+                    InetAddress.getByName(address), port,
+                    property.getInt(Settings.Companion.POOLSIZE), isRtuTcp
+                )
+
+                else -> slave = ModbusSlaveFactory.createTCPSlave(
+                    InetAddress.getByName(address), port,
+                    property.getInt(Settings.Companion.POOLSIZE), isRtuTcp
+                )
             }
-            slave.setThreadName("modbusServerListener");
-            slave.addProcessImage(property.getInt(Settings.UNITID), spi);
-            slave.open();
-        } catch (ModbusException e) {
-            throw new IOException(e.getMessage());
-        } catch (UnknownHostException e) {
-            logger.error("Unknown host: {}", address);
-            throw new IOException(e.getMessage());
+            slave.setThreadName("modbusServerListener")
+            slave.addProcessImage(property.getInt(Settings.Companion.UNITID), spi)
+            slave.open()
+        } catch (e: ModbusException) {
+            throw IOException(e.message)
+        } catch (e: UnknownHostException) {
+            logger.error("Unknown host: {}", address)
+            throw IOException(e.message)
         }
     }
 
-    private void logServerSettings() {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Address:  {}", property.getString(Settings.ADDRESS));
-            logger.debug("Port:     {}", property.getString(Settings.PORT));
-            logger.debug("UnitId:   {}", property.getString(Settings.UNITID));
-            logger.debug("Type:     {}", property.getString(Settings.TYPE));
-            logger.debug("Poolsize: {}", property.getString(Settings.POOLSIZE));
+    private fun logServerSettings() {
+        if (logger.isDebugEnabled) {
+            logger.debug("Address:  {}", property.getString(Settings.Companion.ADDRESS))
+            logger.debug("Port:     {}", property.getString(Settings.Companion.PORT))
+            logger.debug("UnitId:   {}", property.getString(Settings.Companion.UNITID))
+            logger.debug("Type:     {}", property.getString(Settings.Companion.TYPE))
+            logger.debug("Poolsize: {}", property.getString(Settings.Companion.POOLSIZE))
         }
     }
 
-    void shutdown() {
+    fun shutdown() {
         if (slave != null) {
-            slave.close();
+            slave!!.close()
         }
     }
 
-    @Override
-    public String getId() {
-        return "modbus";
-    }
+    override val id: String
+        get() = "modbus"
 
-    @Override
-    public void updatedConfiguration(List<ServerMappingContainer> mappings) {
-        bindMappings(mappings);
+    override fun updatedConfiguration(mappings: List<ServerMappingContainer?>?) {
+        bindMappings(mappings)
         try {
-            startServer(spi);
-        } catch (IOException e) {
-            logger.error("Error starting server.");
-            throw new RuntimeException(e);
+            startServer(spi)
+        } catch (e: IOException) {
+            logger.error("Error starting server.")
+            throw RuntimeException(e)
         }
     }
 
-    @Override
-    public void serverMappings(List<ServerMappingContainer> mappings) {
-        logger.debug("serverMappings");
-        bindMappings(mappings);
+    override fun serverMappings(mappings: List<ServerMappingContainer?>?) {
+        logger.debug("serverMappings")
+        bindMappings(mappings)
     }
 
-    private void bindMappings(List<ServerMappingContainer> mappings) {
-        if (logger.isDebugEnabled()) {
-            logger.debug("Bind mappings of {} channel.", mappings.size());
+    private fun bindMappings(mappings: List<ServerMappingContainer?>?) {
+        if (logger.isDebugEnabled) {
+            logger.debug("Bind mappings of {} channel.", mappings!!.size)
         }
-
-        for (final ServerMappingContainer container : mappings) {
-
-            String serverAddress = container.getServerMapping().getServerAddress();
-
-            EPrimaryTable primaryTable = EPrimaryTable
-                    .getEnumfromString(serverAddress.substring(0, serverAddress.indexOf(':')));
-            int modbusAddress = Integer
-                    .parseInt(serverAddress.substring(serverAddress.indexOf(':') + 1, serverAddress.lastIndexOf(':')));
-            String dataType = serverAddress.substring(serverAddress.lastIndexOf(':') + 1);
-
-            ValueType valueType = ValueType.valueOf(dataType);
-
-            logMapping(primaryTable, modbusAddress, valueType, container.getChannel());
-
-            switch (primaryTable) {
-            case INPUT_REGISTERS:
-                addInputRegisters(spi, modbusAddress, valueType, container.getChannel());
-                break;
-            case HOLDING_REGISTERS:
-                addHoldingRegisters(spi, modbusAddress, valueType, container.getChannel());
-                break;
-            case COILS:
-                // TODO: create for coils
-                break;
-            case DISCRETE_INPUTS:
-                // TODO: create for discrete inputs
-                break;
-            default:
+        for (container in mappings!!) {
+            val serverAddress = container!!.serverMapping.serverAddress
+            val primaryTable = EPrimaryTable.getEnumfromString(serverAddress.substring(0, serverAddress.indexOf(':')))
+            val modbusAddress =
+                serverAddress.substring(serverAddress.indexOf(':') + 1, serverAddress.lastIndexOf(':')).toInt()
+            val dataType = serverAddress.substring(serverAddress.lastIndexOf(':') + 1)
+            val valueType = ValueType.valueOf(dataType)
+            logMapping(primaryTable, modbusAddress, valueType, container.channel)
+            when (primaryTable) {
+                EPrimaryTable.INPUT_REGISTERS -> addInputRegisters(spi, modbusAddress, valueType, container.channel)
+                EPrimaryTable.HOLDING_REGISTERS -> addHoldingRegisters(spi, modbusAddress, valueType, container.channel)
+                EPrimaryTable.COILS -> {}
+                EPrimaryTable.DISCRETE_INPUTS -> {}
+                else -> {}
             }
         }
     }
 
-    private void logMapping(EPrimaryTable primaryTable, int modbusAddress, ValueType valueType, Channel channel) {
-        if (logger.isDebugEnabled()) {
-            logger.debug("ChannelId: {}, Register: {}, Address: {}, ValueType: {}, Channel valueType: {}",
-                    channel.getId(), primaryTable, modbusAddress, valueType, channel.getValueType());
+    private fun logMapping(primaryTable: EPrimaryTable, modbusAddress: Int, valueType: ValueType, channel: Channel) {
+        if (logger.isDebugEnabled) {
+            logger.debug(
+                "ChannelId: {}, Register: {}, Address: {}, ValueType: {}, Channel valueType: {}",
+                channel.id, primaryTable, modbusAddress, valueType, channel.valueType
+            )
         }
     }
 
-    private void addHoldingRegisters(SimpleProcessImage spi, int modbusAddress, ValueType valueType, Channel channel) {
-        while (spi.getRegisterCount() <= modbusAddress + 4) {
-            spi.addRegister(new SimpleRegister());
+    private fun addHoldingRegisters(
+        spi: SimpleProcessImage,
+        modbusAddress: Int,
+        valueType: ValueType,
+        channel: Channel
+    ) {
+        while (spi.registerCount <= modbusAddress + 4) {
+            spi.addRegister(SimpleRegister())
         }
+        when (valueType) {
+            ValueType.DOUBLE -> {
+                val eightByteDoubleRegister3: Register = LinkedMappingHoldingRegister(
+                    DoubleMappingInputRegister(channel, 6, 7), channel, null, valueType, 6, 7
+                )
+                val eightByteDoubleRegister2: Register = LinkedMappingHoldingRegister(
+                    DoubleMappingInputRegister(channel, 4, 5), channel,
+                    eightByteDoubleRegister3 as LinkedMappingHoldingRegister, valueType, 4, 5
+                )
+                val eightByteDoubleRegister1: Register = LinkedMappingHoldingRegister(
+                    DoubleMappingInputRegister(channel, 2, 3), channel,
+                    eightByteDoubleRegister2 as LinkedMappingHoldingRegister, valueType, 2, 3
+                )
+                val eightByteDoubleRegister0: Register = LinkedMappingHoldingRegister(
+                    DoubleMappingInputRegister(channel, 0, 1), channel,
+                    eightByteDoubleRegister1 as LinkedMappingHoldingRegister, valueType, 0, 1
+                )
+                spi.setRegister(modbusAddress, eightByteDoubleRegister0)
+                spi.setRegister(modbusAddress + 1, eightByteDoubleRegister1)
+                spi.setRegister(modbusAddress + 2, eightByteDoubleRegister2)
+                spi.setRegister(modbusAddress + 3, eightByteDoubleRegister3)
+            }
 
-        switch (valueType) {
-        case DOUBLE:
-            Register eightByteDoubleRegister3 = new LinkedMappingHoldingRegister(
-                    new DoubleMappingInputRegister(channel, 6, 7), channel, null, valueType, 6, 7);
-            Register eightByteDoubleRegister2 = new LinkedMappingHoldingRegister(
-                    new DoubleMappingInputRegister(channel, 4, 5), channel,
-                    (LinkedMappingHoldingRegister) eightByteDoubleRegister3, valueType, 4, 5);
-            Register eightByteDoubleRegister1 = new LinkedMappingHoldingRegister(
-                    new DoubleMappingInputRegister(channel, 2, 3), channel,
-                    (LinkedMappingHoldingRegister) eightByteDoubleRegister2, valueType, 2, 3);
-            Register eightByteDoubleRegister0 = new LinkedMappingHoldingRegister(
-                    new DoubleMappingInputRegister(channel, 0, 1), channel,
-                    (LinkedMappingHoldingRegister) eightByteDoubleRegister1, valueType, 0, 1);
-            spi.setRegister(modbusAddress, eightByteDoubleRegister0);
-            spi.setRegister(modbusAddress + 1, eightByteDoubleRegister1);
-            spi.setRegister(modbusAddress + 2, eightByteDoubleRegister2);
-            spi.setRegister(modbusAddress + 3, eightByteDoubleRegister3);
-            break;
-        case LONG:
-            Register eightByteLongRegister3 = new LinkedMappingHoldingRegister(
-                    new LongMappingInputRegister(channel, 6, 7), channel, null, valueType, 6, 7);
-            Register eightByteLongRegister2 = new LinkedMappingHoldingRegister(
-                    new LongMappingInputRegister(channel, 4, 5), channel,
-                    (LinkedMappingHoldingRegister) eightByteLongRegister3, valueType, 4, 5);
-            Register eightByteLongRegister1 = new LinkedMappingHoldingRegister(
-                    new LongMappingInputRegister(channel, 2, 3), channel,
-                    (LinkedMappingHoldingRegister) eightByteLongRegister2, valueType, 2, 3);
-            Register eightByteLongRegister0 = new LinkedMappingHoldingRegister(
-                    new LongMappingInputRegister(channel, 0, 1), channel,
-                    (LinkedMappingHoldingRegister) eightByteLongRegister1, valueType, 0, 1);
-            spi.setRegister(modbusAddress, eightByteLongRegister0);
-            spi.setRegister(modbusAddress + 1, eightByteLongRegister1);
-            spi.setRegister(modbusAddress + 2, eightByteLongRegister2);
-            spi.setRegister(modbusAddress + 3, eightByteLongRegister3);
-            break;
-        case INTEGER:
-            Register fourByteIntRegister1 = new LinkedMappingHoldingRegister(
-                    new IntegerMappingInputRegister(channel, 2, 3), channel, null, valueType, 2, 3);
-            Register fourByteIntRegister0 = new LinkedMappingHoldingRegister(
-                    new IntegerMappingInputRegister(channel, 0, 1), channel,
-                    (LinkedMappingHoldingRegister) fourByteIntRegister1, valueType, 0, 1);
-            spi.setRegister(modbusAddress, fourByteIntRegister0);
-            spi.setRegister(modbusAddress + 1, fourByteIntRegister1);
-            break;
-        case FLOAT:
-            Register fourByteFloatRegister1 = new LinkedMappingHoldingRegister(
-                    new FloatMappingInputRegister(channel, 2, 3), channel, null, valueType, 2, 3);
-            Register fourByteFloatRegister0 = new LinkedMappingHoldingRegister(
-                    new FloatMappingInputRegister(channel, 0, 1), channel,
-                    (LinkedMappingHoldingRegister) fourByteFloatRegister1, valueType, 0, 1);
-            spi.setRegister(modbusAddress, fourByteFloatRegister0);
-            spi.setRegister(modbusAddress + 1, fourByteFloatRegister1);
-            break;
-        case SHORT:
-            Register twoByteShortRegister = new LinkedMappingHoldingRegister(
-                    new ShortMappingInputRegister(channel, 0, 1), channel, null, valueType, 0, 1);
-            spi.setRegister(modbusAddress, twoByteShortRegister);
-            break;
-        case BOOLEAN:
-            Register twoByteBooleanRegister = new LinkedMappingHoldingRegister(
-                    new BooleanMappingInputRegister(channel, 0, 1), channel, null, valueType, 0, 1);
-            spi.setRegister(modbusAddress, twoByteBooleanRegister);
-            break;
-        default:
-            // TODO
-        }
-    }
+            ValueType.LONG -> {
+                val eightByteLongRegister3: Register = LinkedMappingHoldingRegister(
+                    LongMappingInputRegister(channel, 6, 7), channel, null, valueType, 6, 7
+                )
+                val eightByteLongRegister2: Register = LinkedMappingHoldingRegister(
+                    LongMappingInputRegister(channel, 4, 5), channel,
+                    eightByteLongRegister3 as LinkedMappingHoldingRegister, valueType, 4, 5
+                )
+                val eightByteLongRegister1: Register = LinkedMappingHoldingRegister(
+                    LongMappingInputRegister(channel, 2, 3), channel,
+                    eightByteLongRegister2 as LinkedMappingHoldingRegister, valueType, 2, 3
+                )
+                val eightByteLongRegister0: Register = LinkedMappingHoldingRegister(
+                    LongMappingInputRegister(channel, 0, 1), channel,
+                    eightByteLongRegister1 as LinkedMappingHoldingRegister, valueType, 0, 1
+                )
+                spi.setRegister(modbusAddress, eightByteLongRegister0)
+                spi.setRegister(modbusAddress + 1, eightByteLongRegister1)
+                spi.setRegister(modbusAddress + 2, eightByteLongRegister2)
+                spi.setRegister(modbusAddress + 3, eightByteLongRegister3)
+            }
 
-    private void addInputRegisters(SimpleProcessImage spi, int modbusAddress, ValueType valueType, Channel channel) {
-        while (spi.getInputRegisterCount() <= modbusAddress + 4) {
-            spi.addInputRegister(new SimpleInputRegister());
-        }
+            ValueType.INTEGER -> {
+                val fourByteIntRegister1: Register = LinkedMappingHoldingRegister(
+                    IntegerMappingInputRegister(channel, 2, 3), channel, null, valueType, 2, 3
+                )
+                val fourByteIntRegister0: Register = LinkedMappingHoldingRegister(
+                    IntegerMappingInputRegister(channel, 0, 1), channel,
+                    fourByteIntRegister1 as LinkedMappingHoldingRegister, valueType, 0, 1
+                )
+                spi.setRegister(modbusAddress, fourByteIntRegister0)
+                spi.setRegister(modbusAddress + 1, fourByteIntRegister1)
+            }
 
-        switch (valueType) {
-        case DOUBLE:
-            for (int i = 0; i < 4; i++) {
-                spi.setInputRegister(modbusAddress + i, new DoubleMappingInputRegister(channel, 2 * i, 2 * i + 1));
+            ValueType.FLOAT -> {
+                val fourByteFloatRegister1: Register = LinkedMappingHoldingRegister(
+                    FloatMappingInputRegister(channel, 2, 3), channel, null, valueType, 2, 3
+                )
+                val fourByteFloatRegister0: Register = LinkedMappingHoldingRegister(
+                    FloatMappingInputRegister(channel, 0, 1), channel,
+                    fourByteFloatRegister1 as LinkedMappingHoldingRegister, valueType, 0, 1
+                )
+                spi.setRegister(modbusAddress, fourByteFloatRegister0)
+                spi.setRegister(modbusAddress + 1, fourByteFloatRegister1)
             }
-            break;
-        case LONG:
-            for (int i = 0; i < 4; i++) {
-                spi.setInputRegister(modbusAddress + i, new LongMappingInputRegister(channel, 2 * i, 2 * i + 1));
+
+            ValueType.SHORT -> {
+                val twoByteShortRegister: Register = LinkedMappingHoldingRegister(
+                    ShortMappingInputRegister(channel, 0, 1), channel, null, valueType, 0, 1
+                )
+                spi.setRegister(modbusAddress, twoByteShortRegister)
             }
-            break;
-        case INTEGER:
-            for (int i = 0; i < 2; i++) {
-                spi.setInputRegister(modbusAddress + i, new IntegerMappingInputRegister(channel, 2 * i, 2 * i + 1));
+
+            ValueType.BOOLEAN -> {
+                val twoByteBooleanRegister: Register = LinkedMappingHoldingRegister(
+                    BooleanMappingInputRegister(channel, 0, 1), channel, null, valueType, 0, 1
+                )
+                spi.setRegister(modbusAddress, twoByteBooleanRegister)
             }
-            break;
-        case FLOAT:
-            for (int i = 0; i < 2; i++) {
-                spi.setInputRegister(modbusAddress + i, new FloatMappingInputRegister(channel, 2 * i, 2 * i + 1));
-            }
-            break;
-        case SHORT:
-            spi.setInputRegister(modbusAddress, new ShortMappingInputRegister(channel, 0, 1));
-            break;
-        case BOOLEAN:
-            spi.setInputRegister(modbusAddress, new BooleanMappingInputRegister(channel, 0, 1));
-            break;
-        default:
-            // TODO
+
+            else -> {}
         }
     }
 
-    public enum EPrimaryTable {
-        COILS,
-        DISCRETE_INPUTS,
-        INPUT_REGISTERS,
-        HOLDING_REGISTERS;
-
-        public static EPrimaryTable getEnumfromString(String enumAsString) {
-            EPrimaryTable returnValue = null;
-            if (enumAsString != null) {
-                for (EPrimaryTable value : EPrimaryTable.values()) {
-                    if (enumAsString.equalsIgnoreCase(value.toString())) {
-                        returnValue = EPrimaryTable.valueOf(enumAsString.toUpperCase());
-                        break;
-                    }
+    private fun addInputRegisters(spi: SimpleProcessImage, modbusAddress: Int, valueType: ValueType, channel: Channel) {
+        while (spi.inputRegisterCount <= modbusAddress + 4) {
+            spi.addInputRegister(SimpleInputRegister())
+        }
+        when (valueType) {
+            ValueType.DOUBLE -> {
+                var i = 0
+                while (i < 4) {
+                    spi.setInputRegister(modbusAddress + i, DoubleMappingInputRegister(channel, 2 * i, 2 * i + 1))
+                    i++
                 }
             }
-            if (returnValue == null) {
-                throw new RuntimeException(
+
+            ValueType.LONG -> {
+                var i = 0
+                while (i < 4) {
+                    spi.setInputRegister(modbusAddress + i, LongMappingInputRegister(channel, 2 * i, 2 * i + 1))
+                    i++
+                }
+            }
+
+            ValueType.INTEGER -> {
+                var i = 0
+                while (i < 2) {
+                    spi.setInputRegister(modbusAddress + i, IntegerMappingInputRegister(channel, 2 * i, 2 * i + 1))
+                    i++
+                }
+            }
+
+            ValueType.FLOAT -> {
+                var i = 0
+                while (i < 2) {
+                    spi.setInputRegister(modbusAddress + i, FloatMappingInputRegister(channel, 2 * i, 2 * i + 1))
+                    i++
+                }
+            }
+
+            ValueType.SHORT -> spi.setInputRegister(modbusAddress, ShortMappingInputRegister(channel, 0, 1))
+            ValueType.BOOLEAN -> spi.setInputRegister(modbusAddress, BooleanMappingInputRegister(channel, 0, 1))
+            else -> {}
+        }
+    }
+
+    enum class EPrimaryTable {
+        COILS, DISCRETE_INPUTS, INPUT_REGISTERS, HOLDING_REGISTERS;
+
+        companion object {
+            fun getEnumfromString(enumAsString: String?): EPrimaryTable {
+                var returnValue: EPrimaryTable? = null
+                if (enumAsString != null) {
+                    for (value in values()) {
+                        if (enumAsString.equals(value.toString(), ignoreCase = true)) {
+                            returnValue = valueOf(enumAsString.uppercase(Locale.getDefault()))
+                            break
+                        }
+                    }
+                }
+                if (returnValue == null) {
+                    throw RuntimeException(
                         enumAsString + " is not supported. Use one of the following supported primary tables: "
-                                + getSupportedValues());
+                                + supportedValues
+                    )
+                }
+                return returnValue
             }
-            return returnValue;
-        }
 
-        /**
-         * @return all supported values as a comma separated string
-         */
-        public static String getSupportedValues() {
-            StringBuilder sb = new StringBuilder();
-            for (EPrimaryTable value : EPrimaryTable.values()) {
-                sb.append(value.toString()).append(", ");
-            }
-            return sb.toString();
+            /**
+             * @return all supported values as a comma separated string
+             */
+            val supportedValues: String
+                get() {
+                    val sb = StringBuilder()
+                    for (value in values()) {
+                        sb.append(value.toString()).append(", ")
+                    }
+                    return sb.toString()
+                }
         }
     }
 
-    @Override
-    public void updated(Dictionary<String, ?> propertiesDict) throws ConfigurationException {
-        DictionaryPreprocessor dict = new DictionaryPreprocessor(propertiesDict);
+    @Throws(ConfigurationException::class)
+    override fun updated(propertiesDict: Dictionary<String?, *>?) {
+        val dict = DictionaryPreprocessor(propertiesDict)
         if (!dict.wasIntermediateOsgiInitCall()) {
-            tryProcessConfig(dict);
+            tryProcessConfig(dict)
         }
     }
 
-    private void tryProcessConfig(DictionaryPreprocessor newConfig) {
+    private fun tryProcessConfig(newConfig: DictionaryPreprocessor) {
         try {
-            property.processConfig(newConfig);
+            property.processConfig(newConfig)
             if (property.configChanged()) {
-                shutdown();
-                startServer(spi);
+                shutdown()
+                startServer(spi)
             }
-        } catch (ServicePropertyException | IOException e) {
-            logger.error("Update properties failed", e);
-            shutdown();
+        } catch (e: ServicePropertyException) {
+            logger.error("Update properties failed", e)
+            shutdown()
+        } catch (e: IOException) {
+            logger.error("Update properties failed", e)
+            shutdown()
         }
     }
 
+    companion object {
+        private val logger = LoggerFactory.getLogger(ModbusServer::class.java)
+    }
 }

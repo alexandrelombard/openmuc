@@ -18,50 +18,43 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-package org.openmuc.framework.lib.rest1.rest.objects;
+package org.openmuc.framework.lib.rest1.rest.objects
 
-import org.openmuc.framework.config.DeviceConfig;
-import org.openmuc.framework.config.IdCollisionException;
-import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException;
+import org.openmuc.framework.config.DeviceConfig
+import org.openmuc.framework.config.IdCollisionException
+import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException
 
-public class RestDeviceConfigMapper {
-
-    public static RestDeviceConfig getRestDeviceConfig(DeviceConfig dc) {
-
-        RestDeviceConfig rdc = new RestDeviceConfig();
-        rdc.setConnectRetryInterval(dc.getConnectRetryInterval());
-        rdc.setDescription(dc.getDescription());
-        rdc.setDeviceAddress(dc.getDeviceAddress());
-        rdc.isDisabled(dc.isDisabled());
-        rdc.setId(dc.getId());
-        rdc.setSamplingTimeout(dc.getSamplingTimeout());
-        rdc.setSettings(dc.getSettings());
-        return rdc;
+object RestDeviceConfigMapper {
+    fun getRestDeviceConfig(dc: DeviceConfig): RestDeviceConfig {
+        val rdc = RestDeviceConfig()
+        rdc.connectRetryInterval = dc.connectRetryInterval
+        rdc.description = dc.description
+        rdc.deviceAddress = dc.deviceAddress
+        rdc.isDisabled(dc.isDisabled)
+        rdc.id = dc.id
+        rdc.samplingTimeout = dc.samplingTimeout
+        rdc.settings = dc.settings
+        return rdc
     }
 
-    public static void setDeviceConfig(DeviceConfig dc, RestDeviceConfig rdc, String idFromUrl)
-            throws IdCollisionException, RestConfigIsNotCorrectException {
-
+    @Throws(IdCollisionException::class, RestConfigIsNotCorrectException::class)
+    fun setDeviceConfig(dc: DeviceConfig?, rdc: RestDeviceConfig?, idFromUrl: String) {
         if (dc == null) {
-            throw new RestConfigIsNotCorrectException("DriverConfig is null!");
-        }
-        else {
-
+            throw RestConfigIsNotCorrectException("DriverConfig is null!")
+        } else {
             if (rdc != null) {
-                if (rdc.getId() != null && !rdc.getId().equals("") && !idFromUrl.equals(rdc.getId())) {
-                    dc.setId(rdc.getId());
+                if (rdc.id != null && rdc.id != "" && idFromUrl != rdc.id) {
+                    dc.id = rdc.id
                 }
-                dc.setConnectRetryInterval(rdc.getConnectRetryInterval());
-                dc.setDescription(rdc.getDescription());
-                dc.setDeviceAddress(rdc.getDeviceAddress());
-                dc.setDisabled(rdc.getDisabled());
-                dc.setSamplingTimeout(rdc.getSamplingTimeout());
-                dc.setSettings(rdc.getSettings());
-            }
-            else {
-                throw new RestConfigIsNotCorrectException();
+                dc.connectRetryInterval = rdc.connectRetryInterval
+                dc.description = rdc.description
+                dc.deviceAddress = rdc.deviceAddress
+                dc.isDisabled = rdc.disabled
+                dc.samplingTimeout = rdc.samplingTimeout
+                dc.settings = rdc.settings
+            } else {
+                throw RestConfigIsNotCorrectException()
             }
         }
-
     }
 }

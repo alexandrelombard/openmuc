@@ -18,363 +18,284 @@
  * along with OpenMUC.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+package org.openmuc.framework.lib.rest1
 
-package org.openmuc.framework.lib.rest1;
+import com.google.gson.*
+import org.openmuc.framework.config.*
+import org.openmuc.framework.data.*
+import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.dataaccess.DeviceState
+import org.openmuc.framework.lib.rest1.exceptions.MissingJsonObjectException
+import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException
+import org.openmuc.framework.lib.rest1.rest.objects.*
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+class FromJson(jsonString: String?) {
+    val gson: Gson
+    val jsonObject: JsonObject
 
-import org.openmuc.framework.config.ChannelConfig;
-import org.openmuc.framework.config.ChannelScanInfo;
-import org.openmuc.framework.config.DeviceConfig;
-import org.openmuc.framework.config.DeviceScanInfo;
-import org.openmuc.framework.config.DriverConfig;
-import org.openmuc.framework.config.IdCollisionException;
-import org.openmuc.framework.data.BooleanValue;
-import org.openmuc.framework.data.ByteArrayValue;
-import org.openmuc.framework.data.ByteValue;
-import org.openmuc.framework.data.DoubleValue;
-import org.openmuc.framework.data.Flag;
-import org.openmuc.framework.data.FloatValue;
-import org.openmuc.framework.data.IntValue;
-import org.openmuc.framework.data.LongValue;
-import org.openmuc.framework.data.Record;
-import org.openmuc.framework.data.ShortValue;
-import org.openmuc.framework.data.StringValue;
-import org.openmuc.framework.data.Value;
-import org.openmuc.framework.data.ValueType;
-import org.openmuc.framework.dataaccess.DeviceState;
-import org.openmuc.framework.lib.rest1.exceptions.MissingJsonObjectException;
-import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException;
-import org.openmuc.framework.lib.rest1.rest.objects.RestChannel;
-import org.openmuc.framework.lib.rest1.rest.objects.RestChannelConfig;
-import org.openmuc.framework.lib.rest1.rest.objects.RestChannelConfigMapper;
-import org.openmuc.framework.lib.rest1.rest.objects.RestDeviceConfig;
-import org.openmuc.framework.lib.rest1.rest.objects.RestDeviceConfigMapper;
-import org.openmuc.framework.lib.rest1.rest.objects.RestDriverConfig;
-import org.openmuc.framework.lib.rest1.rest.objects.RestDriverConfigMapper;
-import org.openmuc.framework.lib.rest1.rest.objects.RestRecord;
-import org.openmuc.framework.lib.rest1.rest.objects.RestUserConfig;
-import org.openmuc.framework.lib.rest1.rest.objects.RestValue;
-
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
-
-public class FromJson {
-
-    private final Gson gson;
-    private final JsonObject jsonObject;
-
-    public FromJson(String jsonString) {
-
-        GsonBuilder gsonBuilder = new GsonBuilder().serializeSpecialFloatingPointValues();
-        gson = gsonBuilder.create();
-        jsonObject = gson.fromJson(jsonString, JsonObject.class);
+    init {
+        val gsonBuilder = GsonBuilder().serializeSpecialFloatingPointValues()
+        gson = gsonBuilder.create()
+        jsonObject = gson.fromJson(jsonString, JsonObject::class.java)
     }
 
-    public Gson getGson() {
-
-        return gson;
+    @Throws(ClassCastException::class)
+    fun getRecord(valueType: ValueType): Record? {
+        val jse = jsonObject[Const.RECORD]
+        return if (jse.isJsonNull) {
+            null
+        } else convertRestRecordToRecord(gson.fromJson(jse, RestRecord::class.java), valueType)
     }
 
-    public JsonObject getJsonObject() {
-
-        return jsonObject;
-    }
-
-    public Record getRecord(ValueType valueType) throws ClassCastException {
-        JsonElement jse = jsonObject.get(Const.RECORD);
-        if (jse.isJsonNull()) {
-            return null;
-        }
-
-        return convertRestRecordToRecord(gson.fromJson(jse, RestRecord.class), valueType);
-    }
-
-    public ArrayList<Record> getRecordArrayList(ValueType valueType) throws ClassCastException {
-
-        ArrayList<Record> recordList = new ArrayList<>();
-
-        JsonElement jse = jsonObject.get(Const.RECORDS);
-        if (jse != null && jse.isJsonArray()) {
-            JsonArray jsa = jse.getAsJsonArray();
-
-            Iterator<JsonElement> iteratorJsonArray = jsa.iterator();
+    @Throws(ClassCastException::class)
+    fun getRecordArrayList(valueType: ValueType): ArrayList<Record?>? {
+        var recordList: ArrayList<Record?>? = ArrayList()
+        val jse = jsonObject[Const.RECORDS]
+        if (jse != null && jse.isJsonArray) {
+            val jsa = jse.asJsonArray
+            val iteratorJsonArray: Iterator<JsonElement> = jsa.iterator()
             while (iteratorJsonArray.hasNext()) {
-                recordList.add(getRecord(valueType));
+                recordList!!.add(getRecord(valueType))
             }
         }
-        if (recordList.isEmpty()) {
-            recordList = null;
+        if (recordList!!.isEmpty()) {
+            recordList = null
         }
-        return recordList;
+        return recordList
     }
 
-    public Value getValue(ValueType valueType) throws ClassCastException {
-
-        Value value = null;
-        JsonElement jse = jsonObject.get(Const.RECORD);
-
-        if (!jse.isJsonNull()) {
-            Record record = getRecord(valueType);
+    @Throws(ClassCastException::class)
+    fun getValue(valueType: ValueType): Value? {
+        var value: Value? = null
+        val jse = jsonObject[Const.RECORD]
+        if (!jse.isJsonNull) {
+            val record = getRecord(valueType)
             if (record != null) {
-                value = record.getValue();
+                value = record.value
             }
         }
-        return value;
+        return value
     }
 
-    public boolean isRunning() {
+    val isRunning: Boolean
+        get() = jsonObject[Const.RUNNING].asBoolean
+    val deviceState: DeviceState?
+        get() {
+            var ret: DeviceState? = null
+            val jse = jsonObject[Const.STATE]
+            if (!jse.isJsonNull) {
+                ret = gson.fromJson(jse, DeviceState::class.java)
+            }
+            return ret
+        }
 
-        return jsonObject.get(Const.RUNNING).getAsBoolean();
+    @Throws(
+        JsonSyntaxException::class,
+        IdCollisionException::class,
+        RestConfigIsNotCorrectException::class,
+        MissingJsonObjectException::class
+    )
+    fun setChannelConfig(channelConfig: ChannelConfig?, id: String) {
+        val jse = jsonObject[Const.CONFIGS]
+        if (jse.isJsonNull) {
+            throw MissingJsonObjectException()
+        }
+        RestChannelConfigMapper.setChannelConfig(channelConfig, gson.fromJson(jse, RestChannelConfig::class.java), id)
     }
 
-    public DeviceState getDeviceState() {
-
-        DeviceState ret = null;
-        JsonElement jse = jsonObject.get(Const.STATE);
-
-        if (!jse.isJsonNull()) {
-            ret = gson.fromJson(jse, DeviceState.class);
-        }
-        return ret;
-    }
-
-    public void setChannelConfig(ChannelConfig channelConfig, String id) throws JsonSyntaxException,
-            IdCollisionException, RestConfigIsNotCorrectException, MissingJsonObjectException {
-        JsonElement jse = jsonObject.get(Const.CONFIGS);
-
-        if (jse.isJsonNull()) {
-            throw new MissingJsonObjectException();
-        }
-
-        RestChannelConfigMapper.setChannelConfig(channelConfig, gson.fromJson(jse, RestChannelConfig.class), id);
-    }
-
-    public void setDeviceConfig(DeviceConfig deviceConfig, String id) throws JsonSyntaxException, IdCollisionException,
-            RestConfigIsNotCorrectException, MissingJsonObjectException {
-
-        JsonElement jse = jsonObject.get(Const.CONFIGS);
-
-        if (!jse.isJsonNull()) {
-            RestDeviceConfigMapper.setDeviceConfig(deviceConfig, gson.fromJson(jse, RestDeviceConfig.class), id);
-        }
-        else {
-            throw new MissingJsonObjectException();
-        }
-    }
-
-    public void setDriverConfig(DriverConfig driverConfig, String id) throws JsonSyntaxException, IdCollisionException,
-            RestConfigIsNotCorrectException, MissingJsonObjectException {
-
-        JsonElement jse = jsonObject.get(Const.CONFIGS);
-
-        if (!jse.isJsonNull()) {
-            RestDriverConfigMapper.setDriverConfig(driverConfig, gson.fromJson(jse, RestDriverConfig.class), id);
-        }
-        else {
-            throw new MissingJsonObjectException();
+    @Throws(
+        JsonSyntaxException::class,
+        IdCollisionException::class,
+        RestConfigIsNotCorrectException::class,
+        MissingJsonObjectException::class
+    )
+    fun setDeviceConfig(deviceConfig: DeviceConfig?, id: String) {
+        val jse = jsonObject[Const.CONFIGS]
+        if (!jse.isJsonNull) {
+            RestDeviceConfigMapper.setDeviceConfig(deviceConfig, gson.fromJson(jse, RestDeviceConfig::class.java), id)
+        } else {
+            throw MissingJsonObjectException()
         }
     }
 
-    public ArrayList<String> getStringArrayList(String listName) {
+    @Throws(
+        JsonSyntaxException::class,
+        IdCollisionException::class,
+        RestConfigIsNotCorrectException::class,
+        MissingJsonObjectException::class
+    )
+    fun setDriverConfig(driverConfig: DriverConfig?, id: String) {
+        val jse = jsonObject[Const.CONFIGS]
+        if (!jse.isJsonNull) {
+            RestDriverConfigMapper.setDriverConfig(driverConfig, gson.fromJson(jse, RestDriverConfig::class.java), id)
+        } else {
+            throw MissingJsonObjectException()
+        }
+    }
 
-        ArrayList<String> resultList = new ArrayList<>();
-
-        JsonElement jse = jsonObject.get(listName);
-        if (jse != null && jse.isJsonArray()) {
-            JsonArray jsa = jse.getAsJsonArray();
-
-            Iterator<JsonElement> iteratorJsonArray = jsa.iterator();
+    fun getStringArrayList(listName: String?): ArrayList<String?>? {
+        var resultList: ArrayList<String?>? = ArrayList()
+        val jse = jsonObject[listName]
+        if (jse != null && jse.isJsonArray) {
+            val jsa = jse.asJsonArray
+            val iteratorJsonArray: Iterator<JsonElement> = jsa.iterator()
             while (iteratorJsonArray.hasNext()) {
-                resultList.add(iteratorJsonArray.next().toString());
+                resultList!!.add(iteratorJsonArray.next().toString())
             }
         }
-        if (resultList.isEmpty()) {
-            resultList = null;
+        if (resultList!!.isEmpty()) {
+            resultList = null
         }
-        return resultList;
+        return resultList
     }
 
-    public String[] getStringArray(String listName) {
-
-        String stringArray[] = null;
-
-        JsonElement jse = jsonObject.get(listName);
-        if (!jse.isJsonNull() && jse.isJsonArray()) {
-            stringArray = gson.fromJson(jse, String[].class);
+    fun getStringArray(listName: String?): Array<String?>? {
+        var stringArray: Array<String?>? = null
+        val jse = jsonObject[listName]
+        if (!jse.isJsonNull && jse.isJsonArray) {
+            stringArray = gson.fromJson<Array<String?>>(jse, Array<String>::class.java)
         }
-        return stringArray;
+        return stringArray
     }
 
-    public List<RestChannel> getRestChannelList() {
-
-        ArrayList<RestChannel> recordList = new ArrayList<>();
-        JsonElement jse = jsonObject.get("records");
-        JsonArray jsa;
-
-        if (!jse.isJsonNull() && jse.isJsonArray()) {
-
-            jsa = jse.getAsJsonArray();
-            Iterator<JsonElement> jseIterator = jsa.iterator();
-
-            while (jseIterator.hasNext()) {
-                JsonObject jsoIterated = jseIterator.next().getAsJsonObject();
-                RestChannel rc = gson.fromJson(jsoIterated, RestChannel.class);
-                recordList.add(rc);
+    val restChannelList: List<RestChannel>?
+        get() {
+            val recordList = ArrayList<RestChannel>()
+            val jse = jsonObject["records"]
+            val jsa: JsonArray
+            if (!jse.isJsonNull && jse.isJsonArray) {
+                jsa = jse.asJsonArray
+                val jseIterator: Iterator<JsonElement> = jsa.iterator()
+                while (jseIterator.hasNext()) {
+                    val jsoIterated = jseIterator.next().asJsonObject
+                    val rc = gson.fromJson(jsoIterated, RestChannel::class.java)
+                    recordList.add(rc)
+                }
             }
+            return if (recordList.isEmpty()) {
+                null
+            } else recordList
         }
-        if (recordList.isEmpty()) {
-            return null;
+    val restUserConfig: RestUserConfig
+        get() {
+            val jso = jsonObject[Const.CONFIGS].asJsonObject
+            return gson.fromJson(jso, RestUserConfig::class.java)
         }
-        return recordList;
-    }
 
-    public RestUserConfig getRestUserConfig() {
-
-        JsonObject jso = jsonObject.get(Const.CONFIGS).getAsJsonObject();
-        return gson.fromJson(jso, RestUserConfig.class);
-    }
-
-    public List<DeviceScanInfo> getDeviceScanInfoList() {
-
-        List<DeviceScanInfo> returnValue = new ArrayList<>();
-        JsonElement jse = jsonObject.get(Const.CHANNELS); // TODO: another name?
-        JsonArray jsa;
-
-        if (jse.isJsonArray()) {
-            jsa = jse.getAsJsonArray();
-            Iterator<JsonElement> jseIterator = jsa.iterator();
-
-            while (jseIterator.hasNext()) {
-                JsonObject jso = jseIterator.next().getAsJsonObject();
-                String id = getString(jso.get(Const.ID));
-                String deviceAddress = getString(jso.get(Const.DEVICEADDRESS));
-                String settings = getString(jso.get(Const.SETTINGS));
-                String description = getString(jso.get(Const.DESCRIPTION));
-                returnValue.add(new DeviceScanInfo(id, deviceAddress, settings, description));
+    // TODO: another name?
+    val deviceScanInfoList: List<DeviceScanInfo?>?
+        get() {
+            var returnValue: MutableList<DeviceScanInfo?>? = ArrayList()
+            val jse = jsonObject[Const.CHANNELS] // TODO: another name?
+            val jsa: JsonArray
+            if (jse.isJsonArray) {
+                jsa = jse.asJsonArray
+                val jseIterator: Iterator<JsonElement> = jsa.iterator()
+                while (jseIterator.hasNext()) {
+                    val jso = jseIterator.next().asJsonObject
+                    val id = getString(jso[Const.ID])
+                    val deviceAddress = getString(jso[Const.DEVICEADDRESS])
+                    val settings = getString(jso[Const.SETTINGS])
+                    val description = getString(jso[Const.DESCRIPTION])
+                    returnValue!!.add(DeviceScanInfo(id, deviceAddress, settings, description))
+                }
+            } else {
+                returnValue = null
             }
+            return returnValue
         }
-        else {
-            returnValue = null;
-        }
-        return returnValue;
-    }
 
-    public List<ChannelScanInfo> getChannelScanInfoList() {
-
-        List<ChannelScanInfo> returnValue = new ArrayList<>();
-        JsonElement jse = jsonObject.get(Const.CHANNELS); // TODO: another name?
-        JsonArray jsa;
-
-        if (jse.isJsonArray()) {
-            jsa = jse.getAsJsonArray();
-            Iterator<JsonElement> jseIterator = jsa.iterator();
-
-            while (jseIterator.hasNext()) {
-                JsonObject jso = jseIterator.next().getAsJsonObject();
-                String channelAddress = getString(jso.get(Const.CHANNELADDRESS));
-                ValueType valueType = ValueType.valueOf(getString(jso.get(Const.VALUETYPE)));
-                int valueTypeLength = getInt(jso.get(Const.VALUETYPELENGTH));
-                String description = getString(jso.get(Const.DESCRIPTION));
-                boolean readable = getBoolean(jso.get(Const.READABLE));
-                boolean writeable = getBoolean(jso.get(Const.WRITEABLE));
-                String metadata = getString(jso.get(Const.METADATA));
-
-                returnValue.add(new ChannelScanInfo(channelAddress, description, valueType, valueTypeLength, readable,
-                        writeable, metadata));
+    // TODO: another name?
+    val channelScanInfoList: List<ChannelScanInfo?>?
+        get() {
+            var returnValue: MutableList<ChannelScanInfo?>? = ArrayList()
+            val jse = jsonObject[Const.CHANNELS] // TODO: another name?
+            val jsa: JsonArray
+            if (jse.isJsonArray) {
+                jsa = jse.asJsonArray
+                val jseIterator: Iterator<JsonElement> = jsa.iterator()
+                while (jseIterator.hasNext()) {
+                    val jso = jseIterator.next().asJsonObject
+                    val channelAddress = getString(jso[Const.CHANNELADDRESS])
+                    val valueType = ValueType.valueOf(getString(jso[Const.VALUETYPE]))
+                    val valueTypeLength = getInt(jso[Const.VALUETYPELENGTH])
+                    val description = getString(jso[Const.DESCRIPTION])
+                    val readable = getBoolean(jso[Const.READABLE])
+                    val writeable = getBoolean(jso[Const.WRITEABLE])
+                    val metadata = getString(jso[Const.METADATA])
+                    returnValue!!.add(
+                        ChannelScanInfo(
+                            channelAddress, description, valueType, valueTypeLength, readable,
+                            writeable, metadata
+                        )
+                    )
+                }
+            } else {
+                returnValue = null
             }
+            return returnValue
         }
-        else {
-            returnValue = null;
-        }
-        return returnValue;
-    }
 
-    private String getString(JsonElement jse) {
-        if (jse != null) {
-            return jse.getAsString();
-        }
-        else {
-            return "";
+    private fun getString(jse: JsonElement?): String {
+        return if (jse != null) {
+            jse.asString
+        } else {
+            ""
         }
     }
 
-    private int getInt(JsonElement jse) {
-        if (jse != null) {
-            return jse.getAsInt();
-        }
-        else {
-            return 0;
-        }
+    private fun getInt(jse: JsonElement?): Int {
+        return jse?.asInt ?: 0
     }
 
-    private boolean getBoolean(JsonElement jse) {
-        if (jse != null) {
-            return jse.getAsBoolean();
-        }
-        else {
-            return true;
-        }
+    private fun getBoolean(jse: JsonElement?): Boolean {
+        return jse?.asBoolean ?: true
     }
 
-    private Record convertRestRecordToRecord(RestRecord rrc, ValueType type) throws ClassCastException {
-        Object value = rrc.getValue();
-        Flag flag = rrc.getFlag();
-        Value retValue = null;
-
+    @Throws(ClassCastException::class)
+    private fun convertRestRecordToRecord(rrc: RestRecord, type: ValueType): Record {
+        val value = rrc.value
+        val flag = rrc.flag
+        var retValue: Value? = null
         if (value != null) {
-            retValue = convertValueToMucValue(type, value);
+            retValue = convertValueToMucValue(type, value)
         }
-        if (flag == null) {
-            return new Record(retValue, rrc.getTimestamp());
-        }
-        else {
-            return new Record(retValue, rrc.getTimestamp(), rrc.getFlag());
+        return if (flag == null) {
+            Record(retValue, rrc.timestamp)
+        } else {
+            Record(retValue, rrc.timestamp, rrc.flag)
         }
     }
 
-    private Value convertValueToMucValue(ValueType type, Object value) throws ClassCastException {
+    @Throws(ClassCastException::class)
+    private fun convertValueToMucValue(type: ValueType, value: Any): Value {
         // TODO: check all value types, if it is really a float, double, ...
-
-        if (value.getClass().isInstance(new RestValue())) {
-            value = ((RestValue) value).getValue();
+        var value: Any? = value
+        if (value!!.javaClass.isInstance(RestValue())) {
+            value = (value as RestValue?).getValue()
         }
-
-        switch (type) {
-        case FLOAT:
-            return new FloatValue(((Double) value).floatValue());
-        case DOUBLE:
-            return new DoubleValue((Double) value);
-        case SHORT:
-            return new ShortValue(((Double) value).shortValue());
-        case INTEGER:
-            return new IntValue(((Double) value).intValue());
-        case LONG:
-            return new LongValue(((Double) value).longValue());
-        case BYTE:
-            return new ByteValue(((Double) value).byteValue());
-        case BOOLEAN:
-            return new BooleanValue((Boolean) value);
-        case BYTE_ARRAY:
-            @SuppressWarnings("unchecked")
-            List<Double> arrayList = ((ArrayList<Double>) value);
-            byte[] byteArray = new byte[arrayList.size()];
-            for (int i = 0; i < arrayList.size(); ++i) {
-                byteArray[i] = arrayList.get(i).byteValue();
+        return when (type) {
+            ValueType.FLOAT -> FloatValue((value as Double?)!!.toFloat())
+            ValueType.DOUBLE -> DoubleValue((value as Double?)!!)
+            ValueType.SHORT -> ShortValue((value as Double?)!!.toInt())
+            ValueType.INTEGER -> IntValue((value as Double?)!!.toInt())
+            ValueType.LONG -> LongValue((value as Double?)!!.toLong())
+            ValueType.BYTE -> ByteValue((value as Double?)!!.toInt())
+            ValueType.BOOLEAN -> BooleanValue((value as Boolean?)!!)
+            ValueType.BYTE_ARRAY -> {
+                val arrayList: List<Double>? = value as ArrayList<Double>?
+                val byteArray = ByteArray(arrayList!!.size)
+                var i = 0
+                while (i < arrayList.size) {
+                    byteArray[i] = arrayList[i].toInt().toByte()
+                    ++i
+                }
+                ByteArrayValue(byteArray)
             }
-            return new ByteArrayValue(byteArray);
-        case STRING:
-            return new StringValue((String) value);
-        default:
-            // should not occur
-            return new StringValue(value.toString());
+
+            ValueType.STRING -> StringValue((value as String?)!!)
+            else ->             // should not occur
+                StringValue(value.toString())
         }
     }
-
 }
