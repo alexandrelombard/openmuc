@@ -54,7 +54,6 @@ interface ChannelConfig {
         const val DESCRIPTION_DEFAULT = ""
         const val CHANNEL_ADDRESS_DEFAULT = ""
         const val UNIT_DEFAULT = ""
-        @JvmField
         val VALUE_TYPE_DEFAULT = ValueType.DOUBLE
         const val BYTE_ARRAY_SIZE_DEFAULT = 10
         const val STRING_SIZE_DEFAULT = 10
