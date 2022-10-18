@@ -23,15 +23,15 @@ package org.openmuc.framework.data
 import java.nio.ByteBuffer
 
 class FloatValue : NumberValue {
-    constructor(value: Float) : super(value) {}
-    constructor(value: String) : super(value.toFloat()) {}
+    constructor(value: Float) : super(value)
+    constructor(value: String) : super(value.toFloat())
 
-    override fun asByteArray(): ByteArray? {
+    override fun asByteArray(): ByteArray {
         val bytes = ByteArray(4)
         ByteBuffer.wrap(bytes).putFloat(super.asFloat())
         return bytes
     }
 
-    override val valueType: ValueType?
+    override val valueType: ValueType
         get() = ValueType.FLOAT
 }

@@ -21,13 +21,13 @@
 package org.openmuc.framework.data
 
 class ByteValue : NumberValue {
-    constructor(value: Byte) : super(value) {}
-    constructor(value: String) : super(value.toByte()) {}
+    constructor(value: Byte) : super(value)
+    constructor(value: String) : super(value.toByte())
 
-    override fun asByteArray(): ByteArray? {
+    override fun asByteArray(): ByteArray {
         return byteArrayOf(super.asByte())
     }
 
-    override val valueType: ValueType?
+    override val valueType: ValueType
         get() = ValueType.BYTE
 }

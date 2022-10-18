@@ -21,10 +21,6 @@
 package org.openmuc.framework.config
 
 class ArgumentSyntaxException : Exception {
-    constructor(message: String?) : super(message) {}
-    constructor() : super() {}
-
-    companion object {
-        private const val serialVersionUID = 4793620849675542512L
-    }
+    constructor(message: String) : super(message)
+    constructor() : super()
 }

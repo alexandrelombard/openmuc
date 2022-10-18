@@ -103,5 +103,5 @@ interface Value {
      *
      * @return ValueType of this value
      */
-    val valueType: ValueType?
+    val valueType: ValueType
 }

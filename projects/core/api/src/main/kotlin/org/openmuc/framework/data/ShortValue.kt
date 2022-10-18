@@ -23,15 +23,15 @@ package org.openmuc.framework.data
 import java.nio.ByteBuffer
 
 class ShortValue : NumberValue {
-    constructor(value: Short) : super(value) {}
-    constructor(value: String) : super(value.toShort()) {}
+    constructor(value: Short) : super(value)
+    constructor(value: String) : super(value.toShort())
 
-    override fun asByteArray(): ByteArray? {
+    override fun asByteArray(): ByteArray {
         val bytes = ByteArray(2)
         ByteBuffer.wrap(bytes).putShort(super.asShort())
         return bytes
     }
 
-    override val valueType: ValueType?
+    override val valueType: ValueType
         get() = ValueType.SHORT
 }

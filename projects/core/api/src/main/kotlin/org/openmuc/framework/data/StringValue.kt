@@ -87,7 +87,7 @@ class StringValue(private val value: String) : Value {
         return toString()
     }
 
-    override val valueType: ValueType?
+    override val valueType: ValueType
         get() = ValueType.STRING
 
     companion object {

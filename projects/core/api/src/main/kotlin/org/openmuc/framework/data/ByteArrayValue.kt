@@ -85,7 +85,7 @@ class ByteArrayValue : Value {
         throw TypeConversionException()
     }
 
-    override fun asByteArray(): ByteArray? {
+    override fun asByteArray(): ByteArray {
         return value
     }
 
@@ -97,6 +97,6 @@ class ByteArrayValue : Value {
         return toString()
     }
 
-    override val valueType: ValueType?
+    override val valueType: ValueType
         get() = ValueType.BYTE_ARRAY
 }

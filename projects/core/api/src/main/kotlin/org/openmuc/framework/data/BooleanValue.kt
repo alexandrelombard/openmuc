@@ -63,7 +63,7 @@ class BooleanValue : Value {
         return value
     }
 
-    override fun asByteArray(): ByteArray? {
+    override fun asByteArray(): ByteArray {
         return byteArrayOf(asByte())
     }
 
@@ -75,6 +75,6 @@ class BooleanValue : Value {
         return toString()
     }
 
-    override val valueType: ValueType?
+    override val valueType: ValueType
         get() = ValueType.BOOLEAN
 }

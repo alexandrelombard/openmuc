@@ -23,15 +23,15 @@ package org.openmuc.framework.data
 import java.nio.ByteBuffer
 
 class IntValue : NumberValue {
-    constructor(value: Int) : super(value) {}
-    constructor(value: String) : super(value.toInt()) {}
+    constructor(value: Int) : super(value)
+    constructor(value: String) : super(value.toInt())
 
-    override fun asByteArray(): ByteArray? {
+    override fun asByteArray(): ByteArray {
         val bytes = ByteArray(4)
         ByteBuffer.wrap(bytes).putInt(super.asInt())
         return bytes
     }
 
-    override val valueType: ValueType?
+    override val valueType: ValueType
         get() = ValueType.INTEGER
 }

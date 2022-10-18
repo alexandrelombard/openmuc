@@ -24,12 +24,12 @@ package org.openmuc.framework.authentication
  * Service interface to get access to the framework wide user management and authentication
  */
 interface AuthenticationService {
-    fun registerNewUser(user: String?, pw: String?)
-    fun login(name: String?, password: String?): Boolean
-    operator fun contains(user: String?): Boolean
-    fun delete(user: String?)
-    fun register(user: String?, pwd: String?, group: String?)
-    val allUsers: Set<String?>?
+    fun registerNewUser(user: String, pw: String)
+    fun login(name: String, password: String): Boolean
+    operator fun contains(user: String): Boolean
+    fun delete(user: String)
+    fun register(user: String, pwd: String, group: String)
+    val allUsers: Set<String>
     fun writeShadowToFile()
-    fun isUserAdmin(userName: String?): Boolean
+    fun isUserAdmin(userName: String): Boolean
 }

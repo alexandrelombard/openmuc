@@ -23,15 +23,15 @@ package org.openmuc.framework.data
 import java.nio.ByteBuffer
 
 class DoubleValue : NumberValue {
-    constructor(value: Double) : super(value) {}
-    constructor(value: String) : super(value.toDouble()) {}
+    constructor(value: Double) : super(value)
+    constructor(value: String) : super(value.toDouble())
 
-    override fun asByteArray(): ByteArray? {
+    override fun asByteArray(): ByteArray {
         val bytes = ByteArray(8)
         ByteBuffer.wrap(bytes).putDouble(super.asDouble())
         return bytes
     }
 
-    override val valueType: ValueType?
+    override val valueType: ValueType
         get() = ValueType.DOUBLE
 }

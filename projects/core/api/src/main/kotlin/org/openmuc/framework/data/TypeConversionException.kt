@@ -21,10 +21,6 @@
 package org.openmuc.framework.data
 
 class TypeConversionException : RuntimeException {
-    constructor() : super() {}
-    constructor(s: String?) : super(s) {}
-
-    companion object {
-        private const val serialVersionUID = 968407618209609707L
-    }
+    constructor() : super()
+    constructor(s: String) : super(s)
 }

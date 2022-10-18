@@ -259,11 +259,8 @@ enum class Flag(private val code: Int) {
         init {
             for (enumInstance in values()) {
                 require(
-                    idMap.put(
-                        org.openmuc.framework.data.enumInstance.getCode(),
-                        org.openmuc.framework.data.enumInstance
-                    ) == null
-                ) { "duplicate ID: " + org.openmuc.framework.data.enumInstance.getCode() }
+                    idMap.put(enumInstance.getCode(), enumInstance) == null
+                ) { "duplicate ID: " + enumInstance.getCode() }
             }
         }
 

@@ -23,15 +23,15 @@ package org.openmuc.framework.data
 import java.nio.ByteBuffer
 
 class LongValue : NumberValue {
-    constructor(value: Long) : super(value) {}
-    constructor(value: String) : super(value.toLong()) {}
+    constructor(value: Long) : super(value)
+    constructor(value: String) : super(value.toLong())
 
-    override fun asByteArray(): ByteArray? {
+    override fun asByteArray(): ByteArray {
         val bytes = ByteArray(8)
         ByteBuffer.wrap(bytes).putLong(super.asLong())
         return bytes
     }
 
-    override val valueType: ValueType?
+    override val valueType: ValueType
         get() = ValueType.LONG
 }
