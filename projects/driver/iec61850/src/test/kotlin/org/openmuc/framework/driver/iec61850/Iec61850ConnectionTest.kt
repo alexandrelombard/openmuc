@@ -121,12 +121,12 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
         getAllBdas(serverModel, clientAssociation)
         // ------------SCAN FOR CHANNELS-------------------
         val testIec61850Connection = Iec61850Connection(clientAssociation, serverModel)
-        val testRecordContainers: MutableList<ChannelRecordContainer?> = ArrayList()
+        val testRecordContainers: MutableList<ChannelRecordContainer> = arrayListOf()
         val testChannelScanList = testIec61850Connection.scanForChannels("")
         for (i in 14..33) {
             testRecordContainers.add(
                 ChannelRecordContainerImpl(
-                    testChannelScanList!![i]!!.channelAddress
+                    testChannelScanList[i]!!.channelAddress
                 )
             )
         }
@@ -134,18 +134,18 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
         testIec61850Connection.read(testRecordContainers, null, "")
         print(
             """
-    recordContainer:${testRecordContainers[0]!!.record}
+    recordContainer:${testRecordContainers[0].record}
     
     """.trimIndent()
         )
-        Assertions.assertEquals("[64]", testRecordContainers[0]!!.record!!.value.toString())
+        Assertions.assertEquals("[64]", testRecordContainers[0].record!!.value.toString())
         print(
             """
-    recordContainer:${testRecordContainers[0]!!.record}
+    recordContainer:${testRecordContainers[0].record}
     
     """.trimIndent()
         )
-        Assertions.assertEquals("[64]", testRecordContainers[0]!!.record!!.value.toString())
+        Assertions.assertEquals("[64]", testRecordContainers[0].record!!.value.toString())
     }
 
     @Test
@@ -172,11 +172,11 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
         val testChannelScanList = testIec61850Connection.scanForChannels("")
 
         // ----------WRITE-----------------
-        val testChannelValueContainers: MutableList<ChannelValueContainer?> = ArrayList()
+        val testChannelValueContainers: MutableList<ChannelValueContainer> = arrayListOf()
         val newValue = byteArrayOf(0x44)
         testChannelValueContainers.add(
             ChannelValueContainerImpl(
-                testChannelScanList!![14]!!.channelAddress,
+                testChannelScanList[14]!!.channelAddress,
                 ByteArrayValue(newValue)
             )
         )
@@ -192,7 +192,7 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
         testIec61850Connection.write(testChannelValueContainers, null)
 
         // Create record container to read the changes made by "write"
-        val testRecordContainers: MutableList<ChannelRecordContainer?> = ArrayList()
+        val testRecordContainers: MutableList<ChannelRecordContainer> = ArrayList()
         for (i in 0..33) {
             testRecordContainers.add(
                 ChannelRecordContainerImpl(
@@ -201,9 +201,9 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
             )
         }
         testIec61850Connection.read(testRecordContainers, null, "")
-        Assertions.assertEquals("[68]", testRecordContainers[14]!!.record!!.value.toString())
-        Assertions.assertEquals("12.5", testRecordContainers[25]!!.record!!.value.toString())
-        Assertions.assertEquals("true", testRecordContainers[24]!!.record!!.value.toString())
+        Assertions.assertEquals("[68]", testRecordContainers[14].record!!.value.toString())
+        Assertions.assertEquals("12.5", testRecordContainers[25].record!!.value.toString())
+        Assertions.assertEquals("true", testRecordContainers[24].record!!.value.toString())
     }
 
     @AfterEach

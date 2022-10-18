@@ -36,7 +36,7 @@ class Record @JvmOverloads constructor(val value: Value?, val timestamp: Long?, 
      * the timestamp of the record
      */
     init {
-        require(value == null && flag != Flag.VALID) { "If a record's flag is set valid the value may not be NULL." }
+        require(value == null && flag == Flag.VALID) { "If a record's flag is set valid the value may not be NULL." }
         this.flag = flag
     }
 

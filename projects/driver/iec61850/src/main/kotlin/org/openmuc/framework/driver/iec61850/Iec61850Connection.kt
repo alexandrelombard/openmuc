@@ -33,7 +33,7 @@ import java.util.*
 class Iec61850Connection(private val clientAssociation: ClientAssociation, private val serverModel: ServerModel) :
     Connection {
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String?): List<ChannelScanInfo?> {
         val bdas = serverModel.basicDataAttributes
         val scanInfos: MutableList<ChannelScanInfo?> = ArrayList(bdas.size)
         for (bda in bdas) {
@@ -44,7 +44,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
@@ -65,7 +65,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
         val modelNodesToBeWritten: MutableList<FcModelNode?> = ArrayList(
             containers!!.size
         )
@@ -151,11 +151,11 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
     }
 
     @Throws(ConnectionException::class)
-    private fun setRecordContainer(container: ChannelRecordContainer?): FcModelNode? {
-        if (container!!.channelHandle == null) {
+    private fun setRecordContainer(container: ChannelRecordContainer): FcModelNode? {
+        if (container.channelHandle == null) {
             return null
         }
-        val fcModelNode = container.channelHandle as FcModelNode?
+        val fcModelNode = container.channelHandle as FcModelNode
         try {
             clientAssociation.getDataValues(fcModelNode)
         } catch (e: ServiceError) {
@@ -170,10 +170,10 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
         }
         if (fcModelNode is BasicDataAttribute) {
             val receiveTime = System.currentTimeMillis()
-            setRecord(container, fcModelNode as BasicDataAttribute, receiveTime)
+            setRecord(container, fcModelNode, receiveTime)
         } else {
             val sb = StringBuilder("")
-            for (bda in fcModelNode!!.basicDataAttributes) {
+            for (bda in fcModelNode.basicDataAttributes) {
                 sb.append(bda2String(bda) + STRING_SEPARATOR)
             }
             sb.delete(sb.length - 1, sb.length) // remove last separator
@@ -282,7 +282,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
     }
 
     @Throws(UnsupportedOperationException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 
@@ -352,8 +352,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaBoolean).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(BooleanValue((bda as BdaBoolean?)!!.value), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(BooleanValue((bda as BdaBoolean).value), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -373,8 +373,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaInt8).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(DoubleValue((bda as BdaInt8?)!!.value.toDouble()), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(DoubleValue((bda as BdaInt8).value.toDouble()), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -394,8 +394,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return "" + (bda as BdaInt16).value
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(DoubleValue((bda as BdaInt16?)!!.value.toDouble()), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(DoubleValue((bda as BdaInt16).value.toDouble()), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -415,8 +415,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaInt32).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(DoubleValue((bda as BdaInt32?)!!.value.toDouble()), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(DoubleValue((bda as BdaInt32).value.toDouble()), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -436,8 +436,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return "" + (bda as BdaInt64).value
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(DoubleValue((bda as BdaInt64?)!!.value.toDouble()), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(DoubleValue((bda as BdaInt64).value.toDouble()), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -457,8 +457,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaInt128).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(DoubleValue((bda as BdaInt128?)!!.value.toDouble()), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(DoubleValue((bda as BdaInt128).value.toDouble()), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -478,8 +478,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return "" + (bda as BdaInt8U).value
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(DoubleValue((bda as BdaInt8U?)!!.value.toDouble()), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(DoubleValue((bda as BdaInt8U).value.toDouble()), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -499,8 +499,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return "" + (bda as BdaInt16U).value
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(DoubleValue((bda as BdaInt16U?)!!.value.toDouble()), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(DoubleValue((bda as BdaInt16U).value.toDouble()), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -520,8 +520,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaInt32U).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(DoubleValue((bda as BdaInt32U?)!!.value.toDouble()), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(DoubleValue((bda as BdaInt32U).value.toDouble()), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -541,8 +541,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaFloat32).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(FloatValue((bda as BdaFloat32?)!!.float), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(FloatValue((bda as BdaFloat32).float), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -562,8 +562,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaFloat64).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(DoubleValue((bda as BdaFloat64?)!!.double), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(DoubleValue((bda as BdaFloat64).double), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -586,8 +586,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return Arrays.toString((bda as BdaOctetString).value)
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(ByteArrayValue((bda as BdaOctetString?)!!.value, true), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(ByteArrayValue((bda as BdaOctetString).value, true), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -610,8 +610,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaVisibleString).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(StringValue((bda as BdaVisibleString?)!!.stringValue), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(StringValue((bda as BdaVisibleString).stringValue), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -636,8 +636,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return byteValue?.let { String(it) } ?: "null"
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(ByteArrayValue((bda as BdaUnicodeString?)!!.value, true), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(ByteArrayValue((bda as BdaUnicodeString).value, true), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -658,7 +658,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return if (date == null) "<invalid date>" else "" + date.toEpochMilli()
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
                 val date = (bda as BdaTimestamp?)!!.instant
                 return if (date == null) {
                     Record(LongValue(-1L), receiveTime)
@@ -687,8 +687,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaEntryTime).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(ByteArrayValue((bda as BdaEntryTime?)!!.value, true), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(ByteArrayValue((bda as BdaEntryTime).value, true), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -711,8 +711,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaCheck).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(ByteArrayValue((bda as BdaCheck?)!!.value, true), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(ByteArrayValue((bda as BdaCheck).value, true), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -735,8 +735,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaQuality).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(ByteArrayValue((bda as BdaQuality?)!!.value, true), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(ByteArrayValue((bda as BdaQuality).value, true), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -759,8 +759,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaDoubleBitPos).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(ByteArrayValue((bda as BdaDoubleBitPos?)!!.value, true), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(ByteArrayValue((bda as BdaDoubleBitPos).value, true), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -783,8 +783,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return "" + (bda as BdaTapCommand).tapCommand.intValue
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(IntValue((bda as BdaTapCommand?)!!.tapCommand.intValue), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(IntValue((bda as BdaTapCommand).tapCommand.intValue), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -807,8 +807,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaTriggerConditions).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(ByteArrayValue((bda as BdaBitString?)!!.value, true), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(ByteArrayValue((bda as BdaBitString).value, true), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -831,8 +831,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaOptFlds).toString()
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(ByteArrayValue((bda as BdaOptFlds?)!!.value, true), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(ByteArrayValue((bda as BdaOptFlds).value, true), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -855,8 +855,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 return (bda as BdaReasonForInclusion).valueString
             }
 
-            override fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record {
-                return Record(ByteArrayValue((bda as BdaReasonForInclusion?)!!.value, true), receiveTime)
+            override fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record {
+                return Record(ByteArrayValue((bda as BdaReasonForInclusion).value, true), receiveTime)
             }
 
             override fun setBda(bdaValueString: String, bda: BasicDataAttribute) {
@@ -870,7 +870,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
 
         abstract fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo?
         abstract fun bda2String(bda: BasicDataAttribute): String
-        abstract fun setRecord(bda: BasicDataAttribute?, receiveTime: Long): Record
+        abstract fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record
         abstract fun setBda(bdaValueString: String, bda: BasicDataAttribute)
         abstract fun setBda(container: ChannelValueContainer?, bda: BasicDataAttribute)
     }

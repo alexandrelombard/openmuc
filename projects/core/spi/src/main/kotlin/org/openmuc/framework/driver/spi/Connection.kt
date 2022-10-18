@@ -92,7 +92,7 @@ interface Connection {
      * if the connection to the device was interrupted.
      */
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    fun read(containers: List<ChannelRecordContainer?>?, containerListHandle: Any?, samplingGroup: String?): Any?
+    fun read(containers: List<ChannelRecordContainer>, containerListHandle: Any?, samplingGroup: String?): Any?
 
     /**
      * Starts listening on the given connection for data from the channels that correspond to the given record
@@ -110,7 +110,7 @@ interface Connection {
      * if the connection to the device was interrupted.
      */
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?)
+    fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?)
 
     /**
      * Writes the data channels that correspond to the given value containers. The write result is returned by setting
@@ -134,7 +134,7 @@ interface Connection {
      * if the connection to the device was interrupted.
      */
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any?
+    fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any?
 
     /**
      * Disconnects or closes the connection. Cleans up any resources associated with the connection.
