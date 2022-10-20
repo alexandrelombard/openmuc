@@ -22,16 +22,16 @@ package org.openmuc.framework.driver.aggregator
 
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.data.TypeConversionException
 import org.openmuc.framework.dataaccess.Channel
 import org.openmuc.framework.dataaccess.DataAccessService
 import org.openmuc.framework.dataaccess.DataLoggerNotAvailableException
 import java.io.IOException
+import kotlin.math.roundToInt
 
-abstract class AggregatorChannel(protected var channelAddress: ChannelAddress, dataAccessService: DataAccessService?) {
-    protected var aggregatedChannel: Channel?
-    protected var sourceChannel: Channel?
+abstract class AggregatorChannel(protected var channelAddress: ChannelAddress, dataAccessService: DataAccessService) {
+    protected var aggregatedChannel: Channel
+    protected var sourceChannel: Channel
     protected var sourceLoggingInterval: Long
     protected var aggregationInterval: Long
     protected var aggregationSamplingTimeOffset: Long
@@ -40,13 +40,17 @@ abstract class AggregatorChannel(protected var channelAddress: ChannelAddress, d
     // Brauche den dataAccessService eigentlich nur hier
     init {
         aggregatedChannel = channelAddress.container.channel
-        sourceChannel = dataAccessService!!.getChannel(channelAddress.sourceChannelId)
-        checkIfChannelsNotNull()
+        dataAccessService.getChannel(channelAddress.sourceChannelId).let {
+            if (it == null) {
+                throw AggregationException("sourceChannel is null")
+            }
+            sourceChannel = it
+        }
 
         // NOTE: logging, not sampling interval because aggregator accesses logged values
-        sourceLoggingInterval = sourceChannel!!.loggingInterval.toLong()
-        aggregationInterval = aggregatedChannel!!.samplingInterval.toLong()
-        aggregationSamplingTimeOffset = aggregatedChannel!!.samplingTimeOffset.toLong()
+        sourceLoggingInterval = sourceChannel.loggingInterval.toLong()
+        aggregationInterval = aggregatedChannel.samplingInterval.toLong()
+        aggregationSamplingTimeOffset = aggregatedChannel.samplingTimeOffset.toLong()
         checkIntervals()
     }
 
@@ -64,9 +68,9 @@ abstract class AggregatorChannel(protected var channelAddress: ChannelAddress, d
     @Throws(AggregationException::class)
     abstract fun aggregate(currentTimestamp: Long, endTimestamp: Long): Double
     @Throws(DataLoggerNotAvailableException::class, IOException::class, AggregationException::class)
-    fun getLoggedRecords(currentTimestamp: Long, endTimestamp: Long): List<Record?>? {
+    fun getLoggedRecords(currentTimestamp: Long, endTimestamp: Long): List<Record> {
         val startTimestamp = currentTimestamp - aggregationInterval
-        val records = sourceChannel!!.getLoggedRecords(startTimestamp, endTimestamp)
+        val records = sourceChannel.getLoggedRecords(startTimestamp, endTimestamp).toMutableList()
 
         // for debugging - KEEP IT!
         // if (records.size() > 0) {
@@ -81,16 +85,6 @@ abstract class AggregatorChannel(protected var channelAddress: ChannelAddress, d
         // }
         checkNumberOfRecords(records)
         return records
-    }
-
-    @Throws(AggregationException::class)
-    private fun checkIfChannelsNotNull() {
-        if (aggregatedChannel == null) {
-            throw AggregationException("aggregatedChannel is null")
-        }
-        if (sourceChannel == null) {
-            throw AggregationException("sourceChannel is null")
-        }
     }
 
     /**
@@ -131,13 +125,12 @@ abstract class AggregatorChannel(protected var channelAddress: ChannelAddress, d
     }
 
     @Throws(AggregationException::class)
-    private fun checkNumberOfRecords(records: List<Record?>?) {
-
+    private fun checkNumberOfRecords(records: MutableList<Record>) {
         // The check if intervals are multiples of each other is done in the checkIntervals Method
         removeErrorRecords(records)
-        val expectedNumberOfRecords = Math.round(aggregationInterval.toDouble() / sourceLoggingInterval)
-        val necessaryRecords = Math.round(expectedNumberOfRecords * channelAddress.quality)
-        val validRecords = records!!.size
+        val expectedNumberOfRecords = (aggregationInterval.toDouble() / sourceLoggingInterval).roundToInt()
+        val necessaryRecords = (expectedNumberOfRecords * channelAddress.quality).roundToInt()
+        val validRecords = records.size
         if (validRecords < necessaryRecords) {
             throw AggregationException(
                 "Insufficent number of logged records for channel "
@@ -154,12 +147,12 @@ abstract class AggregatorChannel(protected var channelAddress: ChannelAddress, d
      *
      * NOTE: directly manipulates the records object for all future operations!
      */
-    private fun removeErrorRecords(records: List<Record?>?) {
-        val recordIterator = records!!.iterator()
+    private fun removeErrorRecords(records: MutableList<Record>) {
+        val recordIterator = records.iterator()
         while (recordIterator.hasNext()) {
             val record = recordIterator.next()
             // check if the value is null or the flag isn't valid
-            if (record == null || record.value == null || record.flag != Flag.VALID) {
+            if (record.value == null || record.flag != Flag.VALID) {
                 recordIterator.remove()
                 continue
             }

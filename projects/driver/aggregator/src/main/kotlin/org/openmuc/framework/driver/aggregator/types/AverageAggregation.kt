@@ -21,11 +21,10 @@
 package org.openmuc.framework.driver.aggregator.types
 
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.dataaccess.DataAccessService
 import org.openmuc.framework.driver.aggregator.*
 
-class AverageAggregation(simpleAddress: ChannelAddress, dataAccessService: DataAccessService?) :
+class AverageAggregation(simpleAddress: ChannelAddress, dataAccessService: DataAccessService) :
     AggregatorChannel(simpleAddress, dataAccessService) {
     @Throws(AggregationException::class)
     override fun aggregate(currentTimestamp: Long, endTimestamp: Long): Double {
@@ -35,7 +34,7 @@ class AverageAggregation(simpleAddress: ChannelAddress, dataAccessService: DataA
         } catch (e: AggregationException) {
             throw e
         } catch (e: Exception) {
-            throw AggregationException(e.message)
+            throw AggregationException(e.message ?: "")
         }
     }
 

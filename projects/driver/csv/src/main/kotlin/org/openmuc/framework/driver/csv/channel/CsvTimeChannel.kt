@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory
 abstract class CsvTimeChannel(protected var data: List<String>, rewind: Boolean, timestamps: LongArray) : CsvChannel {
     /** remember index of last valid sampled value  */
     protected var lastReadIndex = 0
-    protected var maxIndex: Int
+    protected var maxIndex: Int = data.size - 1
     protected var rewind: Boolean
     protected var isInitialised = false
     var timestamps: LongArray
@@ -36,7 +36,6 @@ abstract class CsvTimeChannel(protected var data: List<String>, rewind: Boolean,
     var lastTimestamp: Long
 
     init {
-        maxIndex = data.size - 1
         this.rewind = rewind
         this.timestamps = timestamps
         firstTimestamp = timestamps[0]
@@ -115,11 +114,7 @@ abstract class CsvTimeChannel(protected var data: List<String>, rewind: Boolean,
     }
 
     private fun isBeforeLastReadIndex(samplingTime: Long): Boolean {
-        return if (samplingTime < timestamps[lastReadIndex]) {
-            true
-        } else {
-            false
-        }
+        return samplingTime < timestamps[lastReadIndex]
     }
 
     private fun rewindIndex() {
@@ -127,11 +122,7 @@ abstract class CsvTimeChannel(protected var data: List<String>, rewind: Boolean,
     }
 
     private fun isBehindLastReadIndex(samplingTime: Long): Boolean {
-        return if (samplingTime > timestamps[lastReadIndex]) {
-            true
-        } else {
-            false
-        }
+        return samplingTime > timestamps[lastReadIndex]
     }
 
     @Throws(CsvException::class)
@@ -146,19 +137,11 @@ abstract class CsvTimeChannel(protected var data: List<String>, rewind: Boolean,
     }
 
     private fun isWithinTimeperiod(samplingTime: Long): Boolean {
-        return if (samplingTime >= firstTimestamp && samplingTime <= lastTimestamp) {
-            true
-        } else {
-            false
-        }
+        return samplingTime in firstTimestamp..lastTimestamp
     }
 
     private fun isBeforeFirstTimestamp(samplingTime: Long): Boolean {
-        return if (samplingTime < firstTimestamp) {
-            true
-        } else {
-            false
-        }
+        return samplingTime < firstTimestamp
     }
 
     companion object {

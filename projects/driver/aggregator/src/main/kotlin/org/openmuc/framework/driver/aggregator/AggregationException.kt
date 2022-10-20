@@ -20,4 +20,4 @@
  */
 package org.openmuc.framework.driver.aggregator
 
-class AggregationException(message: String?) : Exception(message)
+class AggregationException(message: String) : Exception(message)

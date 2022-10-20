@@ -21,7 +21,6 @@
 package org.openmuc.framework.driver.aggregator
 
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 
 /**
  * Collection of methods

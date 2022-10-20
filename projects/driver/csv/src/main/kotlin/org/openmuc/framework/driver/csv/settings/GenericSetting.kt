@@ -32,7 +32,7 @@ import java.util.*
 abstract class GenericSetting {
     interface OptionI {
         fun prefix(): String
-        fun type(): Class<*>?
+        fun type(): Class<*>
         fun mandatory(): Boolean
     }
 

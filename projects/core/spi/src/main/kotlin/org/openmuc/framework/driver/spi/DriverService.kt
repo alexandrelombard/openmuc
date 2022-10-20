@@ -79,7 +79,7 @@ interface DriverService {
         ScanException::class,
         ScanInterruptedException::class
     )
-    fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?)
+    fun scanForDevices(settings: String, listener: DriverDeviceScanListener? = null)
 
     /**
      * A call of this function signals the driver to stop the device scan as soon as possible. The function should

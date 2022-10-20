@@ -69,7 +69,7 @@ class CsvDriver : DriverService {
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         logger.info("Scan for CSV files. Settings: {}", settings)
         resetDeviceScanInterrupted()
         val deviceScanSettings = DeviceScanSettings(settings)

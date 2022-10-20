@@ -24,5 +24,5 @@ import org.openmuc.framework.data.Record
 
 interface ReadRecordContainer {
     val record: Record?
-    val channel: Channel?
+    val channel: Channel
 }

@@ -20,11 +20,4 @@
  */
 package org.openmuc.framework.driver.csv.exceptions
 
-class EmptyChannelAddressException(message: String) : CsvException(message) {
-    override val message: String
-        get() = message
-
-    companion object {
-        private const val serialVersionUID = 6348877509178234016L
-    }
-}
+class EmptyChannelAddressException(message: String) : CsvException(message)

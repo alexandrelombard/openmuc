@@ -23,7 +23,7 @@ package org.openmuc.framework.driver.aggregator
 import org.openmuc.framework.driver.spi.ChannelRecordContainer
 
 class ChannelAddress(
-    val container: ChannelRecordContainer?, val sourceChannelId: String, val aggregationType: String,
+    val container: ChannelRecordContainer, val sourceChannelId: String, val aggregationType: String,
     /*
 * Range: [0, 1]
 */

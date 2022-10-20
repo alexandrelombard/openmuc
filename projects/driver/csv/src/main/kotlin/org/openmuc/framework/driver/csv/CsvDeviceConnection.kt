@@ -34,23 +34,23 @@ import org.slf4j.LoggerFactory
 import java.util.function.Supplier
 
 class CsvDeviceConnection private constructor(
-    deviceAddress: String?,
-    deviceSettings: String?,
+    deviceAddress: String,
+    deviceSettings: String,
     currentMillisSupplier: Supplier<Long>
 ) : Connection {
     /**
      * Map holds all data of the csv file
      */
-    private var channelMap: HashMap<String?, CsvChannel?>? = HashMap()
+    private var channelMap = hashMapOf<String, CsvChannel>()
 
     /**
      * Map containing 'column name' as key and 'list of all column data' as value
      */
-    private val data: Map<String?, List<String>>
+    private val data: Map<String, List<String>>
     private val settings: DeviceSettings
     private val currentMillisSupplier: Supplier<Long>
 
-    constructor(deviceAddress: String?, deviceSettings: String?) : this(
+    constructor(deviceAddress: String, deviceSettings: String) : this(
         deviceAddress,
         deviceSettings,
         Supplier<Long> { System.currentTimeMillis() }) {
@@ -58,7 +58,7 @@ class CsvDeviceConnection private constructor(
 
     init {
         settings = DeviceSettings(deviceSettings)
-        data = CsvFileReader.Companion.readCsvFile(deviceAddress)
+        data = CsvFileReader.readCsvFile(deviceAddress)
         channelMap = ChannelFactory.createChannelMap(data, settings)
         this.currentMillisSupplier = currentMillisSupplier
     }
@@ -69,14 +69,14 @@ class CsvDeviceConnection private constructor(
         ScanException::class,
         ConnectionException::class
     )
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String?): List<ChannelScanInfo> {
         logger.info("Scan for channels called. Settings: $settings")
-        val channels: MutableList<ChannelScanInfo?> = ArrayList()
+        val channels: MutableList<ChannelScanInfo> = ArrayList()
         var channelId: String
         val keys = data.keys.iterator()
         while (keys.hasNext()) {
             channelId = keys.next()
-            val channel = ChannelScanInfo(channelId, channelId, ValueType.DOUBLE, null)
+            val channel = ChannelScanInfo(channelId, channelId, ValueType.DOUBLE, 0)
             channels.add(channel)
         }
         return channels
@@ -84,49 +84,34 @@ class CsvDeviceConnection private constructor(
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
         val samplingTime = currentMillisSupplier.get()
-        for (container in containers!!) {
+        for (container in containers) {
             try {
                 val channel = getCsvChannel(container)
                 val valueAsString = channel!!.readValue(samplingTime)
-                if (container!!.channel!!.valueType == ValueType.STRING) {
-                    container.setRecord(
-                        Record(
-                            StringValue(
-                                valueAsString!!
-                            ), samplingTime, Flag.VALID
-                        )
-                    )
+                if (container.channel.valueType == ValueType.STRING) {
+                    container.record = Record(StringValue(valueAsString), samplingTime, Flag.VALID)
                 } else {
                     // in all other cases try parsing as double
-                    val value = valueAsString!!.toDouble()
-                    container.setRecord(Record(DoubleValue(value), samplingTime, Flag.VALID))
+                    val value = valueAsString.toDouble()
+                    container.record = Record(DoubleValue(value), samplingTime, Flag.VALID)
                 }
             } catch (e: EmptyChannelAddressException) {
                 logger.warn("EmptyChannelAddressException: {}", e.message)
-                container!!.setRecord(
-                    Record(
-                        DoubleValue(Double.NaN), samplingTime,
-                        Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE
-                    )
-                )
+                container.record = Record(DoubleValue(Double.NaN), samplingTime, Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE)
             } catch (e: NoValueReceivedYetException) {
                 logger.warn("NoValueReceivedYetException: {}", e.message)
-                container!!.setRecord(Record(DoubleValue(Double.NaN), samplingTime, Flag.NO_VALUE_RECEIVED_YET))
+                container.record = Record(DoubleValue(Double.NaN), samplingTime, Flag.NO_VALUE_RECEIVED_YET)
             } catch (e: TimeTravelException) {
                 logger.warn("TimeTravelException: {}", e.message)
-                container!!.setRecord(
-                    Record(DoubleValue(Double.NaN), samplingTime, Flag.DRIVER_ERROR_READ_FAILURE)
-                )
+                container.record = Record(DoubleValue(Double.NaN), samplingTime, Flag.DRIVER_ERROR_READ_FAILURE)
             } catch (e: CsvException) {
                 logger.error("CsvException: {}", e.message)
-                container!!.setRecord(
-                    Record(DoubleValue(Double.NaN), samplingTime, Flag.DRIVER_THREW_UNKNOWN_EXCEPTION)
-                )
+                container.record = Record(DoubleValue(Double.NaN), samplingTime, Flag.DRIVER_THREW_UNKNOWN_EXCEPTION)
             }
         }
         return null
@@ -136,18 +121,18 @@ class CsvDeviceConnection private constructor(
     private fun getCsvChannel(container: ChannelRecordContainer?): CsvChannel? {
         val channelAddress = container!!.channelAddress
         if (channelAddress!!.isEmpty()) {
-            throw EmptyChannelAddressException("No ChannelAddress for channel " + container.channel!!.id)
+            throw EmptyChannelAddressException("No ChannelAddress for channel " + container.channel.id)
         }
-        return channelMap!![channelAddress]
+        return channelMap[channelAddress]
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any {
         throw UnsupportedOperationException()
     }
 
@@ -165,8 +150,8 @@ class CsvDeviceConnection private constructor(
         @Deprecated("")
         @Throws(ConnectionException::class, ArgumentSyntaxException::class)
         fun forTesting(
-            deviceAddress: String?,
-            deviceSettings: String?,
+            deviceAddress: String,
+            deviceSettings: String,
             currentMillisSupplier: Supplier<Long>
         ): CsvDeviceConnection {
             logger.warn("USING {} IN TESTING MODE", CsvDeviceConnection::class.java.name)

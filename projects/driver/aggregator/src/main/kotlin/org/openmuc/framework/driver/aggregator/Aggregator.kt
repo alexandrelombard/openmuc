@@ -24,7 +24,6 @@ import org.openmuc.framework.config.*
 import org.openmuc.framework.data.DoubleValue
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.dataaccess.DataAccessService
 import org.openmuc.framework.driver.spi.*
 import org.osgi.service.component.annotations.Component

@@ -23,9 +23,4 @@ package org.openmuc.framework.driver.csv.exceptions
 /**
  * General exception of the CsvDriver
  */
-open class CsvException(override val message: String) : Exception() {
-
-    companion object {
-        private const val serialVersionUID = 5298208874918144896L
-    }
-}
+open class CsvException(override val message: String) : Exception()

@@ -26,8 +26,8 @@ import java.util.*
 class CsvChannelHHMMSS(data: List<String>, rewind: Boolean, timestamps: LongArray) :
     CsvTimeChannel(data, rewind, timestamps) {
     @Throws(CsvException::class)
-    override fun readValue(samplingTime: Long): String {
-        val hhmmss = convertTimestamp(samplingTime)
+    override fun readValue(sampleTime: Long): String {
+        val hhmmss = convertTimestamp(sampleTime)
         lastReadIndex = searchNextIndex(hhmmss.toLong())
         return data[lastReadIndex]
     }

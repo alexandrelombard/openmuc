@@ -24,15 +24,15 @@ package org.openmuc.framework.dataaccess
  * Service interface to get access to the measurement and control data of connected communication devices.
  */
 interface DataAccessService {
-    fun getChannel(id: String?): Channel?
-    fun getChannel(id: String?, channelChangeListener: ChannelChangeListener?): Channel?
+    fun getChannel(id: String): Channel?
+    fun getChannel(id: String, channelChangeListener: ChannelChangeListener?): Channel?
 
     /**
      * Get the list of all channel IDs.
      *
      * @return the list of all channel IDs.
      */
-    val allIds: List<String?>?
+    val allIds: List<String>?
     fun getLogicalDevices(type: String?): List<LogicalDevice?>?
     fun getLogicalDevices(
         type: String?,

@@ -27,10 +27,10 @@ import org.openmuc.framework.driver.csv.settings.DeviceSettings
 object ChannelFactory {
     @Throws(ArgumentSyntaxException::class)
     fun createChannelMap(
-        csvMap: Map<String?, List<String>>,
+        csvMap: Map<String, List<String>>,
         settings: DeviceSettings
-    ): HashMap<String?, CsvChannel?> {
-        var channelMap = HashMap<String?, CsvChannel?>()
+    ): HashMap<String, CsvChannel> {
+        var channelMap = HashMap<String, CsvChannel>()
         when (settings.samplingMode()) {
             ESamplingMode.UNIXTIMESTAMP -> channelMap = createMapUnixtimestamp(csvMap)
             ESamplingMode.HHMMSS -> channelMap = createMapHHMMSS(csvMap, settings.rewind())
@@ -41,8 +41,8 @@ object ChannelFactory {
     }
 
     @Throws(ArgumentSyntaxException::class)
-    fun createMapUnixtimestamp(csvMap: Map<String?, List<String>>): HashMap<String?, CsvChannel?> {
-        val channelMap = HashMap<String?, CsvChannel?>()
+    fun createMapUnixtimestamp(csvMap: Map<String, List<String>>): HashMap<String, CsvChannel> {
+        val channelMap = HashMap<String, CsvChannel>()
         var channelAddress: String
         val keys = csvMap.keys.iterator()
         val rewind = false
@@ -56,8 +56,8 @@ object ChannelFactory {
     }
 
     @Throws(ArgumentSyntaxException::class)
-    fun createMapHHMMSS(csvMap: Map<String?, List<String>>, rewind: Boolean): HashMap<String?, CsvChannel?> {
-        val channelMap = HashMap<String?, CsvChannel?>()
+    fun createMapHHMMSS(csvMap: Map<String, List<String>>, rewind: Boolean): HashMap<String, CsvChannel> {
+        val channelMap = HashMap<String, CsvChannel>()
         var channelAddress: String
         val keys = csvMap.keys.iterator()
         while (keys.hasNext()) {
@@ -69,8 +69,8 @@ object ChannelFactory {
         return channelMap
     }
 
-    fun createMapLine(csvMap: Map<String?, List<String>>, rewind: Boolean): HashMap<String?, CsvChannel?> {
-        val channelMap = HashMap<String?, CsvChannel?>()
+    fun createMapLine(csvMap: Map<String, List<String>>, rewind: Boolean): HashMap<String, CsvChannel> {
+        val channelMap = HashMap<String, CsvChannel>()
         var channelAddress: String
         val keys = csvMap.keys.iterator()
         while (keys.hasNext()) {
@@ -87,7 +87,7 @@ object ChannelFactory {
      * @throws ArgumentSyntaxException
      */
     @Throws(ArgumentSyntaxException::class)
-    private fun getTimestamps(csvMap: Map<String?, List<String>>): LongArray {
+    private fun getTimestamps(csvMap: Map<String, List<String>>): LongArray {
         val timestampsList = csvMap["unixtimestamp"]
         if (timestampsList == null || timestampsList.isEmpty()) {
             throw ArgumentSyntaxException("unixtimestamp column not availiable in file or empty")
@@ -100,7 +100,7 @@ object ChannelFactory {
     }
 
     @Throws(ArgumentSyntaxException::class)
-    private fun getHours(csvMap: Map<String?, List<String>>): LongArray {
+    private fun getHours(csvMap: Map<String, List<String>>): LongArray {
         val hoursList = csvMap["hhmmss"]
         if (hoursList == null || hoursList.isEmpty()) {
             throw ArgumentSyntaxException("hhmmss column not availiable in file or empty")

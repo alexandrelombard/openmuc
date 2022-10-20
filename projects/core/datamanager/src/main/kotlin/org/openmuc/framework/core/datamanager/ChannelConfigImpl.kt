@@ -21,8 +21,6 @@
 package org.openmuc.framework.core.datamanager
 
 import org.openmuc.framework.config.*
-import org.openmuc.framework.data.FutureValue.value
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.dataaccess.*
 import org.openmuc.framework.datalogger.spi.LogChannel
@@ -34,32 +32,45 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
-class ChannelConfigImpl internal constructor(private override var id: String, var deviceParent: DeviceConfigImpl?) :
+class ChannelConfigImpl constructor(override var id: String, var deviceParent: DeviceConfigImpl?) :
     ChannelConfig, LogChannel {
     var channel: ChannelImpl? = null
     var state: ChannelState? = null
-    private override var channelAddress: String? = null
-    private override var description: String? = null
-    private override var unit: String? = null
-    private override var valueType: ValueType? = null
-    private override var valueTypeLength: Int? = null
-    private override var scalingFactor: Double? = null
-    private override var valueOffset: Double? = null
+    override var channelAddress: String? = null
+    override var description: String? = null
+    override var unit: String? = null
+    override var valueType: ValueType? = null
+    override var valueTypeLength: Int? = null
+    override var scalingFactor: Double? = null
+    override var valueOffset: Double? = null
     private var listening: Boolean? = null
-    private override var samplingInterval: Int? = null
-    private override var samplingTimeOffset: Int? = null
-    private override var samplingGroup: String? = null
-    private override var settings: String? = null
+        set(value) {
+            check((samplingInterval != null && value != null && value && samplingInterval!!) <= 0) { "Listening may not be enabled while sampling is enabled." }
+            field = value
+        }
+    override var samplingInterval: Int? = null
+        set(value) {
+            check(listening != null && value != null && isListening() && value <= 0) { "Sampling may not be enabled while listening is enabled." }
+            field = value
+        }
+    override var samplingTimeOffset: Int? = null
+        set(value) {
+            require(!(value != null && value < 0)) { "The sampling time offset may not be negative." }
+            field = value
+        }
+    override var samplingGroup: String? = null
+    override var settings: String? = null
     private var loggingEvent: Boolean? = null
-    private override var loggingInterval: Int? = null
-    private override var loggingTimeOffset: Int? = null
-    private override var loggingSettings: String? = null
-    private var disabled: Boolean? = null
-    private override var serverMappings: MutableList<ServerMapping?>? = null
-    private override var reader: String? = null
-    override fun getId(): String {
-        return id
-    }
+    override var loggingInterval: Int? = null
+    override var loggingTimeOffset: Int? = null
+        set(value) {
+            require(!(value != null && value < 0)) { "The logging time offset may not be negative." }
+            field = value
+        }
+    override var loggingSettings: String? = null
+    var disabled: Boolean? = null
+    override var serverMappings = arrayListOf<ServerMapping>()
+    override var reader: String? = null
 
     @Throws(IdCollisionException::class)
     override fun setId(id: String?) {
@@ -74,153 +85,6 @@ class ChannelConfigImpl internal constructor(private override var id: String, va
         this.id = id
     }
 
-    override fun getDescription(): String {
-        return description!!
-    }
-
-    override fun setDescription(description: String?) {
-        this.description = description
-    }
-
-    override fun getChannelAddress(): String {
-        return channelAddress!!
-    }
-
-    override fun setChannelAddress(address: String?) {
-        channelAddress = address
-    }
-
-    override fun getUnit(): String {
-        return unit!!
-    }
-
-    override fun setUnit(unit: String?) {
-        this.unit = unit
-    }
-
-    override fun getValueType(): ValueType {
-        return valueType!!
-    }
-
-    override fun setValueType(valueType: ValueType?) {
-        this.valueType = valueType
-    }
-
-    override fun getValueTypeLength(): Int {
-        return valueTypeLength!!
-    }
-
-    override fun setValueTypeLength(length: Int?) {
-        valueTypeLength = length
-    }
-
-    override fun getScalingFactor(): Double {
-        return scalingFactor!!
-    }
-
-    override fun setScalingFactor(factor: Double?) {
-        scalingFactor = factor
-    }
-
-    override fun getValueOffset(): Double {
-        return valueOffset!!
-    }
-
-    override fun setValueOffset(offset: Double?) {
-        valueOffset = offset
-    }
-
-    override fun isListening(): Boolean {
-        return listening!!
-    }
-
-    override fun setListening(listening: Boolean?) {
-        check((samplingInterval != null && listening != null && listening && samplingInterval!!) <= 0) { "Listening may not be enabled while sampling is enabled." }
-        this.listening = listening
-    }
-
-    override fun getSamplingInterval(): Int {
-        return samplingInterval!!
-    }
-
-    override fun setSamplingInterval(samplingInterval: Int?) {
-        check((listening != null && samplingInterval != null && isListening() && samplingInterval) <= 0) { "Sampling may not be enabled while listening is enabled." }
-        this.samplingInterval = samplingInterval
-    }
-
-    override fun getSamplingTimeOffset(): Int {
-        return samplingTimeOffset!!
-    }
-
-    override fun setSamplingTimeOffset(samplingTimeOffset: Int?) {
-        require(!(samplingTimeOffset != null && samplingTimeOffset < 0)) { "The sampling time offset may not be negative." }
-        this.samplingTimeOffset = samplingTimeOffset
-    }
-
-    override fun getSamplingGroup(): String {
-        return samplingGroup!!
-    }
-
-    override fun setSamplingGroup(group: String?) {
-        samplingGroup = group
-    }
-
-    override fun getSettings(): String? {
-        return settings
-    }
-
-    override fun setSettings(settings: String?) {
-        this.settings = settings
-    }
-
-    override fun getLoggingInterval(): Int {
-        return loggingInterval!!
-    }
-
-    override fun setLoggingInterval(loggingInterval: Int?) {
-        this.loggingInterval = loggingInterval
-    }
-
-    override fun setLoggingEvent(loggingEvent: Boolean?) {
-        this.loggingEvent = loggingEvent
-    }
-
-    override fun isLoggingEvent(): Boolean {
-        return loggingEvent!!
-    }
-
-    override fun getLoggingSettings(): String {
-        return loggingSettings!!
-    }
-
-    override fun setLoggingSettings(loggingSettings: String?) {
-        this.loggingSettings = loggingSettings
-    }
-
-    override fun getReader(): String? {
-        return reader
-    }
-
-    override fun setReader(reader: String?) {
-        this.reader = reader
-    }
-
-    override fun getLoggingTimeOffset(): Int {
-        return loggingTimeOffset!!
-    }
-
-    override fun setLoggingTimeOffset(loggingTimeOffset: Int?) {
-        require(!(loggingTimeOffset != null && loggingTimeOffset < 0)) { "The logging time offset may not be negative." }
-        this.loggingTimeOffset = loggingTimeOffset
-    }
-
-    override fun isDisabled(): Boolean {
-        return disabled!!
-    }
-
-    override fun setDisabled(disabled: Boolean?) {
-        this.disabled = disabled
-    }
 
     override fun delete() {
         deviceParent!!.channelConfigsById.remove(id)
@@ -228,11 +92,7 @@ class ChannelConfigImpl internal constructor(private override var id: String, va
     }
 
     override fun getServerMappings(): List<ServerMapping?>? {
-        return if (serverMappings != null) {
-            serverMappings
-        } else {
-            ArrayList()
-        }
+
     }
 
     fun clear() {
@@ -523,12 +383,12 @@ class ChannelConfigImpl internal constructor(private override var id: String, va
                     if (childName == "#text") {
                         continue
                     } else if (childName == "description") {
-                        config!!.setDescription(childNode.textContent)
+                        config!!.description = childNode.textContent
                     } else if (childName == "channelAddress") {
-                        config!!.setChannelAddress(childNode.textContent)
+                        config!!.channelAddress = childNode.textContent
                     } else if (childName == "loggingSettings") {
-                        config!!.setLoggingSettings(childNode.textContent)
-                        config.setReader(getAttributeValue(childNode, "reader"))
+                        config!!.loggingSettings = childNode.textContent
+                        config.reader = getAttributeValue(childNode, "reader")
                     } else if (childName == "serverMapping") {
                         val attributes = childNode.attributes
                         val nameAttribute = attributes.getNamedItem("id")
@@ -540,7 +400,7 @@ class ChannelConfigImpl internal constructor(private override var id: String, va
                             throw ParseException("No id attribute specified for serverMapping.")
                         }
                     } else if (childName == "unit") {
-                        config!!.setUnit(childNode.textContent)
+                        config!!.unit = childNode.textContent
                     } else if (childName == "valueType") {
                         val valueTypeString = childNode.textContent.uppercase(Locale.getDefault())
                         try {
@@ -556,9 +416,9 @@ class ChannelConfigImpl internal constructor(private override var id: String, va
                             config.valueTypeLength = timeStringToMillis(valueTypeLengthString)
                         }
                     } else if (childName == "scalingFactor") {
-                        config!!.setScalingFactor(childNode.textContent.toDouble())
+                        config!!.scalingFactor = childNode.textContent.toDouble()
                     } else if (childName == "valueOffset") {
-                        config!!.setValueOffset(childNode.textContent.toDouble())
+                        config!!.valueOffset = childNode.textContent.toDouble()
                     } else if (childName == "listening") {
                         config!!.setListening(java.lang.Boolean.parseBoolean(childNode.textContent))
                     } else if (childName == "samplingInterval") {
@@ -566,17 +426,17 @@ class ChannelConfigImpl internal constructor(private override var id: String, va
                     } else if (childName == "samplingTimeOffset") {
                         config!!.setSamplingTimeOffset(timeStringToMillis(childNode.textContent))
                     } else if (childName == "samplingGroup") {
-                        config!!.setSamplingGroup(childNode.textContent)
+                        config!!.samplingGroup = childNode.textContent
                     } else if (childName == "settings") {
-                        config!!.setSettings(childNode.textContent)
+                        config!!.settings = childNode.textContent
                     } else if (childName == "loggingInterval") {
-                        config!!.setLoggingInterval(timeStringToMillis(childNode.textContent))
+                        config!!.loggingInterval = timeStringToMillis(childNode.textContent)
                     } else if (childName == "loggingTimeOffset") {
                         config!!.setLoggingTimeOffset(timeStringToMillis(childNode.textContent))
                     } else if (childName == "loggingEvent") {
-                        config!!.setLoggingEvent(java.lang.Boolean.parseBoolean(childNode.textContent))
+                        config!!.loggingEvent = java.lang.Boolean.parseBoolean(childNode.textContent)
                     } else if (childName == "disabled") {
-                        config!!.setDisabled(java.lang.Boolean.parseBoolean(childNode.textContent))
+                        config!!.disabled = java.lang.Boolean.parseBoolean(childNode.textContent)
                     } else {
                         throw ParseException("found unknown tag:$childName")
                     }
@@ -653,7 +513,7 @@ class ChannelConfigImpl internal constructor(private override var id: String, va
         }
 
         fun checkIdSyntax(id: String) {
-            if (id.matches("[a-zA-Z0-9_-]+")) {
+            if (id.matches("[a-zA-Z0-9_-]+".toRegex())) {
                 return
             }
             val msg = MessageFormat.format(

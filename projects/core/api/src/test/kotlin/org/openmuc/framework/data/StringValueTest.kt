@@ -31,8 +31,8 @@ class StringValueTest {
     @Test
     @Parameters(method = "params")
     @Throws(Exception::class)
-    fun testBooleanConvert(value: String?, expected: Boolean) {
-        Assert.assertEquals(expected, StringValue(value!!).asBoolean())
+    fun testBooleanConvert(value: String, expected: Boolean) {
+        Assert.assertEquals(expected, StringValue(value).asBoolean())
     }
 
     fun params(): Any {

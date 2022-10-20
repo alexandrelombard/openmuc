@@ -36,7 +36,7 @@ class CsvFileReader {
     companion object {
         @JvmStatic
         @Throws(ConnectionException::class)
-        fun readCsvFile(fileName: String?): Map<String?, List<String>> {
+        fun readCsvFile(fileName: String): Map<String, List<String>> {
 
             // https://github.com/uniVocity/univocity-parsers#reading-columns-instead-of-rows
             val processor =

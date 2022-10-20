@@ -25,8 +25,8 @@ import org.openmuc.framework.driver.csv.exceptions.CsvException
 class CsvChannelUnixtimestamp(data: List<String>, rewind: Boolean, timestamps: LongArray) :
     CsvTimeChannel(data, rewind, timestamps) {
     @Throws(CsvException::class)
-    override fun readValue(samplingTime: Long): String {
-        lastReadIndex = searchNextIndex(samplingTime)
+    override fun readValue(sampleTime: Long): String {
+        lastReadIndex = searchNextIndex(sampleTime)
         return data[lastReadIndex]
     }
 }

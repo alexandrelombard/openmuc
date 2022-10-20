@@ -20,11 +20,4 @@
  */
 package org.openmuc.framework.driver.csv.exceptions
 
-class NoValueReceivedYetException(message: String) : CsvException(message) {
-    override val message: String
-        get() = message
-
-    companion object {
-        private const val serialVersionUID = 8609753792624311525L
-    }
-}
+class NoValueReceivedYetException(message: String) : CsvException(message)

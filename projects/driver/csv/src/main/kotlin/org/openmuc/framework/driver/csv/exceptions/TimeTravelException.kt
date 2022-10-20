@@ -29,11 +29,4 @@ package org.openmuc.framework.driver.csv.exceptions
  * time.
  *
  */
-class TimeTravelException(message: String) : CsvException(message) {
-    override val message: String
-        get() = message
-
-    companion object {
-        private const val serialVersionUID = 6718058510080266888L
-    }
-}
+class TimeTravelException(message: String) : CsvException(message)

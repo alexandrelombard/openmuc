@@ -43,8 +43,8 @@ interface ChannelConfig {
     var isDisabled: Boolean?
     fun delete()
     val device: DeviceConfig?
-    val serverMappings: List<ServerMapping?>?
-    fun addServerMapping(serverMapping: ServerMapping?)
+    val serverMappings: List<ServerMapping>
+    fun addServerMapping(serverMapping: ServerMapping)
     fun deleteServerMappings(id: String?)
     var isLoggingEvent: Boolean?
     var loggingSettings: String?

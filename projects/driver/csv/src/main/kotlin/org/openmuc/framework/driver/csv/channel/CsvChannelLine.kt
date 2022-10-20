@@ -24,15 +24,9 @@ package org.openmuc.framework.driver.csv.channel
  * Channel to return value of next line in the file. Timestamps are ignored. It always starts with the first line, which
  * can be useful for simulation since every time the framework is started it starts with the same values.
  */
-class CsvChannelLine(id: String?, private val data: List<String>, rewind: Boolean) : CsvChannel {
+class CsvChannelLine(id: String, private val data: List<String>, private val rewind: Boolean) : CsvChannel {
     private var lastReadIndex = -1
-    private val maxIndex: Int
-    private val rewind = false
-
-    init {
-        maxIndex = data.size - 1
-        this.rewind = rewind
-    }
+    private val maxIndex: Int = data.size - 1
 
     override fun readValue(sampleTime: Long): String {
         lastReadIndex++

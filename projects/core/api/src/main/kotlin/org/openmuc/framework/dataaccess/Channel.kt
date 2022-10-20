@@ -344,5 +344,5 @@ interface Channel {
      * if any kind of error occurs accessing the logged data.
      */
     @Throws(DataLoggerNotAvailableException::class, IOException::class)
-    fun getLoggedRecords(startTime: Long, endTime: Long): List<Record?>?
+    fun getLoggedRecords(startTime: Long, endTime: Long): List<Record>
 }

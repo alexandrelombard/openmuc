@@ -37,9 +37,9 @@ import java.security.NoSuchAlgorithmException
 import java.util.*
 
 @Component(service = [AuthenticationService::class], scope = ServiceScope.SINGLETON)
-class Authentication : AuthenticationService {
+open class Authentication : AuthenticationService {
     private val shadow: Map<String, String> = HashMap()
-    private var path: String? = null
+    private var path = ""
     private var userAdmin: UserAdmin? = null
     private var userAdminInitiated = false
     @Activate
@@ -48,47 +48,47 @@ class Authentication : AuthenticationService {
         userAdminInitiated = false
     }
 
-    override fun register(user: String?, pw: String?, group: String?) {
-        var pw = pw
+    override fun register(user: String, pwd: String, group: String) {
+        var password = pwd
         logger.info("register")
-        pw += generateHash(user) // use the hash of the username as salt
-        val hash = generateHash(pw)
+        password += generateHash(user) // use the hash of the username as salt
+        val hash = generateHash(password)
         setUserHashPair(user, hash, group)
     }
 
-    override fun registerNewUser(user: String?, pw: String?) {
-        var pw = pw
-        pw += generateHash(user) // use the hash of the username as salt
-        val hash = generateHash(pw)
+    override fun registerNewUser(user: String, pw: String) {
+        var password = pw
+        password += generateHash(user) // use the hash of the username as salt
+        val hash = generateHash(password)
         setUserHashPair(user, hash, "normal")
         writeShadowToFile()
     }
 
-    override fun login(userName: String?, pw: String?): Boolean {
+    override fun login(name: String, password: String): Boolean {
         initUserAdminIfNotDone()
         // use the hash of the username as salt
-        val pwToCheck = pw + generateHash(userName)
+        val pwToCheck = password + generateHash(name)
         val hash = generateHash(pwToCheck)
-        val user = userAdmin!!.getUser("name", userName)
+        val user = userAdmin!!.getUser("name", name)
         return user.properties["password"] == hash
     }
 
-    override fun delete(user: String?) {
+    override fun delete(user: String) {
         userAdmin!!.removeRole(user)
         writeShadowToFile()
     }
 
-    override fun contains(user: String?): Boolean {
+    override fun contains(user: String): Boolean {
         return allUsers.contains(user)
     }
 
-    override val allUsers: Set<String?>
+    override val allUsers: Set<String>
         get() {
-            val registeredUsers: MutableSet<String?> = HashSet()
+            val registeredUsers = hashSetOf<String>()
             val allRoles = allRoleObjects
-            for (role in Arrays.asList(*allRoles)) {
+            for (role in allRoles.toList()) {
                 val user = role as User
-                val userName = user.properties["name"] as String
+                val userName = user.properties["name"] as String?
                 if (userName != null) {
                     registeredUsers.add(userName)
                 }
@@ -97,15 +97,15 @@ class Authentication : AuthenticationService {
         }
 
     private fun setUserHashPair(user: String?, hash: String, group: String?) {
-        var newUser = userAdmin!!.createRole(user, Role.USER) as User
-        var grp = userAdmin!!.createRole(group, Role.GROUP) as Group
+        var newUser = userAdmin!!.createRole(user, Role.USER) as User?
+        var grp = userAdmin!!.createRole(group, Role.GROUP) as Group?
         if (grp == null) {
             grp = userAdmin!!.getRole(group) as Group
         }
         if (newUser == null) {
             newUser = userAdmin!!.getRole(user) as User
         }
-        val properties: Dictionary<String, String?> = newUser.properties
+        val properties = newUser.properties
         properties.put("name", user)
         properties.put("password", hash)
         properties.put("group", group)
@@ -125,20 +125,19 @@ class Authentication : AuthenticationService {
         }
     }
 
-    private val allRoleObjects: Array<Role>?
-        private get() {
-            var allUser: Array<Role>? = null
+    private val allRoleObjects: Array<Role>
+        get() {
             try {
-                allUser = userAdmin!!.getRoles(null)
+                 return userAdmin!!.getRoles(null)
             } catch (e: InvalidSyntaxException) {
                 logger.error(e.message)
             }
-            return allUser
+            return arrayOf()
         }
 
-    private fun prepareStringBuilder(allUser: Array<Role>?): StringBuilder {
+    private fun prepareStringBuilder(allUser: Array<Role>): StringBuilder {
         val textSb = StringBuilder()
-        for (role in Arrays.asList(*allUser)) {
+        for (role in allUser.toList()) {
             val user = role as User
             if (user.properties["name"] != null) {
                 textSb.append(user.properties["name"].toString() + ";")
@@ -168,7 +167,7 @@ class Authentication : AuthenticationService {
         }
     }
 
-    override fun isUserAdmin(userName: String?): Boolean {
+    override fun isUserAdmin(userName: String): Boolean {
         val user = userAdmin!!.getUser("name", userName)
         val loggedUser = userAdmin!!.getAuthorization(user)
         return loggedUser.hasRole("admin")

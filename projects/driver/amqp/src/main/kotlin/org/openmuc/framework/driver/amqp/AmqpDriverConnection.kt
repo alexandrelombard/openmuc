@@ -42,17 +42,16 @@ import java.io.IOException
 import java.util.*
 import java.util.concurrent.TimeoutException
 
-class AmqpDriverConnection(deviceAddress: String?, settings: String?) : Connection {
+class AmqpDriverConnection(deviceAddress: String, settings: String) : Connection {
     private val setting: Setting
     private var connection: AmqpConnection? = null
     private val writer: AmqpWriter
     private val reader: AmqpReader
-    private val parsers: MutableMap<String?, ParserService> = HashMap()
-    private val lastLoggedRecords: MutableMap<String?, Long?> = HashMap()
-    private var recordContainerList: MutableList<ChannelRecordContainer?>
+    private val parsers = hashMapOf<String, ParserService>()
+    private val lastLoggedRecords = hashMapOf<String, Long>()
+    private var recordContainerList = arrayListOf<ChannelRecordContainer>()
 
     init {
-        recordContainerList = ArrayList()
         setting = Setting(settings)
         val amqpSettings = AmqpSettings(
             deviceAddress, setting.port, setting.vhost, setting.user,
@@ -188,7 +187,7 @@ class AmqpDriverConnection(deviceAddress: String?, settings: String?) : Connecti
         connection!!.setSslManager(instance)
     }
 
-    private inner class Setting internal constructor(settings: String?) {
+    private inner class Setting internal constructor(settings: String) {
         var port = 5672
         var vhost: String? = null
         var user: String? = null
@@ -222,11 +221,11 @@ class AmqpDriverConnection(deviceAddress: String?, settings: String?) : Connecti
             if (settings == null || settings.isEmpty()) {
                 throw ArgumentSyntaxException("No settings given")
             }
-            val settingsSplit = settings.split(Companion.SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }
+            val settingsSplit = settings.split(SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }
                 .toTypedArray()
             for (settingSplit in settingsSplit) {
                 val settingPair =
-                    settingSplit.split(Companion.SETTING_VALUE_SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }
+                    settingSplit.split(SETTING_VALUE_SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }
                         .toTypedArray()
                 if (settingPair.size != 2) {
                     throw ArgumentSyntaxException(
@@ -265,10 +264,8 @@ class AmqpDriverConnection(deviceAddress: String?, settings: String?) : Connecti
             }
         }
 
-        companion object {
-            private const val SEPARATOR = ";"
-            private const val SETTING_VALUE_SEPARATOR = "="
-        }
+        private val SEPARATOR = ";"
+        private val SETTING_VALUE_SEPARATOR = "="
     }
 
     companion object {

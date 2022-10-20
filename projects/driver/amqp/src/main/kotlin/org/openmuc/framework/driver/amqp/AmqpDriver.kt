@@ -22,7 +22,7 @@ package org.openmuc.framework.driver.amqp
 
 import org.openmuc.framework.config.*
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.openmuc.framework.driver.spi.ChannelValueContainer
 import org.openmuc.framework.lib.osgi.deployment.RegistrationHandler
 import org.openmuc.framework.parser.spi.ParserService
 import org.openmuc.framework.security.SslManagerInterface
@@ -35,10 +35,10 @@ import java.util.*
 
 @Component
 class AmqpDriver : DriverService {
-    private var context: BundleContext? = null
+    private lateinit var context: BundleContext
     private var connection: AmqpDriverConnection? = null
     @Activate
-    fun activate(context: BundleContext?) {
+    fun activate(context: BundleContext) {
         this.context = context
     }
 
@@ -89,7 +89,7 @@ class AmqpDriver : DriverService {
     }
 
     private val sslManager: Unit
-        private get() {
+        get() {
             val registrationHandler = RegistrationHandler(context)
             registrationHandler.subscribeForService(SslManagerInterface::class.java.name) { instance: Any? ->
                 if (instance != null) {
@@ -103,16 +103,14 @@ class AmqpDriver : DriverService {
         for (serviceReference in serviceReferences) {
             val parserIdInit = serviceReference.getProperty("parserID") as String
             val parserInit = context!!.getService(serviceReference) as ParserService
-            if (parserInit != null) {
-                logger.info("{} registered, updating Parser in AmqpDriver", parserInit.javaClass.name)
-                connection!!.setParser(parserIdInit, parserInit)
-            }
+            logger.info("{} registered, updating Parser in AmqpDriver", parserInit.javaClass.name)
+            connection!!.setParser(parserIdInit, parserInit)
         }
     }
 
     private val serviceReferences: List<ServiceReference<*>>
-        private get() = try {
-            var serviceReferences = context!!.getAllServiceReferences(
+        get() = try {
+            var serviceReferences = context.getAllServiceReferences(
                 ParserService::class.java.name,
                 null
             )
@@ -127,7 +125,7 @@ class AmqpDriver : DriverService {
     private fun addParserServiceListenerToServiceRegistry() {
         val filter = '('.toString() + Constants.OBJECTCLASS + '=' + ParserService::class.java.name + ')'
         try {
-            context!!.addServiceListener(
+            context.addServiceListener(
                 { event: ServiceEvent -> getNewParserImplementationFromServiceRegistry(event) },
                 filter
             )
@@ -138,7 +136,7 @@ class AmqpDriver : DriverService {
 
     private fun getNewParserImplementationFromServiceRegistry(event: ServiceEvent) {
         val serviceReference = event.serviceReference
-        val parser = context!!.getService(serviceReference) as ParserService
+        val parser = context.getService(serviceReference) as ParserService
         val parserId = serviceReference.getProperty("parserID") as String
         if (event.type == ServiceEvent.UNREGISTERING) {
             logger.info("{} unregistering, removing Parser from AmqpDriver", parser.javaClass.name)

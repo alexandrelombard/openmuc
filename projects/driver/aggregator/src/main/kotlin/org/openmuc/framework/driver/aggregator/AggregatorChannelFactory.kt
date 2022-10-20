@@ -20,7 +20,6 @@
  */
 package org.openmuc.framework.driver.aggregator
 
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.dataaccess.DataAccessService
 import org.openmuc.framework.driver.aggregator.types.AverageAggregation
 import org.openmuc.framework.driver.aggregator.types.DiffAggregation
@@ -35,13 +34,11 @@ import java.util.*
 object AggregatorChannelFactory {
     @Throws(AggregationException::class)
     fun createAggregatorChannel(
-        container: ChannelRecordContainer?,
-        dataAccessService: DataAccessService?
-    ): AggregatorChannel? {
-        var aggregatorChannel: AggregatorChannel? = null
+        container: ChannelRecordContainer,
+        dataAccessService: DataAccessService
+    ): AggregatorChannel {
         val simpleAddress = createAddressFrom(container)
-        aggregatorChannel = createByAddress(simpleAddress, dataAccessService)
-        return aggregatorChannel
+        return createByAddress(simpleAddress, dataAccessService)
     }
 
     /**
@@ -54,10 +51,9 @@ object AggregatorChannelFactory {
     @Throws(AggregationException::class)
     private fun createByAddress(
         channelAddress: ChannelAddress,
-        dataAccessService: DataAccessService?
+        dataAccessService: DataAccessService
     ): AggregatorChannel {
-        val aggregationType = channelAddress.aggregationType
-        return when (aggregationType) {
+        return when (val aggregationType = channelAddress.aggregationType) {
             AggregatorConstants.AGGREGATION_TYPE_AVG -> AverageAggregation(channelAddress, dataAccessService)
             AggregatorConstants.AGGREGATION_TYPE_LAST -> LastAggregation(channelAddress, dataAccessService)
             AggregatorConstants.AGGREGATION_TYPE_DIFF -> DiffAggregation(channelAddress, dataAccessService)
