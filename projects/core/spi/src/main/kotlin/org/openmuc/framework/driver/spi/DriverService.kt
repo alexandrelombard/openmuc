@@ -116,5 +116,5 @@ interface DriverService {
      * if the connection attempt fails.
      */
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    fun connect(deviceAddress: String?, settings: String?): Connection?
+    fun connect(deviceAddress: String, settings: String): Connection
 }

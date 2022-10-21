@@ -46,12 +46,6 @@ public class DeviceScanSettingsTest {
     // Tests expected to FAIL
 
     @Test
-    public void testArgumentsNull() throws ArgumentSyntaxException {
-        String arguments = null;
-        Assertions.assertThrows(ArgumentSyntaxException.class, () -> new DeviceScanSettings(arguments));
-    }
-
-    @Test
     public void testArgumentsEmptyString() throws ArgumentSyntaxException {
         String arguments = "";
         Assertions.assertThrows(ArgumentSyntaxException.class, () -> new DeviceScanSettings(arguments));

@@ -38,7 +38,7 @@ public class CsvFileReaderTest {
             Assertions.assertTrue(true);
         } catch (ConnectionException e) {
             e.printStackTrace();
-            Assertions.assertTrue(false);
+            Assertions.fail();
         }
 
     }

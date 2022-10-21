@@ -112,7 +112,7 @@ class CsvDriver : DriverService {
     }
 
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         val csvFile = File(deviceAddress)
         if (!csvFile.exists()) {
             throw ArgumentSyntaxException("CSV driver - file not found: $deviceAddress")

@@ -24,9 +24,9 @@ import org.openmuc.framework.config.ArgumentSyntaxException
 import org.slf4j.LoggerFactory
 import java.io.File
 
-class DeviceScanSettings(deviceScanSettings: String) : GenericSetting() {
+open class DeviceScanSettings(deviceScanSettings: String) : GenericSetting() {
     protected var path: String? = null
-    private val file: File
+    protected val file: File
 
     protected enum class Option(
         private val prefix: String,
@@ -61,18 +61,20 @@ class DeviceScanSettings(deviceScanSettings: String) : GenericSetting() {
         if (path == null) {
             throw ArgumentSyntaxException("<path> argument not found in settings.")
         } else {
-            if (!path.isEmpty()) {
-                file = File(path)
-                if (!file.isDirectory()) {
+            path.let {
+                if(!it.isNullOrEmpty()) {
+                    file = File(path)
+                    if (!file.isDirectory) {
+                        throw ArgumentSyntaxException("<path> argument must point to a directory.")
+                    }
+                } else {
                     throw ArgumentSyntaxException("<path> argument must point to a directory.")
                 }
-            } else {
-                throw ArgumentSyntaxException("<path> argument must point to a directory.")
             }
         }
     }
 
-    fun path(): File? {
+    fun path(): File {
         return file
     }
 
