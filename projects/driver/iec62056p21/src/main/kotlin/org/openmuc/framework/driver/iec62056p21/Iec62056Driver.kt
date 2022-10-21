@@ -29,7 +29,7 @@ import java.io.IOException
 
 @Component
 class Iec62056Driver : DriverService {
-    private var serialPortName: String? = ""
+    private var serialPortName: String = ""
     private var baudRateChangeDelay = 0
     private var timeout = 2000
     private var retries = 1
@@ -38,17 +38,21 @@ class Iec62056Driver : DriverService {
     private var deviceAddress = ""
     private var requestStartCharacter = ""
     private var readStandard = false
+
+    override val info = DriverInfo(
+        DRIVER_ID, DRIVER_DESCRIPTION, DEVICE_ADDRESS_SYNTAX,
+        SETTINGS_SYNTAX, CHANNEL_ADDRESS_SYNTAX, DEVICE_SCAN_SETTINGS_SYNTAX)
+
     @Throws(
         UnsupportedOperationException::class,
         ArgumentSyntaxException::class,
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         handleScanParameter(settings)
-        var iec21Port: Iec21Port? = null
         val iec21PortBuilder = configuredBuilder
-        iec21Port = try {
+        val iec21Port = try {
             iec21PortBuilder.buildAndOpen()
         } catch (e: IOException) {
             throw ScanException("Failed to open serial port: " + e.message)
@@ -61,7 +65,7 @@ class Iec62056Driver : DriverService {
                 deviceSettings.append(' ').append(BAUD_RATE_CHANGE_DELAY).append(' ').append(baudRateChangeDelay)
             }
             val deviceSettingsString = deviceSettings.toString().trim { it <= ' ' }
-            listener!!.deviceFound(
+            listener?.deviceFound(
                 DeviceScanInfo(
                     serialPortName, deviceSettingsString,
                     dataSets[0].address.replace("\\p{Cntrl}".toRegex(), "")
@@ -80,7 +84,7 @@ class Iec62056Driver : DriverService {
     }
 
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         serialPortName = deviceAddress
         handleParameter(settings)
         val configuredBuilder = configuredBuilder
@@ -88,7 +92,7 @@ class Iec62056Driver : DriverService {
     }
 
     private val configuredBuilder: Iec21Port.Builder
-        private get() = Iec21Port.Builder(serialPortName).setBaudRateChangeDelay(baudRateChangeDelay)
+        get() = Iec21Port.Builder(serialPortName).setBaudRateChangeDelay(baudRateChangeDelay)
             .setTimeout(timeout)
             .enableFixedBaudrate(fixedBaudRate)
             .setInitialBaudrate(initialBaudRate)
@@ -103,7 +107,7 @@ class Iec62056Driver : DriverService {
         }
         val args = settings.split("\\s+".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         serialPortName = args[0].trim { it <= ' ' }
-        if (serialPortName!!.isEmpty()) {
+        if (serialPortName.isEmpty()) {
             throw ArgumentSyntaxException(
                 "The <serial_port> has to be specified in the settings, as first parameter"
             )
@@ -210,10 +214,5 @@ $READ_STANDARD Reads the standard message and the manufacture specific message. 
         private const val SETTINGS_SYNTAX = "Synopsis: " + SETTINGS
         private const val CHANNEL_ADDRESS_SYNTAX = "Synopsis: <data_set_id>"
         private const val DEVICE_SCAN_SETTINGS_SYNTAX = "Synopsis: <serial_port> " + SETTINGS
-        val info = DriverInfo(
-            DRIVER_ID, DRIVER_DESCRIPTION, DEVICE_ADDRESS_SYNTAX,
-            SETTINGS_SYNTAX, CHANNEL_ADDRESS_SYNTAX, DEVICE_SCAN_SETTINGS_SYNTAX
-        )
-            get() = Companion.field
     }
 }

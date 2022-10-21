@@ -33,9 +33,9 @@ import java.util.*
 class Iec61850Connection(private val clientAssociation: ClientAssociation, private val serverModel: ServerModel) :
     Connection {
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?> {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         val bdas = serverModel.basicDataAttributes
-        val scanInfos: MutableList<ChannelScanInfo?> = ArrayList(bdas.size)
+        val scanInfos = ArrayList<ChannelScanInfo>(bdas.size)
         for (bda in bdas) {
             scanInfos.add(createScanInfo(bda))
         }
@@ -67,14 +67,14 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
         val modelNodesToBeWritten: MutableList<FcModelNode?> = ArrayList(
-            containers!!.size
+            containers.size
         )
         for (container in containers) {
-            if (container!!.channelHandle != null) {
+            if (container.channelHandle != null) {
                 modelNodesToBeWritten.add(container.channelHandle as FcModelNode?)
                 setFcModelNode(container, container.channelHandle as FcModelNode?)
             } else {
-                val args = container.channelAddress!!.split(":".toRegex(), limit = 3).toTypedArray()
+                val args = container.channelAddress.split(":".toRegex(), limit = 3).toTypedArray()
                 if (args.size != 2) {
                     logger.debug("Wrong channel address syntax: {}", container.channelAddress)
                     container.flag = Flag.DRIVER_ERROR_CHANNEL_WITH_THIS_ADDRESS_NOT_FOUND
@@ -344,7 +344,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
 
     enum class BdaTypes {
         BOOLEAN {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.BOOLEAN, 0)
             }
 
@@ -365,7 +365,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         INT8 {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.BYTE, 0)
             }
 
@@ -386,7 +386,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         INT16 {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.SHORT, 0)
             }
 
@@ -407,7 +407,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         INT32 {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.INTEGER, 0)
             }
 
@@ -428,7 +428,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         INT64 {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.LONG, 0)
             }
 
@@ -449,8 +449,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         INT128 {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo? {
-                return null
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
+                return ChannelScanInfo(channelAddress, "", ValueType.LONG, 0)
             }
 
             override fun bda2String(bda: BasicDataAttribute): String {
@@ -470,7 +470,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         INT8U {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.SHORT, 0)
             }
 
@@ -491,7 +491,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         INT16U {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.INTEGER, 0)
             }
 
@@ -512,7 +512,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         INT32U {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.LONG, 0)
             }
 
@@ -533,7 +533,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         FLOAT32 {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.FLOAT, 0)
             }
 
@@ -554,7 +554,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         FLOAT64 {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.DOUBLE, 0)
             }
 
@@ -575,7 +575,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         OCTET_STRING {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
                     (bda as BdaOctetString).maxLength
@@ -599,7 +599,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         VISIBLE_STRING {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
                     (bda as BdaVisibleString).maxLength
@@ -623,7 +623,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         UNICODE_STRING {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 // TODO Auto- method stub
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
@@ -649,7 +649,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         TIMESTAMP {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(channelAddress, "", ValueType.LONG, 0)
             }
 
@@ -676,7 +676,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         ENTRY_TIME {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
                     (bda as BdaEntryTime).value.size
@@ -700,7 +700,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         CHECK {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
                     (bda as BdaBitString).value.size
@@ -724,7 +724,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         QUALITY {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
                     (bda as BdaBitString).value.size
@@ -748,7 +748,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         DOUBLE_BIT_POS {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
                     (bda as BdaBitString).value.size
@@ -772,7 +772,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         TAP_COMMAND {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
                     (bda as BdaBitString).value.size
@@ -796,7 +796,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         TRIGGER_CONDITIONS {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
                     (bda as BdaBitString).value.size
@@ -820,7 +820,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         OPTFLDS {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
                     (bda as BdaBitString).value.size
@@ -844,7 +844,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         },
         REASON_FOR_INCLUSION {
-            override fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo {
+            override fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo {
                 return ChannelScanInfo(
                     channelAddress, "", ValueType.BYTE_ARRAY,
                     (bda as BdaBitString).value.size
@@ -868,14 +868,14 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
         };
 
-        abstract fun getScanInfo(channelAddress: String?, bda: BasicDataAttribute): ChannelScanInfo?
+        abstract fun getScanInfo(channelAddress: String, bda: BasicDataAttribute): ChannelScanInfo
         abstract fun bda2String(bda: BasicDataAttribute): String
         abstract fun setRecord(bda: BasicDataAttribute, receiveTime: Long): Record
         abstract fun setBda(bdaValueString: String, bda: BasicDataAttribute)
         abstract fun setBda(container: ChannelValueContainer?, bda: BasicDataAttribute)
     }
 
-    fun createScanInfo(bda: BasicDataAttribute): ChannelScanInfo? {
+    fun createScanInfo(bda: BasicDataAttribute): ChannelScanInfo {
         return try {
             BdaTypes.valueOf(bda.basicType.toString())
                 .getScanInfo(bda.reference.toString() + ":" + bda.fc, bda)

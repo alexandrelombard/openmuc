@@ -33,11 +33,11 @@ import org.slf4j.LoggerFactory
 
 class Iec62056Listener : ModeDListener {
     private var listener: RecordsReceivedListener? = null
-    private var containers: List<ChannelRecordContainer?>? = null
+    private var containers: List<ChannelRecordContainer> = listOf()
     @Synchronized
     @Throws(ConnectionException::class)
     fun registerOpenMucListener(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         listener: RecordsReceivedListener?
     ) {
         this.listener = listener
@@ -47,7 +47,7 @@ class Iec62056Listener : ModeDListener {
     @Synchronized
     fun unregisterOpenMucListener() {
         listener = null
-        containers = null
+        containers = listOf()
     }
 
     override fun newDataMessage(dataMessage: DataMessage) {
@@ -58,26 +58,24 @@ class Iec62056Listener : ModeDListener {
 
     @Synchronized
     private fun newRecord(dataSets: List<DataSet>, time: Long) {
-        val newContainers: MutableList<ChannelRecordContainer?> = ArrayList()
-        for (container in containers!!) {
+        val newContainers: MutableList<ChannelRecordContainer> = ArrayList()
+        for (container in containers) {
             for (dataSet in dataSets) {
-                if (dataSet.address == container!!.channelAddress) {
+                if (dataSet.address == container.channelAddress) {
                     val value = dataSet.value
                     if (value != null) {
                         try {
-                            container.setRecord(
-                                Record(DoubleValue(dataSet.value.toDouble()), time)
-                            )
+                            container.record = Record(DoubleValue(dataSet.value.toDouble()), time)
                             newContainers.add(container)
                         } catch (e: NumberFormatException) {
-                            container.setRecord(Record(StringValue(dataSet.value), time))
+                            container.record = Record(StringValue(dataSet.value), time)
                         }
                     }
                     break
                 }
             }
         }
-        listener!!.newRecords(newContainers)
+        listener?.newRecords(newContainers)
     }
 
     override fun exceptionWhileListening(e: Exception) {

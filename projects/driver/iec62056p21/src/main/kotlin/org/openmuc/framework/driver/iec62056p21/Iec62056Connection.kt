@@ -33,12 +33,14 @@ class Iec62056Connection(
     private val configuredBuilder: Iec21Port.Builder, retries: Int, private val readStandard: Boolean,
     private val requestStartCharacter: String
 ) : Connection {
-    private var iec21Port: Iec21Port? = null
-    private val retries = 0
+    private var iec21Port: Iec21Port
+    private val retries: Int
 
     init {
         if (retries > 0) {
             this.retries = retries
+        } else {
+            this.retries = 0
         }
         iec21Port = try {
             configuredBuilder.buildAndOpen()
@@ -55,11 +57,11 @@ class Iec62056Connection(
     }
 
     @Throws(UnsupportedOperationException::class, ScanException::class, ConnectionException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         val dataSets: List<DataSet>
         val dataMessage: DataMessage
         dataMessage = try {
-            iec21Port!!.read()
+            iec21Port.read()
         } catch (e: IOException) {
             throw ScanException(e)
         }
@@ -67,11 +69,11 @@ class Iec62056Connection(
         if (dataSets == null) {
             throw ScanException("Read timeout.")
         }
-        val scanInfos: MutableList<ChannelScanInfo?> = ArrayList(dataSets.size)
+        val scanInfos: MutableList<ChannelScanInfo> = ArrayList(dataSets.size)
         for (dataSet in dataSets) {
             try {
                 dataSet.value.toDouble()
-                scanInfos.add(ChannelScanInfo(dataSet.address, "", ValueType.DOUBLE, null))
+                scanInfos.add(ChannelScanInfo(dataSet.address, "", ValueType.DOUBLE, 0))
             } catch (e: NumberFormatException) {
                 scanInfos.add(
                     ChannelScanInfo(dataSet.address, "", ValueType.STRING, dataSet.value.length)
@@ -83,7 +85,7 @@ class Iec62056Connection(
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
@@ -101,22 +103,20 @@ class Iec62056Connection(
         return null
     }
 
-    private fun read(containers: List<ChannelRecordContainer?>?): List<DataSet>? {
-        var dataSetsRet: List<DataSet>? = ArrayList()
+    private fun read(containers: List<ChannelRecordContainer>): List<DataSet> {
+        var dataSetsRet: MutableList<DataSet> = arrayListOf()
         var dataMessage: DataMessage
         var i = 0
         while (i <= retries) {
             try {
-                dataMessage = iec21Port!!.read()
+                dataMessage = iec21Port.read()
                 val dataSets = dataMessage.dataSets
-                if (dataSetsRet != null) {
-                    i = retries
-                    dataSetsRet = dataSets
-                }
+                i = retries
+                dataSetsRet = dataSets
             } catch (e: IOException) {
                 if (i >= retries) {
-                    for (container in containers!!) {
-                        container!!.setRecord(Record(Flag.DRIVER_ERROR_READ_FAILURE))
+                    for (container in containers) {
+                        container.record = Record(Flag.DRIVER_ERROR_READ_FAILURE)
                     }
                 }
             }
@@ -126,31 +126,29 @@ class Iec62056Connection(
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         val iec62056Listener = Iec62056Listener()
         iec62056Listener.registerOpenMucListener(containers, listener)
         try {
-            iec21Port!!.listen(iec62056Listener)
+            iec21Port.listen(iec62056Listener)
         } catch (e: IOException) {
             throw ConnectionException(e)
         }
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
         throw UnsupportedOperationException()
     }
 
     override fun disconnect() {
-        if (iec21Port != null) {
-            iec21Port!!.close()
-        }
+        iec21Port.close()
     }
 
     @Throws(ConnectionException::class)
     private fun setPort(configuredBuilder: Iec21Port.Builder) {
-        if (!iec21Port!!.isClosed) {
-            iec21Port!!.close()
+        if (!iec21Port.isClosed) {
+            iec21Port.close()
         }
         iec21Port = try {
             configuredBuilder.buildAndOpen()
@@ -177,11 +175,9 @@ class Iec62056Connection(
                         val value = dataSet.value
                         if (value != null) {
                             try {
-                                container.setRecord(
-                                    Record(DoubleValue(dataSet.value.toDouble()), time)
-                                )
+                                container.record = Record(DoubleValue(dataSet.value.toDouble()), time)
                             } catch (e: NumberFormatException) {
-                                container.setRecord(Record(StringValue(dataSet.value), time))
+                                container.record = Record(StringValue(dataSet.value), time)
                             }
                         }
                         break
