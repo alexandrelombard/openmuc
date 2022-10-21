@@ -22,7 +22,6 @@ package org.openmuc.framework.driver.knx
 
 import org.openmuc.framework.config.*
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.osgi.service.component.ComponentContext
 import org.osgi.service.component.annotations.Activate
 import org.osgi.service.component.annotations.Component
@@ -54,10 +53,10 @@ class KnxDriver : DriverService {
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         var args: Array<String>? = null
         logger.debug("settings = $settings")
-        if (settings != null && !settings.isEmpty()) {
+        if (settings.isNotEmpty()) {
             args = settings.split(";".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
             if (settings.length == 2) {
                 logger.debug("args[0] = " + args[0])
@@ -88,7 +87,7 @@ class KnxDriver : DriverService {
     }
 
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         return KnxConnection(deviceAddress, settings, timeout)
     }
 

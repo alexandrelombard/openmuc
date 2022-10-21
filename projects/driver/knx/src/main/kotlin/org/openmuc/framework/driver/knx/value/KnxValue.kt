@@ -21,27 +21,26 @@
 package org.openmuc.framework.driver.knx.value
 
 import org.openmuc.framework.data.Value
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import tuwien.auto.calimero.dptxlator.DPTXlator
 import tuwien.auto.calimero.exception.KNXException
 import tuwien.auto.calimero.exception.KNXFormatException
 
 abstract class KnxValue {
-    protected var dptXlator: DPTXlator? = null
+    protected abstract var dptXlator: DPTXlator
 
     @set:Throws(KNXFormatException::class)
     var dPTValue: String?
-        get() = dptXlator!!.value
+        get() = dptXlator.value
         set(value) {
-            dptXlator!!.value = value
+            dptXlator.value = value
         }
 
-    fun setData(data: ByteArray?) {
-        dptXlator!!.data = data
+    fun setData(data: ByteArray) {
+        dptXlator.data = data
     }
 
     @set:Throws(KNXFormatException::class)
-    abstract var openMucValue: Value?
+    abstract var openMucValue: Value
 
     companion object {
         @Throws(KNXException::class)

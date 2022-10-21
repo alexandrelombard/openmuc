@@ -22,12 +22,11 @@ package org.openmuc.framework.driver.knx.value
 
 import org.openmuc.framework.data.ShortValue
 import org.openmuc.framework.data.Value
+import tuwien.auto.calimero.dptxlator.DPTXlator
 import tuwien.auto.calimero.dptxlator.DPTXlator8BitUnsigned
 
 class KnxValue8BitUnsigned(dptID: String?) : KnxValue() {
-    init {
-        dptXlator = DPTXlator8BitUnsigned(dptID)
-    }
+    override var dptXlator: DPTXlator = DPTXlator8BitUnsigned(dptID)
 
     /*
      * (non-Javadoc)
@@ -38,9 +37,9 @@ class KnxValue8BitUnsigned(dptID: String?) : KnxValue() {
      * 
      * @see org.openmuc.framework.driver.knx.value.KnxValue#setOpenMucValue(org.openmuc.framework.data.Value)
      */
-    override var openMucValue: Value?
+    override var openMucValue: Value
         get() = ShortValue((dptXlator as DPTXlator8BitUnsigned).valueUnsigned)
         set(value) {
-            (dptXlator as DPTXlator8BitUnsigned).setValueUnscaled(value!!.asShort().toInt())
+            (dptXlator as DPTXlator8BitUnsigned).setValueUnscaled(value.asShort().toInt())
         }
 }

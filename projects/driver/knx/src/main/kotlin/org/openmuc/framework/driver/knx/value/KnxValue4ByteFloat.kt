@@ -22,14 +22,12 @@ package org.openmuc.framework.driver.knx.value
 
 import org.openmuc.framework.data.FloatValue
 import org.openmuc.framework.data.Value
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import tuwien.auto.calimero.dptxlator.DPTXlator
 import tuwien.auto.calimero.dptxlator.DPTXlator4ByteFloat
 import tuwien.auto.calimero.exception.KNXFormatException
 
 class KnxValue4ByteFloat(dptID: String?) : KnxValue() {
-    init {
-        dptXlator = DPTXlator4ByteFloat(dptID)
-    }
+    override var dptXlator: DPTXlator = DPTXlator4ByteFloat(dptID)
 
     /*
      * (non-Javadoc)
@@ -41,7 +39,7 @@ class KnxValue4ByteFloat(dptID: String?) : KnxValue() {
      * @see org.openmuc.framework.driver.knx.value.KnxValue#setOpenMucValue(org.openmuc.framework.data.Value)
      */
     @set:Throws(KNXFormatException::class)
-    override var openMucValue: Value?
+    override var openMucValue: Value
         get() = FloatValue((dptXlator as DPTXlator4ByteFloat).valueFloat)
         set(value) {
             (dptXlator as DPTXlator4ByteFloat).setValue(value!!.asFloat())

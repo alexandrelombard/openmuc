@@ -22,14 +22,12 @@ package org.openmuc.framework.driver.knx.value
 
 import org.openmuc.framework.data.ByteArrayValue
 import org.openmuc.framework.data.Value
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import tuwien.auto.calimero.dptxlator.DPTXlator
 import tuwien.auto.calimero.dptxlator.DPTXlatorString
 import tuwien.auto.calimero.exception.KNXFormatException
 
 class KnxValueString(dptID: String?) : KnxValue() {
-    init {
-        dptXlator = DPTXlatorString(dptID)
-    }
+    override var dptXlator: DPTXlator = DPTXlatorString(dptID)
 
     /*
        * (non-Javadoc)
@@ -42,7 +40,7 @@ class KnxValueString(dptID: String?) : KnxValue() {
               * @see org.openmuc.framework.driver.knx.value.KnxValue#getOpenMucValue()
               */
     @set:Throws(KNXFormatException::class)
-    override var openMucValue: Value?
+    override var openMucValue: Value
         get() =// TODO Auto-generated method stub
             ByteArrayValue((dptXlator as DPTXlatorString).value.toByteArray())
         set(value) {

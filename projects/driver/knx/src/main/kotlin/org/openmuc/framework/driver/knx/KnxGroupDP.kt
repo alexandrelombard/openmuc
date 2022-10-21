@@ -24,12 +24,12 @@ import org.openmuc.framework.driver.knx.value.KnxValue
 import tuwien.auto.calimero.GroupAddress
 import tuwien.auto.calimero.datapoint.CommandDP
 
-class KnxGroupDP(main: GroupAddress?, name: String?, dptID: String) :
+class KnxGroupDP(main: GroupAddress, name: String, dptID: String) :
     CommandDP(main, name, dptID.split("\\.".toRegex()).dropLastWhile { it.isEmpty() }
         .toTypedArray()[0].toInt(), dptID) {
     val knxValue: KnxValue
 
     init {
-        knxValue = KnxValue.Companion.createKnxValue(dptID)
+        knxValue = KnxValue.createKnxValue(dptID)
     }
 }

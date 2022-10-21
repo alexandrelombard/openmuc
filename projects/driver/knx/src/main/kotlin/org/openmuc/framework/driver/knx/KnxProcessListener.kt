@@ -31,19 +31,19 @@ import tuwien.auto.calimero.process.ProcessEvent
 import tuwien.auto.calimero.process.ProcessListener
 
 class KnxProcessListener : ProcessListener {
-    private var containers: List<ChannelRecordContainer?>?
+    private var containers: List<ChannelRecordContainer>
     private var listener: RecordsReceivedListener?
-    private val cachedValues: MutableMap<GroupAddress, ByteArray>
+    val cachedValues: MutableMap<GroupAddress, ByteArray>
 
     init {
         cachedValues = LinkedHashMap()
-        containers = null
+        containers = listOf()
         listener = null
     }
 
     @Synchronized
     fun registerOpenMucListener(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         listener: RecordsReceivedListener?
     ) {
         this.containers = containers
@@ -52,7 +52,7 @@ class KnxProcessListener : ProcessListener {
 
     @Synchronized
     fun unregisterOpenMucListener() {
-        containers = null
+        containers = listOf()
         listener = null
     }
 
@@ -64,11 +64,11 @@ class KnxProcessListener : ProcessListener {
     override fun groupWrite(e: ProcessEvent) {
         if (listener != null) {
             val timestamp = System.currentTimeMillis()
-            for (container in containers!!) {
-                val groupDP = container!!.channelHandle as KnxGroupDP?
+            for (container in containers) {
+                val groupDP = container.channelHandle as KnxGroupDP?
                 if (groupDP!!.mainAddress == e.destination) {
                     val value = groupDP.knxValue
-                    value!!.setData(e.asdu)
+                    value.setData(e.asdu)
                     logger.debug("Group write: " + e.destination)
                     val record = Record(value.openMucValue, timestamp, Flag.VALID)
                     listener!!.newRecords(createNewRecords(container, record))
@@ -85,18 +85,15 @@ class KnxProcessListener : ProcessListener {
      * @see tuwien.auto.calimero.process.ProcessListener#detached(tuwien.auto.calimero.DetachEvent)
      */
     override fun detached(e: DetachEvent) {}
-    fun getCachedValues(): Map<GroupAddress, ByteArray> {
-        return cachedValues
-    }
 
     companion object {
         private val logger = LoggerFactory.getLogger(KnxProcessListener::class.java)
         private fun createNewRecords(
-            container: ChannelRecordContainer?,
+            container: ChannelRecordContainer,
             record: Record
-        ): List<ChannelRecordContainer?> {
-            val recordContainers: MutableList<ChannelRecordContainer?> = ArrayList()
-            container!!.setRecord(record)
+        ): List<ChannelRecordContainer> {
+            val recordContainers: MutableList<ChannelRecordContainer> = ArrayList()
+            container.record = record
             recordContainers.add(container)
             return recordContainers
         }

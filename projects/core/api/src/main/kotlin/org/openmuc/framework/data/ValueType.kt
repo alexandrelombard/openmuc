@@ -21,5 +21,5 @@
 package org.openmuc.framework.data
 
 enum class ValueType {
-    DOUBLE, FLOAT, LONG, INTEGER, SHORT, BYTE, BOOLEAN, BYTE_ARRAY, STRING
+    DOUBLE, FLOAT, LONG, INTEGER, SHORT, BYTE, BOOLEAN, BYTE_ARRAY, STRING, UNKNOWN
 }

@@ -24,8 +24,8 @@ import org.openmuc.framework.config.ArgumentSyntaxException
 import org.openmuc.framework.config.ChannelScanInfo
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Record
+import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.slf4j.LoggerFactory
 import tuwien.auto.calimero.DataUnitBuilder
 import tuwien.auto.calimero.GroupAddress
@@ -45,12 +45,12 @@ import java.net.URI
 import java.net.URISyntaxException
 import java.util.*
 
-class KnxConnection internal constructor(deviceAddress: String?, settings: String?, timeout: Int) : Connection {
+class KnxConnection internal constructor(deviceAddress: String, settings: String, timeout: Int) : Connection {
     private var knxNetworkLink: KNXNetworkLink? = null
-    private var processCommunicator: ProcessCommunicator? = null
-    private var processListener: KnxProcessListener? = null
+    private var processCommunicator: ProcessCommunicator
+    private var processListener: KnxProcessListener
     private var responseTimeout = 0
-    private var name: String? = null
+    private var name: String = ""
 
     init {
         var interfaceURI: URI? = null
@@ -58,7 +58,7 @@ class KnxConnection internal constructor(deviceAddress: String?, settings: Strin
         val isKNXIP: Boolean
         try {
             val deviceAddressSubStrings =
-                deviceAddress!!.split(";".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+                deviceAddress.split(";".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
             if (deviceAddressSubStrings.size == 2) {
                 interfaceURI = URI(deviceAddressSubStrings[0])
                 deviceURI = URI(deviceAddressSubStrings[1])
@@ -73,33 +73,33 @@ class KnxConnection internal constructor(deviceAddress: String?, settings: Strin
         }
         var address = IndividualAddress(0)
         val serialNumber = ByteArray(6)
-        if (settings != null) {
-            val settingsArray = settings.split(";".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
-            for (arg in settingsArray) {
-                val p = arg.indexOf('=')
-                if (p != -1) {
-                    val key = arg.substring(0, p).lowercase(Locale.getDefault()).trim { it <= ' ' }
-                    var value = arg.substring(p + 1).trim { it <= ' ' }
-                    if (key.equals("address", ignoreCase = true)) {
-                        try {
-                            address = IndividualAddress(value)
-                            logger.debug("setting individual address to $address")
-                        } catch (e: KNXFormatException) {
-                            logger.warn("wrong format of individual address in settings")
+
+        val settingsArray = settings.split(";".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+        for (arg in settingsArray) {
+            val p = arg.indexOf('=')
+            if (p != -1) {
+                val key = arg.substring(0, p).lowercase(Locale.getDefault()).trim { it <= ' ' }
+                var value = arg.substring(p + 1).trim { it <= ' ' }
+                if (key.equals("address", ignoreCase = true)) {
+                    try {
+                        address = IndividualAddress(value)
+                        logger.debug("setting individual address to $address")
+                    } catch (e: KNXFormatException) {
+                        logger.warn("wrong format of individual address in settings")
+                    }
+                } else if (key.equals("serialnumber", ignoreCase = true)) {
+                    if (value.length == 12) {
+                        value = value.lowercase(Locale.getDefault())
+                        for (i in 0..5) {
+                            val hexValue = value.substring(i * 2, i * 2 + 2)
+                            serialNumber[i] = hexValue.toInt(16).toByte()
                         }
-                    } else if (key.equals("serialnumber", ignoreCase = true)) {
-                        if (value.length == 12) {
-                            value = value.lowercase(Locale.getDefault())
-                            for (i in 0..5) {
-                                val hexValue = value.substring(i * 2, i * 2 + 2)
-                                serialNumber[i] = hexValue.toInt(16).toByte()
-                            }
-                            logger.debug("setting serial number to " + DataUnitBuilder.toHex(serialNumber, ":"))
-                        }
+                        logger.debug("setting serial number to " + DataUnitBuilder.toHex(serialNumber, ":"))
                     }
                 }
             }
         }
+
         if (isKNXIP && isSchemeOk(deviceURI, KnxDriver.Companion.ADDRESS_SCHEME_KNXIP)
             && isSchemeOk(interfaceURI, KnxDriver.Companion.ADDRESS_SCHEME_KNXIP)
         ) {
@@ -150,10 +150,10 @@ class KnxConnection internal constructor(deviceAddress: String?, settings: Strin
         }
     }
 
-    private fun listKnownChannels(): List<ChannelScanInfo?> {
-        val informations: MutableList<ChannelScanInfo?> = ArrayList()
-        val values = processListener!!.cachedValues
-        val keys: Set<GroupAddress?> = values!!.keys
+    private fun listKnownChannels(): List<ChannelScanInfo> {
+        val informations: MutableList<ChannelScanInfo> = ArrayList()
+        val values = processListener.cachedValues
+        val keys: Set<GroupAddress?> = values.keys
         for (groupAddress in keys) {
             val asdu = values[groupAddress]
             val channelAddress = StringBuilder()
@@ -161,7 +161,7 @@ class KnxConnection internal constructor(deviceAddress: String?, settings: Strin
             val description = StringBuilder()
             description.append("Datapoint length: ").append(asdu!!.size)
             description.append("; Last datapoint ASDU: ").append(DataUnitBuilder.toHex(asdu, ":"))
-            informations.add(ChannelScanInfo(channelAddress.toString(), description.toString(), null, null))
+            informations.add(ChannelScanInfo(channelAddress.toString(), description.toString(), ValueType.UNKNOWN, 0))
         }
         return informations
     }
@@ -174,15 +174,15 @@ class KnxConnection internal constructor(deviceAddress: String?, settings: Strin
     }
 
     @Throws(ConnectionException::class, KNXException::class)
-    private fun read(groupDP: KnxGroupDP?, timeout: Int): Record {
+    private fun read(groupDP: KnxGroupDP, timeout: Int): Record {
         ensureOpenConnection()
-        var record: Record? = null
+        val record: Record
         setResponseTimeout(timeout)
         try {
-            groupDP.getKnxValue().dptValue = processCommunicator!!.read(groupDP)
-            record = Record(groupDP.getKnxValue().openMucValue, System.currentTimeMillis())
+            groupDP.knxValue.dPTValue = processCommunicator.read(groupDP)
+            record = Record(groupDP.knxValue.openMucValue, System.currentTimeMillis())
         } catch (e: InterruptedException) {
-            throw ConnectionException("Read failed for group address " + groupDP!!.mainAddress, e)
+            throw ConnectionException("Read failed for group address " + groupDP.mainAddress, e)
         } catch (e: KNXLinkClosedException) {
             throw ConnectionException(e)
         }
@@ -190,12 +190,12 @@ class KnxConnection internal constructor(deviceAddress: String?, settings: Strin
     }
 
     @Throws(ConnectionException::class)
-    fun write(groupDP: KnxGroupDP?, timeout: Int): Boolean {
+    fun write(groupDP: KnxGroupDP, timeout: Int): Boolean {
         ensureOpenConnection()
         setResponseTimeout(timeout)
         return try {
-            val value = groupDP.getKnxValue()
-            processCommunicator!!.write(groupDP, value.dptValue)
+            val value = groupDP.knxValue
+            processCommunicator.write(groupDP, value.dPTValue)
             true
         } catch (e: KNXLinkClosedException) {
             throw ConnectionException(e)
@@ -210,48 +210,48 @@ class KnxConnection internal constructor(deviceAddress: String?, settings: Strin
             responseTimeout = timeout
             val timeoutSec = timeout / 1000
             if (timeoutSec > 0) {
-                processCommunicator!!.responseTimeout = timeoutSec
+                processCommunicator.responseTimeout = timeoutSec
             } else {
-                processCommunicator!!.responseTimeout = DEFAULT_TIMEOUT
+                processCommunicator.responseTimeout = DEFAULT_TIMEOUT
             }
         }
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         return listKnownChannels()
     }
 
     override fun disconnect() {
         logger.debug("disconnecting from $name")
-        processCommunicator!!.detach()
+        processCommunicator.detach()
         knxNetworkLink!!.close()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
-        for (container in containers!!) {
+        for (container in containers) {
             try {
-                var groupDP: KnxGroupDP? = null
-                if (container!!.channelHandle == null) {
+                val groupDP: KnxGroupDP
+                if (container.channelHandle == null) {
                     groupDP = createKnxGroupDP(container.channelAddress)
                     logger.debug("New datapoint: $groupDP")
                     container.channelHandle = groupDP
                 } else {
-                    groupDP = container.channelHandle as KnxGroupDP?
+                    groupDP = container.channelHandle as KnxGroupDP
                 }
                 val record = read(groupDP, KnxDriver.Companion.timeout)
-                container.setRecord(record)
+                container.record = record
             } catch (e: ArgumentSyntaxException) {
-                container!!.setRecord(Record(Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID))
+                container.record = Record(Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID)
                 logger.error(e.message, "Channel-ID: " + container.channel!!.id)
             } catch (e1: KNXTimeoutException) {
                 logger.debug(e1.message)
-                container!!.setRecord(Record(null, System.currentTimeMillis(), Flag.TIMEOUT))
+                container.record = Record(null, System.currentTimeMillis(), Flag.TIMEOUT)
             } catch (e: KNXException) {
                 logger.warn(e.message)
             }
@@ -260,13 +260,13 @@ class KnxConnection internal constructor(deviceAddress: String?, settings: Strin
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
-        for (container in containers!!) {
-            if (container!!.channelHandle == null) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
+        for (container in containers) {
+            if (container.channelHandle == null) {
                 try {
                     container.channelHandle = createKnxGroupDP(container.channelAddress)
                 } catch (e: ArgumentSyntaxException) {
-                    container.setRecord(Record(Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID))
+                    container.record = Record(Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID)
                     logger.error(e.message + "Channel-ID: " + container.channel!!.id)
                 } catch (e: KNXException) {
                     logger.warn(e.message)
@@ -278,18 +278,18 @@ class KnxConnection internal constructor(deviceAddress: String?, settings: Strin
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
-        for (container in containers!!) {
-            var groupDP: KnxGroupDP? = null
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
+        for (container in containers) {
+            var groupDP: KnxGroupDP
             try {
-                if (container!!.channelHandle == null) {
+                if (container.channelHandle == null) {
                     groupDP = createKnxGroupDP(container.channelAddress)
                     logger.debug("New datapoint: $groupDP")
                     container.channelHandle = groupDP
                 } else {
-                    groupDP = container.channelHandle as KnxGroupDP?
+                    groupDP = container.channelHandle as KnxGroupDP
                 }
-                groupDP.getKnxValue().openMucValue = container.value
+                groupDP.knxValue.openMucValue = container.value
                 val state = write(groupDP, KnxDriver.Companion.timeout)
                 if (state) {
                     container.flag = Flag.VALID
@@ -297,7 +297,7 @@ class KnxConnection internal constructor(deviceAddress: String?, settings: Strin
                     container.flag = Flag.UNKNOWN_ERROR
                 }
             } catch (e: ArgumentSyntaxException) {
-                container!!.flag = Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID
+                container.flag = Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID
                 logger.error(e.message)
             } catch (e: KNXException) {
                 logger.warn(e.message)

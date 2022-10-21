@@ -42,7 +42,7 @@ class KnxLogWriter : LogWriter() {
      * @see tuwien.auto.calimero.log.LogWriter#write(java.lang.String, tuwien.auto.calimero.log.LogLevel,
      * java.lang.String, java.lang.Throwable)
      */
-    override fun write(logService: String, level: LogLevel, msg: String, t: Throwable) {
+    override fun write(logService: String, level: LogLevel, msg: String, t: Throwable?) {
         val logMsg = "$logService - $msg"
         // Logger logger = LoggerFactory.getLogger(logService);
         if (level == LogLevel.TRACE) {

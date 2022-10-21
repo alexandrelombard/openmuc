@@ -21,7 +21,6 @@
 package org.openmuc.framework.driver.knx
 
 import org.openmuc.framework.config.DeviceScanInfo
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.framework.driver.spi.DriverDeviceScanListener
 import org.slf4j.LoggerFactory
 import tuwien.auto.calimero.knxnetip.Discoverer
@@ -30,9 +29,9 @@ import java.io.IOException
 import java.net.Inet6Address
 import java.net.InetAddress
 
-class KnxIpDiscover(interfaceAddress: String?, natAware: Boolean, mcastResponse: Boolean) {
-    private var discoverer: Discoverer? = null
-    private var searchResponses: Array<SearchResponse>?
+class KnxIpDiscover(interfaceAddress: String, natAware: Boolean, mcastResponse: Boolean) {
+    private var discoverer: Discoverer
+    private var searchResponses: Array<SearchResponse>? = null
 
     init {
         discoverer = try {
@@ -47,14 +46,14 @@ class KnxIpDiscover(interfaceAddress: String?, natAware: Boolean, mcastResponse:
     @Throws(IOException::class)
     fun startSearch(timeout: Int, listener: DriverDeviceScanListener?) {
         var timeout = timeout
-        timeout = timeout / 1000
+        timeout /= 1000
         if (timeout < 1) {
             timeout = DEFALUT_TIMEOUT
         }
         searchResponses = try {
             logger.debug("Starting search (timeout: " + timeout + "s)")
-            discoverer!!.startSearch(timeout, true)
-            discoverer!!.searchResponses
+            discoverer.startSearch(timeout, true)
+            discoverer.searchResponses
         } catch (e: Exception) {
             logger.warn("A network I/O error occurred")
             throw IOException(e)

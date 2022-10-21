@@ -22,14 +22,12 @@ package org.openmuc.framework.driver.knx.value
 
 import org.openmuc.framework.data.BooleanValue
 import org.openmuc.framework.data.Value
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import tuwien.auto.calimero.dptxlator.DPTXlator
 import tuwien.auto.calimero.dptxlator.DPTXlatorBoolean
 import tuwien.auto.calimero.exception.KNXFormatException
 
 class KnxValueBoolean(dptID: String?) : KnxValue() {
-    init {
-        dptXlator = DPTXlatorBoolean(dptID)
-    }
+    override var dptXlator: DPTXlator = DPTXlatorBoolean(dptID)
 
     /*
      * (non-Javadoc)
@@ -41,7 +39,7 @@ class KnxValueBoolean(dptID: String?) : KnxValue() {
      * @see org.openmuc.framework.driver.knx.value.KnxValue#setOpenMucValue(org.openmuc.framework.data.Value)
      */
     @set:Throws(KNXFormatException::class)
-    override var openMucValue: Value?
+    override var openMucValue: Value
         get() = BooleanValue((dptXlator as DPTXlatorBoolean).valueBoolean)
         set(value) {
             (dptXlator as DPTXlatorBoolean).setValue(value!!.asBoolean())

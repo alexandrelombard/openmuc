@@ -22,15 +22,12 @@ package org.openmuc.framework.driver.knx.value
 
 import org.openmuc.framework.data.ByteValue
 import org.openmuc.framework.data.Value
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import tuwien.auto.calimero.dptxlator.DPTXlator
 import tuwien.auto.calimero.dptxlator.DPTXlator1BitControlled
 import tuwien.auto.calimero.exception.KNXFormatException
 
-class KnxValue1BitControlled(dptID: String?) : KnxValue() {
-    init {
-        dptXlator = DPTXlator1BitControlled(dptID)
-    }
-
+class KnxValue1BitControlled(dptID: String) : KnxValue() {
+    override var dptXlator: DPTXlator = DPTXlator1BitControlled(dptID)
     /*
      * (non-Javadoc)
      * 
@@ -41,9 +38,9 @@ class KnxValue1BitControlled(dptID: String?) : KnxValue() {
      * @see org.openmuc.framework.driver.knx.value.KnxValue#setOpenMucValue(org.openmuc.framework.data.Value)
      */
     @set:Throws(KNXFormatException::class)
-    override var openMucValue: Value?
+    override var openMucValue: Value
         get() = ByteValue((dptXlator as DPTXlator1BitControlled).data[0])
         set(value) {
-            (dptXlator as DPTXlator1BitControlled).data = value!!.asByteArray()
+            (dptXlator as DPTXlator1BitControlled).data = value.asByteArray()
         }
 }

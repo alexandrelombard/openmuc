@@ -22,14 +22,12 @@ package org.openmuc.framework.driver.knx.value
 
 import org.openmuc.framework.data.LongValue
 import org.openmuc.framework.data.Value
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import tuwien.auto.calimero.dptxlator.DPTXlator
 import tuwien.auto.calimero.dptxlator.DPTXlatorTime
 import tuwien.auto.calimero.exception.KNXFormatException
 
 class KnxValueTime(dptID: String?) : KnxValue() {
-    init {
-        dptXlator = DPTXlatorTime(dptID)
-    }
+    override var dptXlator: DPTXlator = DPTXlatorTime(dptID)
 
     /*
      * (non-Javadoc)
@@ -41,7 +39,7 @@ class KnxValueTime(dptID: String?) : KnxValue() {
      * @see org.openmuc.framework.driver.knx.value.KnxValue#setOpenMucValue(org.openmuc.framework.data.Value)
      */
     @set:Throws(KNXFormatException::class)
-    override var openMucValue: Value?
+    override var openMucValue: Value
         get() = LongValue((dptXlator as DPTXlatorTime).valueMilliseconds)
         set(value) {
             (dptXlator as DPTXlatorTime).setValue(value!!.asLong())
