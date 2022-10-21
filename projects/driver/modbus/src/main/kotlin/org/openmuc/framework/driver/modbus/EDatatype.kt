@@ -20,7 +20,6 @@
  */
 package org.openmuc.framework.driver.modbus
 
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import java.util.*
 
 /**
@@ -82,7 +81,7 @@ enum class EDatatype( // not implemented yet
     BYTEARRAYLONG(0);
 
     companion object {
-        fun getEnum(string: String?): EDatatype? {
+        fun getEnum(string: String?): EDatatype {
             var string = string
             var returnValue: EDatatype? = null
             if (string != null) {
@@ -91,11 +90,11 @@ enum class EDatatype( // not implemented yet
                     if (string == type.toString()) {
                         returnValue = type
                         break
-                    } else if (string.uppercase(Locale.getDefault()).matches(BYTEARRAY.toString() + "\\[\\d+\\]")) {
+                    } else if (string.uppercase(Locale.getDefault()).matches(("$BYTEARRAY\\[\\d+\\]").toRegex())) {
                         // Special check for BYTEARRAY[n] datatyp
                         returnValue = BYTEARRAY
                         break
-                    } else if (string.uppercase(Locale.getDefault()).matches(BYTEARRAYLONG.toString() + "\\[\\d+\\]")) {
+                    } else if (string.uppercase(Locale.getDefault()).matches(("$BYTEARRAYLONG\\[\\d+\\]").toRegex())) {
                         // Special check for BYTEARRAYLONG[n] datatyp
                         returnValue = BYTEARRAYLONG
                         break
@@ -139,6 +138,7 @@ enum class EDatatype( // not implemented yet
                     returnValue = true
                 }
             } catch (e: RuntimeException) {
+                //
             }
             return returnValue
         }

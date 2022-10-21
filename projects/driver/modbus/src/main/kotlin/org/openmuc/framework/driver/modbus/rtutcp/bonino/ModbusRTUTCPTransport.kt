@@ -10,13 +10,15 @@ import com.ghgande.j2mod.modbus.msg.ModbusMessage
 import com.ghgande.j2mod.modbus.msg.ModbusRequest
 import com.ghgande.j2mod.modbus.msg.ModbusResponse
 import com.ghgande.j2mod.modbus.util.ModbusUtil
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.slf4j.LoggerFactory
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.io.IOException
 import java.net.Socket
 import java.util.*
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 /**
  * @author bonino
@@ -81,10 +83,10 @@ class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
     fun setSocket(socket: Socket?) {
         if (this.socket != null) {
             // TODO: handle clean closure of the streams
-            outputBuffer!!.close()
-            inputBuffer!!.close()
-            inputStream!!.close()
-            outputStream!!.close()
+            outputBuffer?.close()
+            inputBuffer?.close()
+            inputStream?.close()
+            outputStream?.close()
         }
 
         // store the socket used by this transport
@@ -109,12 +111,13 @@ class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
     @Throws(ModbusIOException::class)
     override fun writeMessage(msg: ModbusMessage) {
         try {
+            val outputBuffer = outputBuffer!!
             // atomic access to the output buffer
-            synchronized(outputBuffer!!) {
-
-
+            val lock = ReentrantLock()
+            val condition = lock.newCondition()
+            lock.withLock {
                 // reset the output buffer
-                outputBuffer!!.reset()
+                outputBuffer.reset()
 
                 // prepare the message for "virtual" serial transport
                 msg.setHeadless()
@@ -123,17 +126,17 @@ class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
                 msg.writeTo(outputBuffer)
 
                 // compute the CRC
-                val crc = ModbusUtil.calculateCRC(outputBuffer!!.buffer, 0, outputBuffer!!.size())
+                val crc = ModbusUtil.calculateCRC(outputBuffer.buffer, 0, outputBuffer.size())
 
                 // write the CRC on the output buffer
-                outputBuffer!!.writeByte(crc[0])
-                outputBuffer!!.writeByte(crc[1])
+                outputBuffer.writeByte(crc[0])
+                outputBuffer.writeByte(crc[1])
 
                 // store the buffer length
-                val bufferLength = outputBuffer!!.size()
+                val bufferLength = outputBuffer.size()
 
                 // store the raw output buffer reference
-                val rawBuffer = outputBuffer!!.buffer
+                val rawBuffer = outputBuffer.buffer
 
                 // write the buffer on the socket
                 outputStream!!.write(rawBuffer, 0, bufferLength) // PDU +
@@ -149,7 +152,7 @@ class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
 
                 // sleep for the time needed to receive the request at the other
                 // point of the connection
-                outputBuffer.wait(bufferLength.toLong())
+                condition.await(bufferLength.toLong(), TimeUnit.MILLISECONDS)
             }
         } catch (ex: Exception) {
             throw ModbusIOException("I/O failed to write")
@@ -184,17 +187,21 @@ class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
         }, readTimeout.toLong())
         try {
             // atomic access to the input buffer
-            synchronized(inputBuffer!!) {
+            val inputBuffer = inputBuffer!!
+            val inputStream = inputStream!!
 
+            val lock = ReentrantLock()
+            val condition = lock.newCondition()
+            lock.withLock {
                 // clean the input buffer
-                inputBuffer!!.reset(ByteArray(Modbus.MAX_MESSAGE_LENGTH))
+                inputBuffer.reset(ByteArray(Modbus.MAX_MESSAGE_LENGTH))
 
                 // sleep for the time needed to receive the first part of the
                 // response
-                var available = inputStream!!.available()
+                var available = inputStream.available()
                 while (available < 4 && !isTimedOut) {
                     Thread.yield() // 1ms * #bytes (4bytes in the worst case)
-                    available = inputStream!!.available()
+                    available = inputStream.available()
 
                     // if (logger.isTraceEnabled()) {
                     // logger.trace("Available bytes: " + available);
@@ -207,20 +214,20 @@ class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
                 }
 
                 // get a reference to the inner byte buffer
-                val inBuffer = inputBuffer!!.buffer
+                val inBuffer = inputBuffer.buffer
 
                 // read the first 2 bytes from the input stream
-                inputStream!!.read(inBuffer, 0, 2)
+                inputStream.read(inBuffer, 0, 2)
                 // this.inputStream.readFully(inBuffer);
 
                 // read the progressive id
-                val packetId = inputBuffer!!.readUnsignedByte()
+                val packetId = inputBuffer.readUnsignedByte()
                 if (logger.isTraceEnabled) {
                     logger.trace(logId + "Read packet with progressive id: " + packetId)
                 }
 
                 // read the function code
-                val functionCode = inputBuffer!!.readUnsignedByte()
+                val functionCode = inputBuffer.readUnsignedByte()
                 if (logger.isTraceEnabled) {
                     logger.trace(" uid: $packetId, function code: $functionCode")
                 }
@@ -231,9 +238,9 @@ class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
 
                 // sleep for the time needed to receive the first part of the
                 // response
-                while (inputStream!!.available() < packetLength - 3 && !isTimedOut) {
+                while (inputStream.available() < packetLength - 3 && !isTimedOut) {
                     try {
-                        inputBuffer.wait(10)
+                        condition.await(10, TimeUnit.MILLISECONDS)
                     } catch (ie: InterruptedException) {
                         // do nothing
                         System.err.println("Sleep interrupted while waiting for response body...\n$ie")
@@ -246,7 +253,7 @@ class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
                 }
 
                 // read the remaining bytes
-                inputStream!!.read(inBuffer, 3, packetLength)
+                inputStream.read(inBuffer, 3, packetLength)
                 if (logger.isTraceEnabled) {
                     logger.trace(
                         " bytes: " + ModbusUtil.toHex(inBuffer, 0, packetLength) + ", desired length: "
@@ -269,14 +276,15 @@ class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
 
                 // reset the input buffer to the given packet length (excluding
                 // the CRC)
-                inputBuffer!!.reset(inBuffer, packetLength - 2)
+                inputBuffer.reset(inBuffer, packetLength - 2)
 
                 // create the response
-                response = ModbusResponse.createModbusResponse(functionCode)
-                response.setHeadless()
-
-                // read the response
-                response.readFrom(inputBuffer)
+                response = ModbusResponse.createModbusResponse(functionCode).let {
+                    it.setHeadless()
+                    // read the response
+                    it.readFrom(inputBuffer)
+                    it
+                }
             }
         } catch (e: IOException) {
             // debug
@@ -285,6 +293,7 @@ class ModbusRTUTCPTransport(socket: Socket?) : ModbusTransport {
             // clean the input stream
             try {
                 while (inputStream!!.read() != -1) {
+                    //
                 }
             } catch (e1: IOException) {
                 // debug

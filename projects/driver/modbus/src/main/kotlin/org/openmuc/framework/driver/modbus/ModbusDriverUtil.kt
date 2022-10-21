@@ -29,21 +29,18 @@ import org.openmuc.framework.data.*
 import org.openmuc.framework.driver.modbus.util.DatatypeConversion
 import org.openmuc.framework.driver.modbus.util.DatatypeConversion.EndianInput
 import org.openmuc.framework.driver.modbus.util.DatatypeConversion.EndianOutput
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 
 object ModbusDriverUtil {
     fun getBitVectorsValue(bitVector: BitVector): Value {
-        val readValue: Value
-        readValue = if (bitVector.size() == 1) {
+        return if (bitVector.size() == 1) {
             BooleanValue(bitVector.getBit(0)) // read single bit
         } else {
             ByteArrayValue(bitVector.bytes) // read multiple bits
         }
-        return readValue
     }
 
     fun getBitVectorFromByteArray(value: Value): BitVector {
-        val bv = BitVector(value.asByteArray()!!.size * 8)
+        val bv = BitVector(value.asByteArray().size * 8)
         bv.bytes = value.asByteArray()
         return bv
     }
@@ -57,7 +54,7 @@ object ModbusDriverUtil {
      * Edatatype
      * @return the corresponding Value Object
      */
-    fun getRegistersValue(registers: Array<InputRegister?>, datatype: EDatatype?): Value {
+    fun getRegistersValue(registers: Array<out InputRegister>, datatype: EDatatype?): Value {
         val registerAsByteArray = inputRegisterToByteArray(registers)
         return getValueFromByteArray(registerAsByteArray, datatype)
     }
@@ -124,9 +121,8 @@ object ModbusDriverUtil {
         return registerValue
     }
 
-    fun valueToRegisters(value: Value, datatype: EDatatype?): Array<Register?> {
-        val registers: Array<Register?>
-        registers = when (datatype) {
+    fun valueToRegisters(value: Value, datatype: EDatatype?): Array<Register> {
+        return when (datatype) {
             EDatatype.SHORT, EDatatype.INT16 -> byteArrayToRegister(
                 ModbusUtil.shortToRegister(
                     value.asShort()
@@ -176,7 +172,6 @@ object ModbusDriverUtil {
             EDatatype.BYTEARRAY -> byteArrayToRegister(value.asByteArray())
             else -> throw RuntimeException("Datatype " + datatype.toString() + " not supported yet")
         }
-        return registers
     }
 
     /**
@@ -186,12 +181,12 @@ object ModbusDriverUtil {
      * inputRegister array
      * @return the InputRegister[] as byte[]
      */
-    private fun inputRegisterToByteArray(inputRegister: Array<InputRegister?>): ByteArray {
+    private fun inputRegisterToByteArray(inputRegister: Array<out InputRegister>): ByteArray {
         val registerAsBytes = ByteArray(inputRegister.size * 2) // one register = 2 bytes
         val inputRegisterByteLength: Byte = 2
         for (i in inputRegister.indices) {
             System.arraycopy(
-                inputRegister[i]!!.toBytes(), 0, registerAsBytes, i * inputRegisterByteLength,
+                inputRegister[i].toBytes(), 0, registerAsBytes, i * inputRegisterByteLength,
                 inputRegisterByteLength.toInt()
             )
         }
@@ -201,21 +196,18 @@ object ModbusDriverUtil {
     // TODO check byte order e.g. is an Integer!
     // TODO only works for even byteArray.length!
     @Throws(RuntimeException::class)
-    private fun byteArrayToRegister(byteArray: ByteArray?): Array<Register?> {
+    private fun byteArrayToRegister(byteArray: ByteArray): Array<Register> {
 
         // TODO byteArray might has a odd number of bytes...
-        val register: Array<SimpleRegister?>
-        if (byteArray!!.size % 2 == 0) {
-            register = arrayOfNulls(byteArray.size / 2)
+        if (byteArray.size % 2 == 0) {
             var j = 0
-            // for (int i = 0; i < byteArray.length; i++) {
-            for (i in 0 until byteArray.size / 2) {
-                register[i] = SimpleRegister(byteArray[j], byteArray[j + 1])
-                j = j + 2
+            return Array(byteArray.size / 2) { i ->
+                val r = SimpleRegister(byteArray[j], byteArray[j + 1])
+                j += 2
+                r
             }
         } else {
             throw RuntimeException("conversion from byteArray to Register is not working for odd number of bytes")
         }
-        return register
     }
 }

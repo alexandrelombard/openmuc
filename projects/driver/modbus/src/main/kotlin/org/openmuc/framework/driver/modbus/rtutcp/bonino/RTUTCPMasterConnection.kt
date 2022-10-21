@@ -2,7 +2,6 @@ package org.openmuc.framework.driver.modbus.rtutcp.bonino
 
 import com.ghgande.j2mod.modbus.Modbus
 import com.ghgande.j2mod.modbus.io.ModbusTransport
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.net.InetAddress
@@ -50,8 +49,7 @@ class RTUTCPMasterConnection// store the IP address of the destination
      * Tests if this [RTUTCPMasterConnection] is active or not.
      *
      * @return `true` if connected, `false` otherwise.
-     */ // isConnected
-    // a flag for detecting if the connection is up or not
+     */
     override var isConnected = false
         private set
     /**
@@ -65,9 +63,7 @@ class RTUTCPMasterConnection// store the IP address of the destination
      *
      * @param slaveIPAddress
      * the destination address as [InetAddress].
-     */ // setAddress
-    // private int retries = Modbus.DEFAULT_RETRIES;
-    // the RTU over TCP transport
+     */
     private var modbusRTUTCPTransport: ModbusRTUTCPTransport? = null
 
     /**
@@ -107,7 +103,7 @@ class RTUTCPMasterConnection// store the IP address of the destination
         if (isConnected) {
             // try closing the transport...
             try {
-                modbusRTUTCPTransport!!.close()
+                modbusRTUTCPTransport?.close()
             } catch (e: IOException) {
                 logger.error("error while closing the connection, cause:", e)
             }

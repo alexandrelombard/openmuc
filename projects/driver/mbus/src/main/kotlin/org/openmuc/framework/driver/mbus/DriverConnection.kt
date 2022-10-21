@@ -40,16 +40,16 @@ class DriverConnection(
     private var resetApplication = false
     private var resetLink = false
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         val scanDelay = 50 + delay
         synchronized(connectionInterface) {
-            val channelScanInfo: MutableList<ChannelScanInfo?> = ArrayList()
+            val channelScanInfo: MutableList<ChannelScanInfo> = ArrayList()
             try {
                 val mBusConnection = connectionInterface.mBusConnection
                 if (secondaryAddress != null) {
-                    mBusConnection!!.selectComponent(secondaryAddress)
+                    mBusConnection.selectComponent(secondaryAddress)
                 } else {
-                    mBusConnection!!.linkReset(mBusAddress)
+                    mBusConnection.linkReset(mBusAddress)
                     sleep(delay.toLong())
                     mBusConnection.resetReadout(mBusAddress)
                 }
@@ -70,7 +70,7 @@ class DriverConnection(
     }
 
     private fun fillDataRecordInChannelScanInfo(
-        channelScanInfo: MutableList<ChannelScanInfo?>,
+        channelScanInfo: MutableList<ChannelScanInfo>,
         dataRecord: DataRecord
     ) {
         val vib = Helper.bytesToHex(dataRecord.vib)
@@ -186,7 +186,7 @@ class DriverConnection(
 
     @Throws(ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
@@ -200,11 +200,11 @@ class DriverConnection(
             val mBusConnection = connectionInterface.mBusConnection
             if (secondaryAddress != null) {
                 try {
-                    mBusConnection!!.selectComponent(secondaryAddress)
+                    mBusConnection.selectComponent(secondaryAddress)
                     sleep(delay.toLong())
                 } catch (e: IOException) {
-                    for (container in containers!!) {
-                        container!!.setRecord(Record(Flag.DRIVER_ERROR_UNSPECIFIED))
+                    for (container in containers) {
+                        container.record = Record(Flag.DRIVER_ERROR_UNSPECIFIED)
                     }
                     connectionInterface.close()
                     logger.error(e.message)
@@ -214,23 +214,23 @@ class DriverConnection(
             try {
                 if (secondaryAddress == null) {
                     if (resetLink) {
-                        mBusConnection!!.linkReset(mBusAddress)
+                        mBusConnection.linkReset(mBusAddress)
                         sleep(delay.toLong())
                     }
                     if (resetApplication) {
-                        mBusConnection!!.resetReadout(mBusAddress)
+                        mBusConnection.resetReadout(mBusAddress)
                         sleep(delay.toLong())
                     }
                 }
                 var variableDataStructure: VariableDataStructure? = null
                 do {
-                    variableDataStructure = mBusConnection!!.read(mBusAddress)
+                    variableDataStructure = mBusConnection.read(mBusAddress)
                     sleep(delay.toLong())
                     dataRecords.addAll(variableDataStructure.dataRecords)
                 } while (variableDataStructure!!.moreRecordsFollow())
             } catch (e: IOException) {
-                for (container in containers!!) {
-                    container!!.setRecord(Record(Flag.DRIVER_ERROR_UNSPECIFIED))
+                for (container in containers) {
+                    container.record = Record(Flag.DRIVER_ERROR_UNSPECIFIED)
                 }
                 connectionInterface.close()
                 logger.error(e.message)
@@ -249,8 +249,8 @@ class DriverConnection(
                         mBusConnection.linkReset(mBusAddress)
                         sleep(delay.toLong())
                     } catch (e1: IOException) {
-                        for (container in containers!!) {
-                            container!!.setRecord(Record(Flag.CONNECTION_EXCEPTION))
+                        for (container in containers) {
+                            container.record = Record(Flag.CONNECTION_EXCEPTION)
                         }
                         connectionInterface.close()
                         logger.error("{}\n{}", e.message, e1.message)
@@ -273,34 +273,33 @@ class DriverConnection(
 
     @Throws(ConnectionException::class)
     private fun setRecords(
-        containers: List<ChannelRecordContainer?>?, mBusConnection: MBusConnection?, timestamp: Long,
+        containers: List<ChannelRecordContainer>, mBusConnection: MBusConnection, timestamp: Long,
         dataRecords: List<DataRecord>, dibvibs: Array<String?>
     ): Boolean {
         var selectForReadoutSet = false
-        for (container in containers!!) {
-            val channelAddress = container!!.channelAddress
-            if (channelAddress!!.startsWith("X")) {
+        for (container in containers) {
+            val channelAddress = container.channelAddress
+            if (channelAddress.startsWith("X")) {
                 val dibAndVib = channelAddress.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
                 if (dibAndVib.size != 2) {
-                    container.setRecord(Record(Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID))
+                    container.record = Record(Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID)
                 }
                 val dataRecordsToSelectForReadout: List<DataRecord> = ArrayList(1)
                 selectForReadoutSet = true
                 try {
-                    mBusConnection!!.selectForReadout(mBusAddress, dataRecordsToSelectForReadout)
+                    mBusConnection.selectForReadout(mBusAddress, dataRecordsToSelectForReadout)
                     sleep(delay.toLong())
                 } catch (e: SerialPortTimeoutException) {
-                    container.setRecord(Record(Flag.DRIVER_ERROR_TIMEOUT))
+                    container.record = Record(Flag.DRIVER_ERROR_TIMEOUT)
                     continue
                 } catch (e: IOException) {
                     connectionInterface.close()
                     throw ConnectionException(e)
                 }
-                var variableDataStructure2: VariableDataStructure? = null
-                variableDataStructure2 = try {
+                val variableDataStructure2 = try {
                     mBusConnection.read(mBusAddress)
                 } catch (e1: SerialPortTimeoutException) {
-                    container.setRecord(Record(Flag.DRIVER_ERROR_TIMEOUT))
+                    container.record = Record(Flag.DRIVER_ERROR_TIMEOUT)
                     continue
                 } catch (e1: IOException) {
                     connectionInterface.close()
@@ -318,57 +317,37 @@ class DriverConnection(
                 }
             }
             if (container.record == null) {
-                container.setRecord(Record(Flag.DRIVER_ERROR_CHANNEL_WITH_THIS_ADDRESS_NOT_FOUND))
+                container.record = Record(Flag.DRIVER_ERROR_CHANNEL_WITH_THIS_ADDRESS_NOT_FOUND)
             }
         }
         return selectForReadoutSet
     }
 
-    private fun setContainersRecord(timestamp: Long, container: ChannelRecordContainer?, dataRecord: DataRecord) {
+    private fun setContainersRecord(timestamp: Long, container: ChannelRecordContainer, dataRecord: DataRecord) {
         try {
             when (dataRecord.dataValueType) {
-                DataValueType.DATE -> container!!.setRecord(
+                DataValueType.DATE -> container.record =
                     Record(DoubleValue((dataRecord.dataValue as Date).time.toDouble()), timestamp)
-                )
-
-                DataValueType.STRING -> container!!.setRecord(
-                    Record(
-                        StringValue(
-                            (dataRecord.dataValue as String)
-                        ), timestamp
-                    )
-                )
-
-                DataValueType.DOUBLE -> container!!.setRecord(
-                    Record(
-                        DoubleValue(dataRecord.scaledDataValue),
-                        timestamp
-                    )
-                )
-
+                DataValueType.STRING -> container.record =
+                    Record(StringValue((dataRecord.dataValue as String)), timestamp)
+                DataValueType.DOUBLE -> container.record =
+                    Record(DoubleValue(dataRecord.scaledDataValue), timestamp)
                 DataValueType.LONG -> if (dataRecord.multiplierExponent == 0) {
-                    container!!.setRecord(Record(LongValue((dataRecord.dataValue as Long)), timestamp))
+                    container.record = Record(LongValue((dataRecord.dataValue as Long)), timestamp)
                 } else {
-                    container!!.setRecord(Record(DoubleValue(dataRecord.scaledDataValue), timestamp))
+                    container.record = Record(DoubleValue(dataRecord.scaledDataValue), timestamp)
                 }
-
                 DataValueType.BCD -> if (dataRecord.multiplierExponent == 0) {
-                    container!!.setRecord(
-                        Record(LongValue((dataRecord.dataValue as Bcd).toLong()), timestamp)
-                    )
+                    container.record = Record(LongValue((dataRecord.dataValue as Bcd).toLong()), timestamp)
                 } else {
-                    container!!.setRecord(
+                    container.record =
                         Record(
                             DoubleValue(
                                 (dataRecord.dataValue as Bcd).toLong()
-                                        * Math.pow(10.0, dataRecord.multiplierExponent.toDouble())
-                            ), timestamp
-                        )
-                    )
+                                        * Math.pow(10.0, dataRecord.multiplierExponent.toDouble())), timestamp)
                 }
-
                 DataValueType.NONE -> {
-                    container!!.setRecord(Record(Flag.DRIVER_ERROR_CHANNEL_VALUE_TYPE_CONVERSION_EXCEPTION))
+                    container.record = Record(Flag.DRIVER_ERROR_CHANNEL_VALUE_TYPE_CONVERSION_EXCEPTION)
                     if (logger.isWarnEnabled) {
                         logger.warn(
                             "Received data record with <dib>:<vib> = {}  has value type NONE.",
@@ -378,7 +357,7 @@ class DriverConnection(
                 }
             }
         } catch (e: IllegalStateException) {
-            container!!.setRecord(Record(Flag.DRIVER_ERROR_CHANNEL_VALUE_TYPE_CONVERSION_EXCEPTION))
+            container.record = Record(Flag.DRIVER_ERROR_CHANNEL_VALUE_TYPE_CONVERSION_EXCEPTION)
             logger.error(
                 "Received data record with <dib>:<vib> = {} has wrong value type. ErrorMsg: {}",
                 container.channelAddress, e.message
@@ -387,12 +366,12 @@ class DriverConnection(
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
         throw UnsupportedOperationException()
     }
 
@@ -405,10 +384,10 @@ class DriverConnection(
     }
 
     @Throws(ConnectionException::class)
-    private fun sleep(millisec: Long) {
-        if (millisec > 0) {
+    private fun sleep(millisecond: Long) {
+        if (millisecond > 0) {
             try {
-                Thread.sleep(millisec)
+                Thread.sleep(millisecond)
             } catch (e: InterruptedException) {
                 throw ConnectionException(e)
             }

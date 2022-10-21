@@ -1,7 +1,5 @@
 package org.openmuc.framework.driver.modbus.rtutcp.bonino
 
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
-
 /**
  * A common interface for master connections (not strictly covering serial connections)
  *

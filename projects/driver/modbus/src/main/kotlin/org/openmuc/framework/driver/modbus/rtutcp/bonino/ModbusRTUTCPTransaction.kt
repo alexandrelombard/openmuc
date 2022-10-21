@@ -9,7 +9,6 @@ import com.ghgande.j2mod.modbus.io.ModbusTransport
 import com.ghgande.j2mod.modbus.msg.ExceptionResponse
 import com.ghgande.j2mod.modbus.msg.ModbusRequest
 import com.ghgande.j2mod.modbus.msg.ModbusResponse
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 
 /**
  * @author bonino
@@ -127,11 +126,15 @@ class ModbusRTUTCPTransaction : ModbusTransaction {
             throw ModbusException("Invalid request or connection")
         }
 
+        val m_Request = m_Request!!
+        val m_Connection = m_Connection!!
+        val m_IO = m_IO!!
+
         /*
          * Automatically re-connect if disconnected.
-         */if (!m_Connection!!.isConnected) {
+         */if (!m_Connection.isConnected) {
             try {
-                m_Connection!!.connect()
+                m_Connection.connect()
             } catch (ex: Exception) {
                 throw ModbusIOException("Connection failed.")
             }
@@ -145,38 +148,38 @@ class ModbusRTUTCPTransaction : ModbusTransaction {
         val retryLimit = if (m_Retries > 0) m_Retries else 1
         while (retryCounter < retryLimit) {
             try {
-                synchronized(m_IO!!) {
+                synchronized(m_IO) {
                     if (Modbus.debug) {
-                        System.err.println("request transaction ID = " + m_Request!!.transactionID)
+                        System.err.println("request transaction ID = " + m_Request.transactionID)
                     }
-                    m_IO!!.writeMessage(m_Request)
+                    m_IO.writeMessage(m_Request)
                     m_Response = null
                     do {
-                        m_Response = m_IO!!.readResponse()
-                        if (Modbus.debug) {
-                            System.err.println("response transaction ID = " + m_Response.getTransactionID())
-                            if (m_Response.getTransactionID() != m_Request!!.transactionID) {
-                                System.err.println(
-                                    "expected " + m_Request!!.transactionID + ", got "
-                                            + m_Response.getTransactionID()
-                                )
+                        m_IO.readResponse().let {
+                            m_Response = it
+                            if (Modbus.debug) {
+                                System.err.println("response transaction ID = " + it.transactionID)
+                                if (it.transactionID != m_Request.transactionID) {
+                                    System.err.println(
+                                        "expected " + m_Request.transactionID + ", got " + it.transactionID
+                                    )
+                                }
                             }
                         }
-                    } while (m_Response != null && (!isCheckingValidity || (m_Request!!.transactionID != 0
-                                && m_Request!!.transactionID != m_Response.getTransactionID())) && ++retryCounter < retryLimit
+
+                    } while (m_Response != null && (!isCheckingValidity || (m_Request.transactionID != 0
+                                && m_Request.transactionID != m_Response!!.transactionID)) && ++retryCounter < retryLimit
                     )
                     if (retryCounter >= retryLimit) {
                         throw ModbusIOException("Executing transaction failed (tried $m_Retries times)")
                     }
-
-                    /*
-                     * Both methods were successful, so the transaction must have been executed.
-                     */break
                 }
+                // Both methods were successful, so the transaction must have been executed.
+                break
             } catch (ex: ModbusIOException) {
-                if (!m_Connection!!.isConnected) {
+                if (!m_Connection.isConnected) {
                     try {
-                        m_Connection!!.connect()
+                        m_Connection.connect()
                     } catch (e: Exception) {
                         /*
                          * Nope, fail this transaction.
@@ -191,21 +194,18 @@ class ModbusRTUTCPTransaction : ModbusTransaction {
             }
         }
 
-        /*
-         * The slave may have returned an exception -- check for that.
-         */if (m_Response is ExceptionResponse) {
+        // The slave may have returned an exception -- check for that.
+        if (m_Response is ExceptionResponse) {
             throw ModbusSlaveException((m_Response as ExceptionResponse).exceptionCode)
         }
 
-        /*
-         * Close the connection if it isn't supposed to stick around.
-         */if (isReconnecting) {
-            m_Connection!!.close()
+        // Close the connection if it isn't supposed to stick around.
+        if (isReconnecting) {
+            m_Connection.close()
         }
 
-        /*
-         * See if packets require validity checking.
-         */if (isCheckingValidity && m_Request != null && m_Response != null) {
+        // See if packets require validity checking.
+        if (isCheckingValidity && m_Response != null) {
             checkValidity()
         }
         incrementTransactionID()

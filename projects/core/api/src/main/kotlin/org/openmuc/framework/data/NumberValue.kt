@@ -49,10 +49,6 @@ abstract class NumberValue(private val value: Number) : Value {
         return value.toDouble() != 0.0
     }
 
-    override fun asByteArray(): ByteArray? {
-        return null
-    }
-
     override fun asString(): String {
         return value.toString()
     }

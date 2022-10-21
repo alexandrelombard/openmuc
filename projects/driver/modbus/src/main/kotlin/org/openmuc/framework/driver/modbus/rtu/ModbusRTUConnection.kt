@@ -39,7 +39,6 @@ import org.openmuc.framework.driver.modbus.ModbusChannel.EAccess
 import org.openmuc.framework.driver.modbus.ModbusConnection
 import org.openmuc.framework.driver.spi.ChannelRecordContainer
 import org.openmuc.framework.driver.spi.ChannelValueContainer
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.framework.driver.spi.ConnectionException
 import org.openmuc.framework.driver.spi.RecordsReceivedListener
 import org.slf4j.LoggerFactory
@@ -49,7 +48,7 @@ import org.slf4j.LoggerFactory
  * TODO
  *
  */
-class ModbusRTUConnection(deviceAddress: String?, settings: Array<String>, timoutMs: Int) : ModbusConnection() {
+class ModbusRTUConnection(deviceAddress: String, settings: Array<String>, timoutMs: Int) : ModbusConnection() {
     private val connection: SerialConnection
     private var transaction: ModbusSerialTransaction? = null
 
@@ -59,8 +58,10 @@ class ModbusRTUConnection(deviceAddress: String?, settings: Array<String>, timou
         try {
             connect()
             // connection.setReceiveTimeout(timoutMs);
-            transaction = ModbusSerialTransaction(connection)
-            transaction.setSerialConnection(connection)
+            ModbusSerialTransaction(connection).let {
+                this.transaction = it
+                it.setSerialConnection(connection)
+            }
             setTransaction(transaction)
         } catch (e: Exception) {
             logger.error("Unable to connect to device $deviceAddress", e)
@@ -203,32 +204,32 @@ class ModbusRTUConnection(deviceAddress: String?, settings: Array<String>, timou
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
         if (samplingGroup!!.isEmpty()) {
-            for (container in containers!!) {
+            for (container in containers) {
                 val receiveTime = System.currentTimeMillis()
-                val channel = getModbusChannel(container!!.channelAddress, EAccess.READ)
+                val channel = getModbusChannel(container.channelAddress, EAccess.READ)
                 var value: Value?
                 try {
-                    value = readChannel(channel!!)
+                    value = readChannel(channel)
                     if (logger.isTraceEnabled) {
                         printResponseValue(channel, value)
                     }
-                    container.setRecord(Record(value, receiveTime))
+                    container.record = Record(value, receiveTime)
                 } catch (e: ModbusIOException) {
                     logger.error("ModbusIOException while reading channel:" + channel.channelAddress, e)
                     disconnect()
                     throw ConnectionException("ModbusIOException")
                 } catch (e: ModbusException) {
                     logger.error("ModbusException while reading channel: " + channel.channelAddress, e)
-                    container.setRecord(Record(Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE))
+                    container.record = Record(Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE)
                 } catch (e: Exception) {
                     // catch all possible exceptions and provide info about the channel
                     logger.error("Exception while reading channel: " + channel.channelAddress, e)
-                    container.setRecord(Record(Flag.UNKNOWN_ERROR))
+                    container.record = Record(Flag.UNKNOWN_ERROR)
                 }
             }
         } else {
@@ -237,24 +238,24 @@ class ModbusRTUConnection(deviceAddress: String?, settings: Array<String>, timou
         return null
     }
 
-    private fun printResponseValue(channel: ModbusChannel?, value: Value?) {
-        if (channel.getDatatype() == EDatatype.BYTEARRAY) {
+    private fun printResponseValue(channel: ModbusChannel, value: Value) {
+        if (channel.datatype == EDatatype.BYTEARRAY) {
             val sb = StringBuilder()
-            for (b in value!!.asByteArray()!!) {
+            for (b in value.asByteArray()) {
                 sb.append(String.format("%02x ", b))
             }
             logger.trace("Value of response: $sb")
         } else {
-            logger.trace("Value of response: " + value.toString())
+            logger.trace("Value of response: $value")
         }
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
-        for (container in containers!!) {
-            val channel = getModbusChannel(container!!.channelAddress, EAccess.WRITE)
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
+        for (container in containers) {
+            val channel = getModbusChannel(container.channelAddress, EAccess.WRITE)
             try {
-                writeChannel(channel!!, container.value!!)
+                writeChannel(channel, container.value)
                 container.flag = Flag.VALID
             } catch (e: ModbusIOException) {
                 logger.error("ModbusIOException while writing channel:" + channel.channelAddress, e)
@@ -272,7 +273,7 @@ class ModbusRTUConnection(deviceAddress: String?, settings: Array<String>, timou
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 
@@ -282,7 +283,7 @@ class ModbusRTUConnection(deviceAddress: String?, settings: Array<String>, timou
         ScanException::class,
         ConnectionException::class
     )
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         throw UnsupportedOperationException()
     }
 

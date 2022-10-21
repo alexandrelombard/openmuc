@@ -39,10 +39,10 @@ class Driver : DriverService {
         get() = Companion.info
 
     @Throws(ArgumentSyntaxException::class, ScanException::class, ScanInterruptedException::class)
-    override fun scanForDevices(settingsString: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settingsString: String, listener: DriverDeviceScanListener?) {
         interruptScan = false
-        val settings: Settings = Settings(settingsString, true)
-        val mBusConnection: MBusConnection?
+        val settings = Settings(settingsString, true)
+        val mBusConnection: MBusConnection
         if (!interfaces.containsKey(settings.scanConnectionAddress)) {
             mBusConnection = try {
                 if (settings.host.isEmpty()) {
@@ -63,7 +63,7 @@ class Driver : DriverService {
                 mBusConnection.setVerboseMessageListener(VerboseMessageListenerImpl())
             }
         } else {
-            mBusConnection = interfaces[settings.scanConnectionAddress].getMBusConnection()
+            mBusConnection = interfaces[settings.scanConnectionAddress]!!.mBusConnection
         }
         val connectionInterface = interfaces[settings.scanConnectionAddress]
         if (connectionInterface != null && connectionInterface.isOpen) {
@@ -77,14 +77,14 @@ class Driver : DriverService {
                 val secondaryAddressListenerImplementation = SecondaryAddressListenerImplementation(
                     listener, settings.scanConnectionAddress
                 )
-                mBusConnection!!.scan("ffffffff", secondaryAddressListenerImplementation, settings.delay.toLong())
+                mBusConnection.scan("ffffffff", secondaryAddressListenerImplementation, settings.delay.toLong())
             } else {
                 scanPrimaryAddress(listener, settings, mBusConnection)
             }
         } catch (e: IOException) {
             logger.error("Failed to scan for devices.", e)
         } finally {
-            mBusConnection!!.close()
+            mBusConnection.close()
         }
     }
 
@@ -92,9 +92,9 @@ class Driver : DriverService {
     private fun scanPrimaryAddress(
         listener: DriverDeviceScanListener?,
         settings: Settings,
-        mBusConnection: MBusConnection?
+        mBusConnection: MBusConnection
     ) {
-        var dataStructure: VariableDataStructure? = null
+        var dataStructure: VariableDataStructure
         for (i in 0..250) {
             if (interruptScan) {
                 throw ScanInterruptedException()
@@ -104,7 +104,7 @@ class Driver : DriverService {
             }
             logger.debug("scanning for meter with primary address {}", i)
             try {
-                dataStructure = mBusConnection!!.read(i)
+                dataStructure = mBusConnection.read(i)
                 sleep(settings.delay.toLong())
             } catch (e: InterruptedIOException) {
                 logger.debug("No meter found on address {}", i)
@@ -114,12 +114,11 @@ class Driver : DriverService {
             } catch (e: ConnectionException) {
                 throw ScanException(e)
             }
-            var description = ""
-            if (dataStructure != null) {
-                val secondaryAddress = dataStructure.secondaryAddress
-                description = getScanDescription(secondaryAddress)
-            }
-            listener!!.deviceFound(DeviceScanInfo(settings.scanConnectionAddress + ':' + i, "", description))
+
+            val secondaryAddress = dataStructure.secondaryAddress
+            val description = getScanDescription(secondaryAddress)
+
+            listener?.deviceFound(DeviceScanInfo(settings.scanConnectionAddress + ':' + i, "", description))
             logger.debug("Meter found on address {}", i)
         }
     }
@@ -129,9 +128,9 @@ class Driver : DriverService {
     }
 
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settingsString: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         val deviceAddressTokens =
-            deviceAddress!!.trim { it <= ' ' }.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            deviceAddress.trim { it <= ' ' }.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         var serialPortName = ""
         var isTCP = false
         var host = ""
@@ -170,7 +169,7 @@ class Driver : DriverService {
             )
         }
         var connectionInterface: ConnectionInterface
-        val settings: Settings = Settings(settingsString, false)
+        val settings = Settings(settings, false)
         synchronized(this) {
             synchronized(interfaces) {
                 connectionInterface = setConnectionInterface(
@@ -345,7 +344,7 @@ class Driver : DriverService {
                 + secondaryAddress.version)
     }
 
-    private inner class Settings private constructor(settings: String, scan: Boolean) {
+    private inner class Settings constructor(settings: String, scan: Boolean) {
         var scanConnectionAddress = ""
         var scanSecondary = false
         var resetLink = false
@@ -387,10 +386,10 @@ class Driver : DriverService {
             while (i < args.size) {
                 if (args[i].equals(SECONDARY_ADDRESS_SCAN, ignoreCase = true)) {
                     scanSecondary = true
-                } else if (args[i].matches("^[t,T][0-9]*")) {
+                } else if (args[i].matches("^[t,T][0-9]*".toRegex())) {
                     val setting = args[i].substring(1)
                     timeout = parseInt(setting, "Timeout is not a parsable number.")
-                } else if (args[i].matches("^[d,D][0-9]*")) {
+                } else if (args[i].matches("^[d,D][0-9]*".toRegex())) {
                     val setting = args[i].substring(1)
                     delay = parseInt(setting, "Settings: Delay is not a parsable number.")
                 } else {
@@ -418,13 +417,14 @@ class Driver : DriverService {
             if (!settings.isEmpty()) {
                 val settingArray = settings.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
                 for (setting in settingArray) {
-                    if (setting.matches("^[t,T][0-9]*")) {
+                    var setting = setting
+                    if (setting.matches("^[t,T][0-9]*".toRegex())) {
                         setting = setting.substring(1)
                         timeout = parseInt(setting, "Settings: Timeout is not a parsable number.")
-                    } else if (setting.matches("^[tc,TC][0-9]*")) {
+                    } else if (setting.matches("^[tc,TC][0-9]*".toRegex())) {
                         setting = setting.substring(1)
                         connectionTimeout = parseInt(setting, "Settings: Connection timeout is not a parsable number.")
-                    } else if (setting.matches("^[d,D][0-9]*")) {
+                    } else if (setting.matches("^[d,D][0-9]*".toRegex())) {
                         setting = setting.substring(1)
                         delay = parseInt(setting, "Settings: Delay is not a parsable number.")
                     } else if (setting == LINK_RESET) {
@@ -433,7 +433,7 @@ class Driver : DriverService {
                         resetApplication = true
                     } else if (setting == STRICT_CONNECTION) {
                         strictConnectionTest = true
-                    } else if (setting.matches("^[0-9]*")) {
+                    } else if (setting.matches("^[0-9]*".toRegex())) {
                         baudRate = parseInt(setting, "Settings: Baudrate is not a parseable number.")
                     } else {
                         throw ArgumentSyntaxException("Settings: Unknown settings parameter. [$setting]")

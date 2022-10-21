@@ -35,7 +35,6 @@ import org.openmuc.framework.driver.modbus.rtutcp.bonino.RTUTCPMasterConnection
 import org.openmuc.framework.driver.modbus.tcp.ModbusTCPDeviceAddress
 import org.openmuc.framework.driver.spi.ChannelRecordContainer
 import org.openmuc.framework.driver.spi.ChannelValueContainer
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.framework.driver.spi.ConnectionException
 import org.openmuc.framework.driver.spi.RecordsReceivedListener
 import org.slf4j.LoggerFactory
@@ -45,15 +44,15 @@ import java.net.UnknownHostException
 /**
  * TODO
  */
-class ModbusRTUTCPConnection(deviceAddress: String?, timeoutMs: Int) : ModbusConnection() {
-    private var connection: RTUTCPMasterConnection? = null
+class ModbusRTUTCPConnection(deviceAddress: String, timeoutMs: Int) : ModbusConnection() {
+    private var connection: RTUTCPMasterConnection
     private var transaction: ModbusRTUTCPTransaction? = null
 
     init {
         val address = ModbusTCPDeviceAddress(deviceAddress)
         try {
             connection = RTUTCPMasterConnection(InetAddress.getByName(address.ip), address.port)
-            connection.setTimeout(timeoutMs)
+            connection.timeout = timeoutMs
             connect()
         } catch (e: UnknownHostException) {
             throw RuntimeException(e.message)
@@ -65,7 +64,7 @@ class ModbusRTUTCPConnection(deviceAddress: String?, timeoutMs: Int) : ModbusCon
 
     @Throws(ConnectionException::class)
     override fun connect() {
-        if (connection != null && !connection.isConnected()) {
+        if (!connection.isConnected) {
             try {
                 connection.connect()
             } catch (e: Exception) {
@@ -73,7 +72,7 @@ class ModbusRTUTCPConnection(deviceAddress: String?, timeoutMs: Int) : ModbusCon
             }
             transaction = ModbusRTUTCPTransaction(connection)
             setTransaction(transaction)
-            if (!connection.isConnected()) {
+            if (!connection.isConnected) {
                 throw ConnectionException("unable to connect")
             }
         }
@@ -81,7 +80,7 @@ class ModbusRTUTCPConnection(deviceAddress: String?, timeoutMs: Int) : ModbusCon
 
     override fun disconnect() {
         logger.info("Disconnect Modbus TCP device")
-        if (connection != null && connection.isConnected()) {
+        if (connection.isConnected) {
             connection.close()
             transaction = null
         }
@@ -89,42 +88,42 @@ class ModbusRTUTCPConnection(deviceAddress: String?, timeoutMs: Int) : ModbusCon
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
 
         // reads channels one by one
         if (samplingGroup!!.isEmpty()) {
-            for (container in containers!!) {
+            for (container in containers) {
                 val receiveTime = System.currentTimeMillis()
-                val channel = getModbusChannel(container!!.channelAddress, EAccess.READ)
+                val channel = getModbusChannel(container.channelAddress, EAccess.READ)
                 var value: Value?
                 try {
-                    value = readChannel(channel!!)
+                    value = readChannel(channel)
                     if (logger.isTraceEnabled) {
                         logger.trace("Value of response: $value")
                     }
-                    container.setRecord(Record(value, receiveTime))
+                    container.record = Record(value, receiveTime)
                 } catch (e: ModbusIOException) {
                     logger.error("ModbusIOException while reading channel:" + channel.channelAddress, e)
                     disconnect()
                     throw ConnectionException("Try to solve issue with reconnect.")
                 } catch (e: ModbusException) {
                     logger.error("ModbusException while reading channel: " + channel.channelAddress, e)
-                    container.setRecord(Record(Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE))
+                    container.record = Record(Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE)
                 } catch (e: Exception) {
                     // catch all possible exceptions and provide info about the channel
                     logger.error("Exception while reading channel: " + channel.channelAddress, e)
-                    container.setRecord(Record(Flag.UNKNOWN_ERROR))
+                    container.record = Record(Flag.UNKNOWN_ERROR)
                 }
-                if (!connection!!.isConnected) {
+                if (!connection.isConnected) {
                     throw ConnectionException("Lost connection.")
                 }
             }
         } else {
             readChannelGroupHighLevel(containers, containerListHandle, samplingGroup)
-            if (!connection!!.isConnected) {
+            if (!connection.isConnected) {
                 throw ConnectionException("Lost connection.")
             }
         }
@@ -132,11 +131,11 @@ class ModbusRTUTCPConnection(deviceAddress: String?, timeoutMs: Int) : ModbusCon
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
-        for (container in containers!!) {
-            val channel = getModbusChannel(container!!.channelAddress, EAccess.WRITE)
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
+        for (container in containers) {
+            val channel = getModbusChannel(container.channelAddress, EAccess.WRITE)
             try {
-                writeChannel(channel!!, container.value!!)
+                writeChannel(channel, container.value)
                 container.flag = Flag.VALID
             } catch (e: ModbusIOException) {
                 logger.error("ModbusIOException while writing channel:" + channel.channelAddress, e)
@@ -159,12 +158,12 @@ class ModbusRTUTCPConnection(deviceAddress: String?, timeoutMs: Int) : ModbusCon
         ScanException::class,
         ConnectionException::class
     )
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         throw UnsupportedOperationException()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 

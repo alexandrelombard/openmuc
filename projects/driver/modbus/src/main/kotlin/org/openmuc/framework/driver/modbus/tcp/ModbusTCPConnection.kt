@@ -34,7 +34,6 @@ import org.openmuc.framework.driver.modbus.ModbusChannel.EAccess
 import org.openmuc.framework.driver.modbus.ModbusConnection
 import org.openmuc.framework.driver.spi.ChannelRecordContainer
 import org.openmuc.framework.driver.spi.ChannelValueContainer
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.framework.driver.spi.ConnectionException
 import org.openmuc.framework.driver.spi.RecordsReceivedListener
 import org.slf4j.LoggerFactory
@@ -43,8 +42,8 @@ import java.net.InetAddress
 /**
  * Modbus connection using TCP for data transfer
  */
-class ModbusTCPConnection(deviceAddress: String?, private val timeoutMs: Int) : ModbusConnection() {
-    private var connection: TCPMasterConnection? = null
+class ModbusTCPConnection(deviceAddress: String, private val timeoutMs: Int) : ModbusConnection() {
+    private var connection: TCPMasterConnection
     private var transaction: ModbusTCPTransaction? = null
 
     init {
@@ -80,7 +79,7 @@ class ModbusTCPConnection(deviceAddress: String?, private val timeoutMs: Int) : 
     override fun disconnect() {
         try {
             logger.info("Disconnect Modbus TCP device")
-            if (connection != null && connection.isConnected()) {
+            if (connection.isConnected) {
                 connection.close()
                 transaction = null
             }
@@ -91,27 +90,27 @@ class ModbusTCPConnection(deviceAddress: String?, private val timeoutMs: Int) : 
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
 
         // reads channels one by one
         if (samplingGroup!!.isEmpty()) {
-            for (container in containers!!) {
+            for (container in containers) {
 
                 // TODO consider retries in sampling timeout (e.g. one time 12000 ms or three times 4000 ms)
                 // FIXME quite inconvenient/complex to get the timeout from config, since the driver doesn't know the
                 // device id!
                 val receiveTime = System.currentTimeMillis()
-                val channel = getModbusChannel(container!!.channelAddress, EAccess.READ)
+                val channel = getModbusChannel(container.channelAddress, EAccess.READ)
                 var value: Value?
                 try {
-                    value = readChannel(channel!!)
+                    value = readChannel(channel)
                     if (logger.isTraceEnabled) {
                         logger.trace("Value of response: {}", value.toString())
                     }
-                    container.setRecord(Record(value, receiveTime))
+                    container.record = Record(value, receiveTime)
                 } catch (e: ModbusIOException) {
                     logger.error(
                         "ModbusIOException while reading channel:" + channel.channelAddress
@@ -121,19 +120,19 @@ class ModbusTCPConnection(deviceAddress: String?, private val timeoutMs: Int) : 
                     throw ConnectionException("Try to solve issue with reconnect.")
                 } catch (e: ModbusException) {
                     logger.error("ModbusException while reading channel: " + channel.channelAddress, e)
-                    container.setRecord(Record(Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE))
+                    container.record = Record(Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE)
                 } catch (e: Exception) {
                     // catch all possible exceptions and provide info about the channel
                     logger.error("Exception while reading channel: " + channel.channelAddress, e)
-                    container.setRecord(Record(Flag.UNKNOWN_ERROR))
+                    container.record = Record(Flag.UNKNOWN_ERROR)
                 }
-                if (!connection!!.isConnected) {
+                if (!connection.isConnected) {
                     throw ConnectionException("Lost connection.")
                 }
             }
         } else {
             readChannelGroupHighLevel(containers, containerListHandle, samplingGroup)
-            if (!connection!!.isConnected) {
+            if (!connection.isConnected) {
                 throw ConnectionException("Lost connection.")
             }
         }
@@ -141,11 +140,11 @@ class ModbusTCPConnection(deviceAddress: String?, private val timeoutMs: Int) : 
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
-        for (container in containers!!) {
-            val channel = getModbusChannel(container!!.channelAddress, EAccess.WRITE)
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
+        for (container in containers) {
+            val channel = getModbusChannel(container.channelAddress, EAccess.WRITE)
             try {
-                writeChannel(channel!!, container.value!!)
+                writeChannel(channel, container.value)
                 container.flag = Flag.VALID
             } catch (e: ModbusIOException) {
                 logger.error("ModbusIOException while writing channel:" + channel.channelAddress, e)
@@ -168,12 +167,12 @@ class ModbusTCPConnection(deviceAddress: String?, private val timeoutMs: Int) : 
         ScanException::class,
         ConnectionException::class
     )
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         throw UnsupportedOperationException()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 

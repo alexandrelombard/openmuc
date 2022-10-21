@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory
 /**
  * Represents a group of channels which is used for a multiple read request
  */
-class ModbusChannelGroup(val samplingGroup: String, val channels: ArrayList<ModbusChannel?>) {
+class ModbusChannelGroup(val samplingGroup: String, val channels: ArrayList<ModbusChannel>) {
     var primaryTable: EPrimaryTable? = null
         private set
 
@@ -58,7 +58,7 @@ class ModbusChannelGroup(val samplingGroup: String, val channels: ArrayList<Modb
         get() {
             var info = "SamplingGroup: '$samplingGroup' Channels: "
             for (channel in channels) {
-                info += channel.getStartAddress().toString() + ":" + channel.getDatatype() + ", "
+                info += channel.startAddress.toString() + ":" + channel.datatype + ", "
             }
             return info
         }
@@ -68,10 +68,10 @@ class ModbusChannelGroup(val samplingGroup: String, val channels: ArrayList<Modb
         var tempFunctionCode: EFunctionCode? = null
         for (channel in channels) {
             if (!init) {
-                tempFunctionCode = channel.getFunctionCode()
+                tempFunctionCode = channel.functionCode
                 init = true
             } else {
-                if (tempFunctionCode != channel.getFunctionCode()) {
+                if (tempFunctionCode != channel.functionCode) {
                     throw RuntimeException(
                         "FunctionCodes of all channels within the samplingGroup '"
                                 + samplingGroup + "' are not equal! Change your openmuc config."
@@ -91,10 +91,10 @@ class ModbusChannelGroup(val samplingGroup: String, val channels: ArrayList<Modb
         var tempPrimaryTable: EPrimaryTable? = null
         for (channel in channels) {
             if (!init) {
-                tempPrimaryTable = channel.getPrimaryTable()
+                tempPrimaryTable = channel.primaryTable
                 init = true
             } else {
-                if (tempPrimaryTable != channel.getPrimaryTable()) {
+                if (tempPrimaryTable != channel.primaryTable) {
                     throw RuntimeException(
                         "Primary tables of all channels within the samplingGroup '"
                                 + samplingGroup + "' are not equal! Change your openmuc config."
@@ -109,9 +109,9 @@ class ModbusChannelGroup(val samplingGroup: String, val channels: ArrayList<Modb
         var idOfFirstChannel = INVALID
         for (channel in channels) {
             if (idOfFirstChannel == INVALID) {
-                idOfFirstChannel = channel.getUnitId()
+                idOfFirstChannel = channel.unitId
             } else {
-                if (channel.getUnitId() != idOfFirstChannel) {
+                if (channel.unitId != idOfFirstChannel) {
 
                     // TODO ???
                     // channel 1 device 1 = unitId 1
@@ -136,9 +136,9 @@ class ModbusChannelGroup(val samplingGroup: String, val channels: ArrayList<Modb
         startAddress = INVALID
         for (channel in channels) {
             startAddress = if (startAddress == INVALID) {
-                channel.getStartAddress()
+                channel.startAddress
             } else {
-                Math.min(startAddress, channel.getStartAddress())
+                Math.min(startAddress, channel.startAddress)
             }
         }
     }
@@ -149,28 +149,28 @@ class ModbusChannelGroup(val samplingGroup: String, val channels: ArrayList<Modb
     private fun setCount() {
         var maximumAddress = startAddress
         for (channel in channels) {
-            maximumAddress = Math.max(maximumAddress, channel.getStartAddress() + channel.getCount())
+            maximumAddress = Math.max(maximumAddress, channel.startAddress + channel.count)
         }
         count = maximumAddress - startAddress
     }
 
-    fun setChannelValues(inputRegisters: Array<InputRegister?>?, containers: List<ChannelRecordContainer>) {
+    fun setChannelValues(inputRegisters: Array<out InputRegister>, containers: List<ChannelRecordContainer>) {
         for (channel in channels) {
             // determine start index of the registers which contain the values of the channel
-            val registerIndex = channel.getStartAddress() - startAddress
+            val registerIndex = channel.startAddress - startAddress
             // create a temporary register array
-            val registers = arrayOfNulls<InputRegister>(channel.getCount())
+            val registers = arrayOfNulls<InputRegister>(channel.count)
             // copy relevant registers for the channel
-            System.arraycopy(inputRegisters, registerIndex, registers, 0, channel.getCount())
+            System.arraycopy(inputRegisters, registerIndex, registers, 0, channel.count)
 
             // now we have a register array which contains the value of the channel
-            val container = searchContainer(channel.getChannelAddress(), containers)
+            val container = searchContainer(channel.channelAddress, containers)
             val receiveTime = System.currentTimeMillis()
-            val value = ModbusDriverUtil.getRegistersValue(registers, channel.getDatatype())
+            val value = ModbusDriverUtil.getRegistersValue(registers.filterNotNull().toTypedArray(), channel.datatype)
             if (logger.isTraceEnabled) {
-                logger.trace("response value channel " + channel.getChannelAddress() + ": " + value.toString())
+                logger.trace("response value channel " + channel.channelAddress + ": " + value.toString())
             }
-            container.setRecord(Record(value, receiveTime))
+            container.record = Record(value, receiveTime)
         }
     }
 
@@ -179,10 +179,10 @@ class ModbusChannelGroup(val samplingGroup: String, val channels: ArrayList<Modb
             val receiveTime = System.currentTimeMillis()
 
             // determine start index of the registers which contain the values of the channel
-            val index = channel.getStartAddress() - startAddress
+            val index = channel.startAddress - startAddress
             val value = BooleanValue(bitVector.getBit(index))
-            val container = searchContainer(channel.getChannelAddress(), containers)
-            container.setRecord(Record(value, receiveTime))
+            val container = searchContainer(channel.channelAddress, containers)
+            container.record = Record(value, receiveTime)
         }
     }
 

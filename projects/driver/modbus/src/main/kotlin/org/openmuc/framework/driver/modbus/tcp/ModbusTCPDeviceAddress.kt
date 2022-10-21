@@ -23,12 +23,12 @@ package org.openmuc.framework.driver.modbus.tcp
 import com.ghgande.j2mod.modbus.Modbus
 import java.util.*
 
-class ModbusTCPDeviceAddress(deviceAddress: String?) {
-    var ip: String? = null
-    var port = 0
+class ModbusTCPDeviceAddress(deviceAddress: String) {
+    val ip: String
+    val port: Int
 
     init {
-        val address = deviceAddress!!.lowercase(Locale.getDefault()).split(":".toRegex()).dropLastWhile { it.isEmpty() }
+        val address = deviceAddress.lowercase(Locale.getDefault()).split(":".toRegex()).dropLastWhile { it.isEmpty() }
             .toTypedArray()
         if (address.size == 1) {
             ip = address[0]

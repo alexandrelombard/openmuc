@@ -43,7 +43,7 @@ import java.util.*
 @PrepareForTest(DriverConnection::class)
 class DriverConnectionTest {
     private val delay = 100 // in ms
-    private val interfaces: Map<String, ConnectionInterface> = HashMap()
+    private val interfaces: MutableMap<String, ConnectionInterface> = hashMapOf()
 
     @Throws(Exception::class)
     private fun newConnection(mBusAdresse: String): DriverConnection {
@@ -79,7 +79,7 @@ class DriverConnectionTest {
     fun testScanForChannels() {
         val mBusConnection = newConnection("/dev/ttyS100:5")
         mBusConnection.disconnect()
-        Assert.assertEquals(ValueType.LONG, mBusConnection.scanForChannels(null)!![0]!!.valueType)
+        Assert.assertEquals(ValueType.LONG, mBusConnection.scanForChannels("")[0].valueType)
     }
 
     @Test
@@ -97,11 +97,11 @@ class DriverConnectionTest {
         val deviceAddressTokens = arrayOf("/dev/ttyS100", "5")
         val mBusConnection = DriverConnection(serialIntervace, deviceAddressTokens[1].toInt(), null, delay)
         mBusConnection.disconnect()
-        val scanForChannels = mBusConnection.scanForChannels(null)
-        for (info in scanForChannels!!) {
-            println(info!!.description + " " + info.unit)
+        val scanForChannels = mBusConnection.scanForChannels("")
+        for (info in scanForChannels) {
+            println(info.description + " " + info.unit)
         }
-        val actual = mBusConnection.scanForChannels(null)!![22]!!.valueType
+        val actual = mBusConnection.scanForChannels("")[22].valueType
         Assert.assertEquals(ValueType.LONG, actual)
     }
 
@@ -141,7 +141,7 @@ class DriverConnectionTest {
         serialIntervace.increaseConnectionCounter()
         val deviceAddressTokens = arrayOf("/dev/ttyS100", "5")
         val mBusConnection = DriverConnection(serialIntervace, deviceAddressTokens[1].toInt(), null, delay)
-        val records: MutableList<ChannelRecordContainer?> = LinkedList()
+        val records: MutableList<ChannelRecordContainer> = LinkedList()
         records.add(newChannelRecordContainer("09:74"))
         records.add(newChannelRecordContainer("42:6c"))
         records.add(newChannelRecordContainer("8c01:14"))
@@ -151,11 +151,11 @@ class DriverConnectionTest {
     @Test
     @Throws(Exception::class)
     fun testReadWrongChannelAddressAtContainer() {
-        val crc: MutableList<ChannelRecordContainer?> = LinkedList()
+        val crc: MutableList<ChannelRecordContainer> = LinkedList()
         val mBusConnection = newConnection("/dev/ttyS100:5")
         crc.add(newChannelRecordContainer("X04:03:5ff0"))
         mBusConnection.read(crc, null, null)
-        Assert.assertEquals(Flag.VALID, crc[0]!!.record!!.flag)
+        Assert.assertEquals(Flag.VALID, crc[0].record!!.flag)
     }
 
     @Test
@@ -170,7 +170,7 @@ class DriverConnectionTest {
     @Throws(Exception::class)
     fun testReadAndDisconnect() {
         val mBusConnection = newConnection("/dev/ttyS100:5")
-        val records = Arrays.asList(newChannelRecordContainer("X04:03"))
+        val records = listOf(newChannelRecordContainer("X04:03"))
         mBusConnection.read(records, null, null)
         mBusConnection.disconnect()
     }
@@ -188,7 +188,7 @@ class DriverConnectionTest {
     fun testDisconnectRead() {
         val mBusConnection = newConnection("/dev/ttyS100:5")
         mBusConnection.disconnect()
-        val crc: List<ChannelRecordContainer?> = emptyList<ChannelRecordContainer>()
+        val crc: List<ChannelRecordContainer> = emptyList<ChannelRecordContainer>()
         mBusConnection.read(crc, null, null)
     }
 
@@ -204,9 +204,9 @@ class DriverConnectionTest {
         val deviceAddressTokens = arrayOf("/dev/ttyS100", "5")
         val address = deviceAddressTokens[1].toInt()
         val driverCon = DriverConnection(serialIntervace, address, null, delay)
-        val records = Arrays.asList(newChannelRecordContainer("04:03"))
+        val records = listOf(newChannelRecordContainer("04:03"))
         driverCon.read(records, null, null)
-        val actualFlag = records[0]!!.record!!.flag
+        val actualFlag = records[0].record!!.flag
         Assert.assertEquals(Flag.DRIVER_ERROR_TIMEOUT, actualFlag)
     }
 
@@ -222,9 +222,9 @@ class DriverConnectionTest {
         val deviceAddressTokens = arrayOf("/dev/ttyS100", "5")
         val address = deviceAddressTokens[1].toInt()
         val driverCon = DriverConnection(serialIntervace, address, null, delay)
-        val records = Arrays.asList(newChannelRecordContainer("04:03"))
+        val records = listOf(newChannelRecordContainer("04:03"))
         driverCon.read(records, null, null)
-        Assert.assertEquals(Flag.DRIVER_ERROR_TIMEOUT, records[0]!!.record!!.flag)
+        Assert.assertEquals(Flag.DRIVER_ERROR_TIMEOUT, records[0].record!!.flag)
     }
 
     @Test(expected = ConnectionException::class)
@@ -241,7 +241,7 @@ class DriverConnectionTest {
             serialIntervace, deviceAddressTokens[1].toInt(),
             null, delay
         )
-        driverCon.scanForChannels(null)
+        driverCon.scanForChannels("")
     }
 
     @Test(expected = ConnectionException::class)
@@ -255,7 +255,7 @@ class DriverConnectionTest {
         serialIntervace.increaseConnectionCounter()
         val deviceAddressTokens = arrayOf("/dev/ttyS100", "5")
         val mBusConnection = DriverConnection(serialIntervace, deviceAddressTokens[1].toInt(), null, delay)
-        mBusConnection.scanForChannels(null)
+        mBusConnection.scanForChannels("")
     }
 
     companion object {
@@ -522,32 +522,22 @@ class DriverConnectionTest {
         )
 
         private fun newChannelRecordContainer(channelAddress: String): ChannelRecordContainer {
-            val channelAddress = channelAddress
-            public get () {
-                return field
-            }
             return object : ChannelRecordContainer {
                 var longValue: Value = LongValue(9073)
                 override var record: Record? = Record(longValue, System.currentTimeMillis())
-                override fun getRecord(): Record? {
-                    return record
-                }
 
                 override val channel: Channel
                     get() = PowerMockito.mock(
                         Channel::class.java
                     )
-
-                override fun setRecord(record: Record?) {
-                    this.record = record
-                }
+                override val channelAddress: String = channelAddress
 
                 override var channelHandle: Any?
                     get() = null
                     set(handle) {}
 
-                override fun copy(): ChannelRecordContainer? {
-                    return newChannelRecordContainer(this.channelAddress!!)
+                override fun copy(): ChannelRecordContainer {
+                    return newChannelRecordContainer(this.channelAddress)
                 }
             }
         }

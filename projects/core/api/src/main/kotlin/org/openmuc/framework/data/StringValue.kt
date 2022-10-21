@@ -75,7 +75,7 @@ class StringValue(private val value: String) : Value {
         return java.lang.Boolean.parseBoolean(value)
     }
 
-    override fun asByteArray(): ByteArray? {
+    override fun asByteArray(): ByteArray {
         return value.toByteArray(charset)
     }
 

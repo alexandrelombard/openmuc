@@ -30,21 +30,24 @@ import org.openmuc.jmbus.MBusConnection
 class ConnectionInterface {
     var deviceCounter = 0
         private set
-    var mBusConnection: MBusConnection? = null
+    var mBusConnection: MBusConnection
         private set
     var isOpen = true
         private set
     val interfaceAddress: String
     var delay = 0
         private set
-    private var interfaces: MutableMap<String, ConnectionInterface>? = null
+    private var interfaces: MutableMap<String, ConnectionInterface> = hashMapOf()
 
     constructor(
         mBusConnection: MBusConnection, serialPortName: String, delay: Int,
         interfaces: MutableMap<String, ConnectionInterface>
     ) {
         interfaceAddress = serialPortName
-        generalConnectionInterface(mBusConnection, interfaces, delay)
+        this.mBusConnection = mBusConnection
+        this.interfaces = interfaces
+        this.delay = delay
+        interfaces[interfaceAddress] = this
     }
 
     constructor(
@@ -52,13 +55,6 @@ class ConnectionInterface {
         interfaces: MutableMap<String, ConnectionInterface>
     ) {
         interfaceAddress = host + port
-        generalConnectionInterface(mBusConnection, interfaces, delay)
-    }
-
-    private fun generalConnectionInterface(
-        mBusConnection: MBusConnection, interfaces: MutableMap<String, ConnectionInterface>,
-        delay: Int
-    ) {
         this.mBusConnection = mBusConnection
         this.interfaces = interfaces
         this.delay = delay
@@ -77,10 +73,10 @@ class ConnectionInterface {
     }
 
     fun close() {
-        synchronized(interfaces!!) {
-            mBusConnection!!.close()
+        synchronized(interfaces) {
+            mBusConnection.close()
             isOpen = false
-            interfaces!!.remove(interfaceAddress)
+            interfaces.remove(interfaceAddress)
         }
     }
 }

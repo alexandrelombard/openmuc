@@ -89,7 +89,7 @@ interface Value {
      *
      * @return the value as a byte array
      */
-    fun asByteArray(): ByteArray?
+    fun asByteArray(): ByteArray
 
     /**
      * Returns the value as a string.

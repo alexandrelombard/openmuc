@@ -36,7 +36,6 @@ import org.openmuc.framework.data.Record
 import org.openmuc.framework.data.Value
 import org.openmuc.framework.driver.modbus.ModbusChannel.EAccess
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.slf4j.LoggerFactory
 import java.util.*
 
@@ -44,7 +43,7 @@ abstract class ModbusConnection : Connection {
     private var transaction: ModbusTransaction? = null
 
     // List do manage Channel Objects to avoid to check the syntax of each channel address for every read or write
-    private val modbusChannels: Hashtable<String?, ModbusChannel>
+    private val modbusChannels: Hashtable<String, ModbusChannel>
     private var requestTransactionId = 0
     private val MAX_RETRIES_FOR_JAMOD = 0
     private val MAX_RETRIES_FOR_DRIVER = 3
@@ -72,12 +71,11 @@ abstract class ModbusConnection : Connection {
     }
 
     @Throws(ModbusException::class)
-    fun readChannel(channel: ModbusChannel): Value? {
+    fun readChannel(channel: ModbusChannel): Value {
         if (logger.isDebugEnabled) {
             logger.debug("read channel: " + channel.channelAddress)
         }
-        var value: Value? = null
-        value = when (channel.functionCode) {
+        val value = when (channel.functionCode) {
             EFunctionCode.FC_01_READ_COILS -> ModbusDriverUtil.getBitVectorsValue(readCoils(channel))
             EFunctionCode.FC_02_READ_DISCRETE_INPUTS -> ModbusDriverUtil.getBitVectorsValue(readDiscreteInputs(channel))
             EFunctionCode.FC_03_READ_HOLDING_REGISTERS -> ModbusDriverUtil.getRegistersValue(
@@ -113,7 +111,7 @@ abstract class ModbusConnection : Connection {
 
         // create new channelGroup
         if (channelGroup == null) {
-            val channelList = ArrayList<ModbusChannel?>()
+            val channelList = ArrayList<ModbusChannel>()
             for (container in containers) {
                 channelList.add(getModbusChannel(container.channelAddress, EAccess.READ))
             }
@@ -175,12 +173,10 @@ abstract class ModbusConnection : Connection {
                 channel,
                 ModbusDriverUtil.getBitVectorFromByteArray(value)
             )
-
             EFunctionCode.FC_06_WRITE_SINGLE_REGISTER -> writeSingleRegister(
                 channel,
                 SimpleRegister(value.asShort().toInt())
             )
-
             EFunctionCode.FC_16_WRITE_MULTIPLE_REGISTERS -> writeMultipleRegisters(
                 channel,
                 ModbusDriverUtil.valueToRegisters(value, channel.datatype)
@@ -192,21 +188,21 @@ abstract class ModbusConnection : Connection {
 
     fun setChannelsWithErrorFlag(containers: List<ChannelRecordContainer>) {
         for (container in containers) {
-            container.setRecord(Record(null, null, Flag.DRIVER_ERROR_CHANNEL_TEMPORARILY_NOT_ACCESSIBLE))
+            container.record = Record(null, null, Flag.DRIVER_ERROR_CHANNEL_TEMPORARILY_NOT_ACCESSIBLE)
         }
     }
 
-    protected fun getModbusChannel(channelAddress: String?, access: EAccess): ModbusChannel? {
-        var modbusChannel: ModbusChannel? = null
+    protected fun getModbusChannel(channelAddress: String, access: EAccess): ModbusChannel {
+        val modbusChannel: ModbusChannel
 
         // check if the channel object already exists in the list
         if (modbusChannels.containsKey(channelAddress)) {
-            modbusChannel = modbusChannels[channelAddress]
+            modbusChannel = modbusChannels[channelAddress]!!
 
             // if the channel object exists the access flag might has to be updated
             // (this is case occurs when the channel is readable and writable)
-            if (modbusChannel.getAccessFlag() != access) {
-                modbusChannel!!.update(access)
+            if (modbusChannel.accessFlag != access) {
+                modbusChannel.update(access)
             }
         } else {
             modbusChannel = ModbusChannel(channelAddress, access)
@@ -369,7 +365,7 @@ abstract class ModbusConnection : Connection {
 
     @Synchronized
     @Throws(ModbusException::class)
-    private fun readHoldingRegisters(startAddress: Int, count: Int, unitID: Int): Array<Register?> {
+    private fun readHoldingRegisters(startAddress: Int, count: Int, unitID: Int): Array<Register> {
         val readHoldingRegisterRequest = ReadMultipleRegistersRequest()
         readHoldingRegisterRequest.reference = startAddress
         readHoldingRegisterRequest.wordCount = count
@@ -383,12 +379,12 @@ abstract class ModbusConnection : Connection {
     }
 
     @Throws(ModbusException::class)
-    fun readHoldingRegisters(channel: ModbusChannel): Array<Register?> {
+    fun readHoldingRegisters(channel: ModbusChannel): Array<Register> {
         return readHoldingRegisters(channel.startAddress, channel.count, channel.unitId)
     }
 
     @Throws(ModbusException::class)
-    fun readHoldingRegisters(channelGroup: ModbusChannelGroup): Array<Register?> {
+    fun readHoldingRegisters(channelGroup: ModbusChannelGroup): Array<Register> {
         return readHoldingRegisters(channelGroup.startAddress, channelGroup.count, channelGroup.unitId)
     }
 
@@ -398,7 +394,7 @@ abstract class ModbusConnection : Connection {
      */
     @Synchronized
     @Throws(ModbusIOException::class, ModbusSlaveException::class, ModbusException::class)
-    private fun readInputRegisters(startAddress: Int, count: Int, unitID: Int): Array<InputRegister?> {
+    private fun readInputRegisters(startAddress: Int, count: Int, unitID: Int): Array<InputRegister> {
         val readInputRegistersRequest = ReadInputRegistersRequest()
         readInputRegistersRequest.reference = startAddress
         readInputRegistersRequest.wordCount = count
@@ -421,7 +417,7 @@ abstract class ModbusConnection : Connection {
      * if an modbus error occurs
      */
     @Throws(ModbusException::class)
-    fun readInputRegisters(channel: ModbusChannel): Array<InputRegister?> {
+    fun readInputRegisters(channel: ModbusChannel): Array<InputRegister> {
         return readInputRegisters(channel.startAddress, channel.count, channel.unitId)
     }
 
@@ -435,7 +431,7 @@ abstract class ModbusConnection : Connection {
      * if an modbus error occurs
      */
     @Throws(ModbusException::class)
-    fun readInputRegisters(channelGroup: ModbusChannelGroup): Array<InputRegister?> {
+    fun readInputRegisters(channelGroup: ModbusChannelGroup): Array<InputRegister> {
         return readInputRegisters(channelGroup.startAddress, channelGroup.count, channelGroup.unitId)
     }
 
@@ -474,7 +470,7 @@ abstract class ModbusConnection : Connection {
 
     @Synchronized
     @Throws(ModbusException::class)
-    fun writeMultipleRegisters(channel: ModbusChannel, registers: Array<Register?>?) {
+    fun writeMultipleRegisters(channel: ModbusChannel, registers: Array<Register>) {
         val writeMultipleRegistersRequest = WriteMultipleRegistersRequest()
         writeMultipleRegistersRequest.reference = channel.startAddress
         writeMultipleRegistersRequest.registers = registers

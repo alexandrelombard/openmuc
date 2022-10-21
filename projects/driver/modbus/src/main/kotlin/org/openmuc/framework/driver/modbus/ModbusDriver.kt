@@ -26,7 +26,6 @@ import org.openmuc.framework.driver.modbus.rtu.ModbusRTUConnection
 import org.openmuc.framework.driver.modbus.rtutcp.ModbusRTUTCPConnection
 import org.openmuc.framework.driver.modbus.tcp.ModbusTCPConnection
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.osgi.service.component.annotations.Component
 import org.slf4j.LoggerFactory
 
@@ -80,7 +79,7 @@ class ModbusDriver : DriverService {
         }
 
     @Throws(ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         val connection: ModbusConnection
 
         // TODO consider retries in sampling timeout (e.g. one time 12000 ms or three times 4000 ms)
@@ -88,7 +87,7 @@ class ModbusDriver : DriverService {
         connection = if (settings == "") {
             throw ConnectionException("no device settings found in config. Please specify settings.")
         } else {
-            val settingsArray = settings!!.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            val settingsArray = settings.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
             val mode = settingsArray[0]
             val timeoutMs = getTimeoutFromSettings(settingsArray)
             if (mode.equals("RTU", ignoreCase = true)) {
@@ -142,7 +141,7 @@ class ModbusDriver : DriverService {
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         throw UnsupportedOperationException()
     }
 

@@ -23,7 +23,7 @@ package org.openmuc.framework.driver.modbus
 import org.slf4j.LoggerFactory
 import java.util.*
 
-class ModbusChannel(channelAddress: String?, accessFlag: EAccess) {
+class ModbusChannel(channelAddress: String, accessFlag: EAccess) {
     /** Contains values to define the access method of the channel  */
     enum class EAccess {
         READ, WRITE
@@ -38,7 +38,7 @@ class ModbusChannel(channelAddress: String?, accessFlag: EAccess) {
         private set
 
     /** Used to determine the register/coil count  */
-    var datatype: EDatatype? = null
+    var datatype: EDatatype = EDatatype.BOOLEAN
         private set
 
     /** Used to determine the appropriate transaction method  */
@@ -52,7 +52,7 @@ class ModbusChannel(channelAddress: String?, accessFlag: EAccess) {
     /**  */
     var primaryTable: EPrimaryTable? = null
         private set
-    val channelAddress: String? = null
+    val channelAddress: String
 
     /**
      * Is needed when the target device is behind a gateway/bridge which connects Modbus TCP with Modbus+ or Modbus
@@ -65,9 +65,9 @@ class ModbusChannel(channelAddress: String?, accessFlag: EAccess) {
 
     init {
         var channelAddress = channelAddress
-        channelAddress = channelAddress!!.lowercase(Locale.getDefault())
+        channelAddress = channelAddress.lowercase(Locale.getDefault())
         val addressParams = decomposeAddress(channelAddress)
-        if (addressParams != null && checkAddressParams(addressParams)) {
+        if (checkAddressParams(addressParams)) {
             this.channelAddress = channelAddress
             setUnitId(addressParams[UNITID])
             setPrimaryTable(addressParams[PRIMARYTABLE])
@@ -86,32 +86,24 @@ class ModbusChannel(channelAddress: String?, accessFlag: EAccess) {
         setFunctionCode()
     }
 
-    private fun decomposeAddress(channelAddress: String): Array<String?>? {
-        val param = arrayOfNulls<String>(4)
+    private fun decomposeAddress(channelAddress: String): Array<String> {
         val addressParams =
             channelAddress.lowercase(Locale.getDefault()).split(":".toRegex()).dropLastWhile { it.isEmpty() }
                 .toTypedArray()
-        if (addressParams.size == 3) {
-            param[UNITID] = ""
-            param[PRIMARYTABLE] = addressParams[0]
-            param[ADDRESS] = addressParams[1]
-            param[DATATYPE] = addressParams[2]
+        return if (addressParams.size == 3) {
+            arrayOf("", addressParams[0], addressParams[1], addressParams[2])
         } else if (addressParams.size == 4) {
-            param[UNITID] = addressParams[0]
-            param[PRIMARYTABLE] = addressParams[1]
-            param[ADDRESS] = addressParams[2]
-            param[DATATYPE] = addressParams[3]
+            arrayOf(addressParams[0], addressParams[1], addressParams[2], addressParams[3])
         } else {
-            return null
+            arrayOf()
         }
-        return param
     }
 
-    private fun checkAddressParams(params: Array<String?>): Boolean {
+    private fun checkAddressParams(params: Array<String>): Boolean {
         var returnValue = false
-        if (params[UNITID]!!.matches("\\d+?") || params[UNITID] == ""
-            && EPrimaryTable.Companion.isValidValue(params[PRIMARYTABLE]) && params[ADDRESS]!!
-                .matches("\\d+?")
+        if (params[UNITID].matches("\\d+?".toRegex()) || params[UNITID] == ""
+            && EPrimaryTable.Companion.isValidValue(params[PRIMARYTABLE]) && params[ADDRESS]
+                .matches("\\d+?".toRegex())
             && EDatatype.Companion.isValid(params[DATATYPE])
         ) {
             returnValue = true
@@ -190,39 +182,39 @@ class ModbusChannel(channelAddress: String?, accessFlag: EAccess) {
         )
     }
 
-    private fun setStartAddress(startAddress: String?) {
-        this.startAddress = startAddress!!.toInt()
+    private fun setStartAddress(startAddress: String) {
+        this.startAddress = startAddress.toInt()
     }
 
-    private fun setDatatype(datatype: String?) {
-        this.datatype = EDatatype.Companion.getEnum(datatype)
+    private fun setDatatype(datatype: String) {
+        this.datatype = EDatatype.getEnum(datatype)
     }
 
-    private fun setUnitId(unitId: String?) {
+    private fun setUnitId(unitId: String) {
         if (unitId == "") {
             this.unitId = IGNORE_UNIT_ID
         } else {
-            this.unitId = unitId!!.toInt()
+            this.unitId = unitId.toInt()
         }
     }
 
-    private fun setPrimaryTable(primaryTable: String?) {
-        this.primaryTable = EPrimaryTable.Companion.getEnumfromString(primaryTable)
+    private fun setPrimaryTable(primaryTable: String) {
+        this.primaryTable = EPrimaryTable.getEnumfromString(primaryTable)
     }
 
-    private fun setCount(addressParamDatatyp: String?) {
+    private fun setCount(addressParamDatatyp: String) {
         if (datatype == EDatatype.BYTEARRAY) {
             // TODO check syntax first? bytearray[n]
 
             // special handling of the BYTEARRAY datatyp
-            val datatypParts = addressParamDatatyp!!.split("\\[|\\]".toRegex()).dropLastWhile { it.isEmpty() }
+            val datatypParts = addressParamDatatyp.split("\\[|\\]".toRegex()).dropLastWhile { it.isEmpty() }
                 .toTypedArray() // split string either at [ or ]
             if (datatypParts.size == 2) {
                 count = datatypParts[1].toInt()
             }
         } else {
             // all other datatyps
-            count = datatype.getRegisterSize()
+            count = datatype.registerSize
         }
     }
 
