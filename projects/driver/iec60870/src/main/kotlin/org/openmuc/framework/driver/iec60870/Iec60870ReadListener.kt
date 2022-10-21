@@ -23,35 +23,31 @@ package org.openmuc.framework.driver.iec60870
 import org.openmuc.framework.config.ArgumentSyntaxException
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.driver.iec60870.settings.ChannelAddress
 import org.openmuc.framework.driver.spi.ChannelRecordContainer
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.j60870.*
 import org.slf4j.LoggerFactory
 import java.io.IOException
 
-internal class Iec60870ReadListener(clientConnection: Connection?) : ConnectionEventListener {
-    private var containers: List<ChannelRecordContainer?>? = null
+internal class Iec60870ReadListener(clientConnection: Connection) : ConnectionEventListener {
+    private var containers: List<ChannelRecordContainer>? = null
     private val channelAddressMap = HashMap<String?, ChannelAddress>()
     private val recordMap = HashMap<String?, Record?>()
     private var timeout: Long = 0
     private var ioException: IOException? = null
     private var isReadyReading = false
     @Synchronized
-    fun setContainer(containers: List<ChannelRecordContainer?>?) {
+    fun setContainer(containers: List<ChannelRecordContainer>) {
         this.containers = containers
-        val containerIterator = containers!!.iterator()
+        val containerIterator = containers.iterator()
         while (containerIterator.hasNext()) {
             val channelRecordContainer = containerIterator.next()
             try {
-                val channelAddress = ChannelAddress(
-                    channelRecordContainer!!.channelAddress
-                )
-                channelAddressMap[channelRecordContainer.channel!!.id] = channelAddress
+                val channelAddress = ChannelAddress(channelRecordContainer.channelAddress)
+                channelAddressMap[channelRecordContainer.channel.id] = channelAddress
             } catch (e: ArgumentSyntaxException) {
                 logger.error(
-                    "ChannelId: " + channelRecordContainer!!.channel!!.id + "; Message: " + e.message
+                    "ChannelId: " + channelRecordContainer.channel.id + "; Message: " + e.message
                 )
             }
         }
@@ -102,15 +98,15 @@ internal class Iec60870ReadListener(clientConnection: Connection?) : ConnectionE
             time += sleepTime
         }
         if (ioException != null) {
-            throw ioException
+            throw IOException()
         }
         for (channelRecordContainer in containers!!) {
-            val channelId = channelRecordContainer!!.channel!!.id
+            val channelId = channelRecordContainer.channel.id
             val record = recordMap[channelId]
             if (record == null || record.flag !== Flag.VALID) {
-                channelRecordContainer.setRecord(Record(Flag.DRIVER_ERROR_TIMEOUT))
+                channelRecordContainer.record = Record(Flag.DRIVER_ERROR_TIMEOUT)
             } else {
-                channelRecordContainer.setRecord(record)
+                channelRecordContainer.record = record
             }
         }
         isReadyReading = false

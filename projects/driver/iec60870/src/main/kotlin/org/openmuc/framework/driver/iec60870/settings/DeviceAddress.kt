@@ -24,8 +24,9 @@ import org.openmuc.framework.config.ArgumentSyntaxException
 import org.slf4j.LoggerFactory
 import java.net.InetAddress
 import java.net.UnknownHostException
+import kotlin.reflect.typeOf
 
-class DeviceAddress(deviceAddress: String?) : GenericSetting() {
+class DeviceAddress(deviceAddress: String) : GenericSetting() {
     protected var common_address = 1
     protected var host_address: InetAddress? = null
     protected var port = 2404
@@ -35,11 +36,9 @@ class DeviceAddress(deviceAddress: String?) : GenericSetting() {
         private val type: Class<*>,
         private val mandatory: Boolean
     ) : OptionI {
-        COMMON_ADDRESS("ca", Int::class.java, false), PORT("p", Int::class.java, false), HOST_ADDRESS(
-            "h",
-            InetAddress::class.java,
-            false
-        );
+        COMMON_ADDRESS("ca", Int::class.java, false),
+        PORT("p", Int::class.java, false),
+        HOST_ADDRESS("h", InetAddress::class.java, false);
 
         override fun prefix(): String {
             return prefix
@@ -55,7 +54,7 @@ class DeviceAddress(deviceAddress: String?) : GenericSetting() {
     }
 
     init {
-        val addressLength = parseFields(deviceAddress!!, Option::class.java)
+        val addressLength = parseFields(deviceAddress, Option::class.java)
         if (addressLength == 0) {
             logger.info(
                 "No device address set in configuration, default values will be used: host address = localhost; port = {}",

@@ -25,13 +25,12 @@ import org.openmuc.framework.config.ChannelScanInfo
 import org.openmuc.framework.config.ScanException
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.data.TypeConversionException
 import org.openmuc.framework.driver.iec60870.settings.ChannelAddress
 import org.openmuc.framework.driver.iec60870.settings.DeviceAddress
 import org.openmuc.framework.driver.iec60870.settings.DeviceSettings
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.openmuc.framework.driver.spi.ChannelValueContainer
 import org.openmuc.j60870.CauseOfTransmission
 import org.openmuc.j60870.ClientConnectionBuilder
 import org.openmuc.j60870.Connection
@@ -45,9 +44,9 @@ class Iec60870Connection(
     private val deviceSettings: DeviceSettings,
     private val driverId: String
 ) : org.openmuc.framework.driver.spi.Connection {
-    private var clientConnection: Connection? = null
-    private val iec60870listener = Iec60870ListenerList()
-    private val readListener = Iec60870ReadListener(clientConnection)
+    private lateinit var clientConnection: Connection
+    private val iec60870listener: Iec60870ListenerList
+    private val readListener: Iec60870ReadListener
 
     init {
         val clientConnectionBuilder = ClientConnectionBuilder(deviceAddress.hostAddress())
@@ -57,6 +56,9 @@ class Iec60870Connection(
             setupClientSap(clientConnectionBuilder, deviceSettings)
             connect(clientConnectionBuilder, port, hostAddress)
             startListenIec60870(deviceSettings, port, hostAddress)
+
+            this.iec60870listener = Iec60870ListenerList()
+            this.readListener = Iec60870ReadListener(clientConnection)
         } catch (e: IOException) {
             throw ConnectionException(
                 MessageFormat.format(
@@ -69,19 +71,16 @@ class Iec60870Connection(
 
     @Throws(IOException::class)
     private fun startListenIec60870(deviceSettings: DeviceSettings, port: Int, hostAddress: String) {
-        clientConnection!!.startDataTransfer(iec60870listener)
+        clientConnection.startDataTransfer(iec60870listener)
         iec60870listener.addListener(readListener)
-        logger.debug(
-            "Driver-IEC60870: successful sent startDT act to ", hostAddress, ":", port,
-            "and got startDT con."
-        )
+        logger.debug("Driver-IEC60870: successful sent startDT act to {}:{} and got startDT con.", hostAddress, port)
     }
 
     @Throws(IOException::class)
     private fun connect(clientConnectionBuilder: ClientConnectionBuilder, port: Int, hostAddress: String) {
-        logger.debug("Try to connect to: ", hostAddress, ':', port)
+        logger.debug("Try to connect to: {}:{}", hostAddress, port)
         clientConnection = clientConnectionBuilder.build()
-        logger.info("Driver-IEC60870: successful connected to ", hostAddress, ":", port)
+        logger.info("Driver-IEC60870: successful connected to {}:{}", hostAddress, port)
     }
 
     @Throws(
@@ -90,13 +89,13 @@ class Iec60870Connection(
         ScanException::class,
         ConnectionException::class
     )
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         throw UnsupportedOperationException()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
@@ -104,7 +103,7 @@ class Iec60870Connection(
         readListener.setContainer(containers)
         readListener.setReadTimeout(deviceSettings.readTimeout().toLong())
         try {
-            clientConnection!!.interrogation(1, CauseOfTransmission.ACTIVATION, IeQualifierOfInterrogation(20))
+            clientConnection.interrogation(1, CauseOfTransmission.ACTIVATION, IeQualifierOfInterrogation(20))
             readListener.read()
         } catch (e: IOException) {
             throw ConnectionException(e)
@@ -117,35 +116,35 @@ class Iec60870Connection(
 
     @Synchronized
     @Throws(ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         val iec60870Listen = Iec60870Listener()
         iec60870Listen.registerOpenMucListener(containers, listener, driverId, this)
         iec60870listener.addListener(iec60870Listen)
     }
 
     @Throws(ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
-        for (channelValueContainer in containers!!) {
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
+        for (channelValueContainer in containers) {
             var channelAddress: ChannelAddress
             try {
-                channelAddress = ChannelAddress(channelValueContainer!!.channelAddress)
+                channelAddress = ChannelAddress(channelValueContainer.channelAddress)
                 val record = Record(
                     channelValueContainer.value, System.currentTimeMillis(), Flag.VALID
                 )
                 Iec60870DataHandling.writeSingleCommand(record, channelAddress, clientConnection)
                 channelValueContainer.flag = Flag.VALID
             } catch (e: ArgumentSyntaxException) {
-                channelValueContainer!!.flag = Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID
+                channelValueContainer.flag = Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID
                 logger.error(e.message)
                 throw UnsupportedOperationException(e)
             } catch (e: IOException) {
-                channelValueContainer!!.flag = Flag.CONNECTION_EXCEPTION
+                channelValueContainer.flag = Flag.CONNECTION_EXCEPTION
                 throw ConnectionException(e)
             } catch (e: TypeConversionException) {
-                channelValueContainer!!.flag = Flag.DRIVER_ERROR_CHANNEL_VALUE_TYPE_CONVERSION_EXCEPTION
+                channelValueContainer.flag = Flag.DRIVER_ERROR_CHANNEL_VALUE_TYPE_CONVERSION_EXCEPTION
                 logger.error(e.message)
             } catch (e: UnsupportedOperationException) {
-                channelValueContainer!!.flag = Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID
+                channelValueContainer.flag = Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID
                 logger.error(e.message)
                 throw e
             }
@@ -154,9 +153,7 @@ class Iec60870Connection(
     }
 
     override fun disconnect() {
-        if (clientConnection != null) {
-            clientConnection!!.close()
-        }
+        clientConnection?.close()
         iec60870listener.removeAllListener()
         logger.info("Disconnected IEC 60870 driver.")
     }

@@ -21,10 +21,8 @@
 package org.openmuc.framework.driver.iec60870
 
 import org.openmuc.framework.config.*
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.driver.iec60870.settings.*
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.osgi.service.component.annotations.Component
 
 @Component
@@ -38,7 +36,7 @@ class Iec60870Driver : DriverService {
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         throw UnsupportedOperationException()
     }
 
@@ -48,7 +46,7 @@ class Iec60870Driver : DriverService {
     }
 
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         return Iec60870Connection(DeviceAddress(deviceAddress), DeviceSettings(settings), DRIVER_ID)
     }
 
@@ -57,10 +55,10 @@ class Iec60870Driver : DriverService {
         private const val DESCRIPTION = "This driver can be used to access IEC 60870-104 devices"
         private val info = DriverInfo(
             DRIVER_ID, DESCRIPTION,
-            GenericSetting.Companion.syntax(DeviceAddress::class.java), GenericSetting.Companion.syntax(
+            GenericSetting.syntax(DeviceAddress::class.java), GenericSetting.syntax(
                 DeviceSettings::class.java
             ),
-            GenericSetting.Companion.syntax(ChannelAddress::class.java), GenericSetting.Companion.syntax(
+            GenericSetting.syntax(ChannelAddress::class.java), GenericSetting.syntax(
                 DeviceScanSettings::class.java
             )
         )

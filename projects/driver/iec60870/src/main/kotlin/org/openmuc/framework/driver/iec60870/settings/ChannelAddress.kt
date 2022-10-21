@@ -20,7 +20,7 @@
  */
 package org.openmuc.framework.driver.iec60870.settings
 
-class ChannelAddress(channelAddress: String?) : GenericSetting() {
+class ChannelAddress(channelAddress: String) : GenericSetting() {
     protected var common_address = 1
     protected var type_id = 0
     protected var ioa = 0

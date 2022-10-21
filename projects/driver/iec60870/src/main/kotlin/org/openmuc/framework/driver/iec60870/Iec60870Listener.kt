@@ -22,10 +22,8 @@ package org.openmuc.framework.driver.iec60870
 
 import org.openmuc.framework.config.ArgumentSyntaxException
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.driver.iec60870.settings.ChannelAddress
 import org.openmuc.framework.driver.spi.ChannelRecordContainer
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.framework.driver.spi.Connection
 import org.openmuc.framework.driver.spi.ConnectionException
 import org.openmuc.framework.driver.spi.RecordsReceivedListener
@@ -35,31 +33,31 @@ import java.io.IOException
 
 class Iec60870Listener : ConnectionEventListener {
     private var listener: RecordsReceivedListener? = null
-    private var containers: List<ChannelRecordContainer?>? = null
+    private var containers: List<ChannelRecordContainer>? = null
     private var channelAddresses: MutableList<ChannelAddress>? = ArrayList()
     private var driverId: String? = null
     private var connection: Connection? = null
     @Synchronized
     @Throws(ConnectionException::class)
     fun registerOpenMucListener(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         listener: RecordsReceivedListener?, driverId: String?, connection: Connection?
     ) {
         this.containers = containers
         this.listener = listener
         this.driverId = driverId
         this.connection = connection
-        val containerIterator = containers!!.iterator()
+        val containerIterator = containers.iterator()
         while (containerIterator.hasNext()) {
             val channelRecordContainer = containerIterator.next()
             try {
                 val channelAddress = ChannelAddress(
-                    channelRecordContainer!!.channelAddress
+                    channelRecordContainer.channelAddress
                 )
                 channelAddresses!!.add(channelAddress)
             } catch (e: ArgumentSyntaxException) {
                 logger.error(
-                    "ChannelId: " + channelRecordContainer!!.channel!!.id + "; Message: " + e.message
+                    "ChannelId: " + channelRecordContainer.channel.id + "; Message: " + e.message
                 )
             }
         }
@@ -112,22 +110,22 @@ class Iec60870Listener : ConnectionEventListener {
 
     override fun connectionClosed(e: IOException) {
         logger.info("Connection was closed by server.")
-        listener!!.connectionInterrupted(driverId, connection)
+        listener?.connectionInterrupted(driverId, connection)
     }
 
-    private fun newRecords(i: Int, record: Record?) {
+    private fun newRecords(i: Int, record: Record) {
         if (logger.isTraceEnabled) {
             logger.trace("Set new Record: " + record.toString())
         }
-        listener!!.newRecords(creatNewChannelRecordContainer(containers!![i], record))
+        listener?.newRecords(creatNewChannelRecordContainer(containers!![i], record))
     }
 
     private fun creatNewChannelRecordContainer(
-        container: ChannelRecordContainer?,
-        record: Record?
+        container: ChannelRecordContainer,
+        record: Record
     ): List<ChannelRecordContainer?> {
-        val channelRecordContainerList: MutableList<ChannelRecordContainer?> = ArrayList()
-        container!!.setRecord(record)
+        val channelRecordContainerList: MutableList<ChannelRecordContainer> = ArrayList()
+        container.record = record
         channelRecordContainerList.add(container)
         return channelRecordContainerList
     }

@@ -21,9 +21,7 @@
 package org.openmuc.framework.driver.iec60870
 
 import org.openmuc.framework.data.*
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.driver.iec60870.settings.ChannelAddress
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.j60870.*
 import org.openmuc.j60870.ie.*
 import org.openmuc.j60870.ie.IeDoubleCommand.DoubleCommandState
@@ -58,7 +56,7 @@ object Iec60870DataHandling {
                 }
 
                 ASduType.C_DC_TA_1 -> {
-                    doubleCommandState = if (value.asBoolean()) DoubleCommandState.ON else DoubleCommandState.OFF
+                    val doubleCommandState = if (value.asBoolean()) DoubleCommandState.ON else DoubleCommandState.OFF
                     clientConnection!!.doubleCommandWithTimeTag(
                         commonAddress, cot, informationObjectAddress,
                         IeDoubleCommand(doubleCommandState, 0, false), timestamp
@@ -76,7 +74,7 @@ object Iec60870DataHandling {
                 }
 
                 ASduType.C_BO_TA_1 -> {
-                    binaryStateInformation = IeBinaryStateInformation(value.asInt())
+                    val binaryStateInformation = IeBinaryStateInformation(value.asInt())
                     clientConnection!!.bitStringCommandWithTimeTag(
                         commonAddress, cot, informationObjectAddress,
                         binaryStateInformation, timestamp
@@ -123,7 +121,7 @@ object Iec60870DataHandling {
                 }
 
                 ASduType.C_RC_TA_1 -> try {
-                    regulatingStepCommand = getIeRegulatingStepCommand(typeId, value)
+                    val regulatingStepCommand = getIeRegulatingStepCommand(typeId, value)
                     clientConnection!!.regulatingStepCommandWithTimeTag(
                         commonAddress, cot, informationObjectAddress,
                         regulatingStepCommand, timestamp
@@ -144,7 +142,7 @@ object Iec60870DataHandling {
                 }
 
                 ASduType.C_SC_TA_1 -> {
-                    singleCommand = getIeSingeleCommand(typeId, value)
+                    val singleCommand = getIeSingeleCommand(typeId, value)
                     clientConnection!!.singleCommandWithTimeTag(
                         commonAddress, cot, informationObjectAddress, singleCommand,
                         timestamp
@@ -173,13 +171,13 @@ object Iec60870DataHandling {
                 }
 
                 ASduType.C_SE_NB_1 -> {
-                    values = value.asByteArray()
-                    arrayLength = 4
+                    val values = value.asByteArray()
+                    val arrayLength = 4
                     checkLength(
                         typeId, values, arrayLength,
                         "byte[0-1]=command state, byte[2]=qualifier of command, byte[3]=execute/select"
                     )
-                    ieQualifierOfSetPointCommand = getIeQualifierSetPointCommand(values, arrayLength)
+                    val ieQualifierOfSetPointCommand = getIeQualifierSetPointCommand(values, arrayLength)
                     val scaledValue = IeScaledValue(bytesToSignedInt32(values, 2, false))
                     clientConnection!!.setScaledValueCommand(
                         commonAddress, cot, informationObjectAddress, scaledValue,
@@ -197,15 +195,15 @@ object Iec60870DataHandling {
                 }
 
                 ASduType.C_SE_TA_1 -> {
-                    values = value.asByteArray()
-                    arrayLength = 6
-                    valueLength = 4
+                    val values = value.asByteArray()
+                    val arrayLength = 6
+                    val valueLength = 4
                     checkLength(
                         typeId, values, arrayLength,
                         "byte[0-3]=command state, byte[4]=qualifier of command, byte[5]=execute/select"
                     )
-                    ieQualifierOfSetPointCommand = getIeQualifierSetPointCommand(values, arrayLength)
-                    ieNormalizedValue = IeNormalizedValue(bytesToSignedInt32(values, valueLength, false))
+                    val ieQualifierOfSetPointCommand = getIeQualifierSetPointCommand(values, arrayLength)
+                    val ieNormalizedValue = IeNormalizedValue(bytesToSignedInt32(values, valueLength, false))
                     clientConnection!!.setNormalizedValueCommandWithTimeTag(
                         commonAddress, cot, informationObjectAddress,
                         ieNormalizedValue, ieQualifierOfSetPointCommand, timestamp
@@ -213,14 +211,14 @@ object Iec60870DataHandling {
                 }
 
                 ASduType.C_SE_TB_1 -> {
-                    values = value.asByteArray()
-                    arrayLength = 4
+                    val values = value.asByteArray()
+                    val arrayLength = 4
                     checkLength(
                         typeId, values, arrayLength,
                         "byte[0-1]=command state, byte[2]=qualifier of command, byte[3]=execute/select"
                     )
-                    ieQualifierOfSetPointCommand = getIeQualifierSetPointCommand(values, arrayLength)
-                    scaledValue = IeScaledValue(bytesToSignedInt32(values, 2, false))
+                    val ieQualifierOfSetPointCommand = getIeQualifierSetPointCommand(values, arrayLength)
+                    val scaledValue = IeScaledValue(bytesToSignedInt32(values, 2, false))
                     clientConnection!!.setScaledValueCommandWithTimeTag(
                         commonAddress, cot, informationObjectAddress,
                         scaledValue, ieQualifierOfSetPointCommand, timestamp

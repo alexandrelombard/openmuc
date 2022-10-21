@@ -26,7 +26,7 @@ import java.net.InetAddress
 import java.net.UnknownHostException
 import java.text.MessageFormat
 
-class DeviceScanSettings(deviceScanSettings: String?) : GenericSetting() {
+class DeviceScanSettings(deviceScanSettings: String) : GenericSetting() {
     protected var host_address: InetAddress? = null
     protected var port = 2404
     protected var common_address = 1
@@ -36,11 +36,9 @@ class DeviceScanSettings(deviceScanSettings: String?) : GenericSetting() {
         private val type: Class<*>,
         private val mandatory: Boolean
     ) : OptionI {
-        PORT("p", Int::class.java, false), HOST_ADDRESS("h", InetAddress::class.java, false), COMMON_ADDRESS(
-            "ca",
-            Int::class.java,
-            false
-        );
+        PORT("p", Int::class.java, false),
+        HOST_ADDRESS("h", InetAddress::class.java, false),
+        COMMON_ADDRESS("ca", Int::class.java, false);
 
         override fun prefix(): String {
             return prefix

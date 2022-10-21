@@ -20,7 +20,7 @@
  */
 package org.openmuc.framework.driver.iec60870.settings
 
-class DeviceSettings(settings: String?) : GenericSetting() {
+class DeviceSettings(settings: String) : GenericSetting() {
     protected var message_fragment_timeout = -1
     protected var cot_field_length = -1
     protected var common_address_field_length = -1
@@ -74,7 +74,7 @@ class DeviceSettings(settings: String?) : GenericSetting() {
     }
 
     init {
-        parseFields(settings!!, Option::class.java)
+        parseFields(settings, Option::class.java)
     }
 
     fun messageFragmentTimeout(): Int {

@@ -21,8 +21,6 @@
 package org.openmuc.framework.driver.iec60870.settings
 
 import org.openmuc.framework.config.ArgumentSyntaxException
-import org.openmuc.framework.data.Record.value
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
@@ -61,7 +59,7 @@ abstract class GenericSetting {
 
     @Synchronized
     @Throws(ArgumentSyntaxException::class)
-    fun parseFields(settings: String, options: Class<out Enum<out OptionI?>>): Int {
+    fun parseFields(settings: String, options: Class<out Enum<*>>): Int {
         val enclosingClassName = options.enclosingClass.simpleName
         val enumValuesLength = options.enumConstants.size
         val prefixMethod: Method
@@ -170,29 +168,23 @@ abstract class GenericSetting {
         value: String,
         enumName: String,
         type: Class<*>,
-        options: Class<out Enum<out OptionI?>>
+        options: Class<out Enum<*>>
     ) {
         var value = value
         val optionName = enumName.lowercase(LOCALE)
         value = value.trim { it <= ' ' }
+        val field = options.declaringClass.getDeclaredField(optionName)
+        field.isAccessible = true
         when (type.simpleName) {
-            "Boolean" -> options.declaringClass.getDeclaredField(optionName)
-                .setBoolean(this, extractBoolean(value, enumName))
-
-            "Short" -> options.declaringClass.getDeclaredField(optionName).setShort(this, extractShort(value, enumName))
-            "Integer" -> options.declaringClass.getDeclaredField(optionName)
-                .setInt(this, extractInteger(value, enumName))
-
-            "Long" -> options.declaringClass.getDeclaredField(optionName).setLong(this, extractLong(value, enumName))
-            "Float" -> options.declaringClass.getDeclaredField(optionName).setFloat(this, extractFloat(value, enumName))
-            "Double" -> options.declaringClass.getDeclaredField(optionName)
-                .setDouble(this, extractDouble(value, enumName))
-
-            "String" -> options.declaringClass.getDeclaredField(optionName)[this] = value
-            "byte[]" -> options.declaringClass.getDeclaredField(optionName)[this] = extractByteArray(value, enumName)
-            "InetAddress" -> options.declaringClass.getDeclaredField(optionName)[this] =
-                extractInetAddress(value, enumName)
-
+            "Boolean" -> field.setBoolean(this, extractBoolean(value, enumName))
+            "Short" -> field.setShort(this, extractShort(value, enumName))
+            "int", "Integer" -> field.setInt(this, extractInteger(value, enumName))
+            "long", "Long" -> field.setLong(this, extractLong(value, enumName))
+            "float", "Float" -> field.setFloat(this, extractFloat(value, enumName))
+            "double", "Double" -> field.setDouble(this, extractDouble(value, enumName))
+            "String" -> field[this] = value
+            "byte[]" -> field[this] = extractByteArray(value, enumName)
+            "InetAddress" -> field[this] = extractInetAddress(value, enumName)
             else -> throw NoSuchFieldException(
                 """${type.simpleName}  Driver implementation error, '${enumName.lowercase(LOCALE)}' not supported data type. Report driver developer
 """
@@ -320,8 +312,7 @@ abstract class GenericSetting {
         private val LOCALE = Locale.ENGLISH
         private val logger = LoggerFactory.getLogger(GenericSetting::class.java)
         fun syntax(genericSettings: Class<out GenericSetting?>): String {
-            val options = genericSettings
-                .declaredClasses[0] as Class<Enum<out OptionI>>
+            val options = genericSettings.declaredClasses[0] as Class<Enum<*>>?
             val sb = StringBuilder()
             val sbNotMandetory = StringBuilder()
             if (options == null) {
