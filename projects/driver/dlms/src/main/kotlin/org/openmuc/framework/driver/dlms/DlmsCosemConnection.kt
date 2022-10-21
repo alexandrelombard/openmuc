@@ -25,14 +25,14 @@ import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.driver.dlms.settings.DeviceAddress
 import org.openmuc.framework.driver.dlms.settings.DeviceSettings
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.openmuc.framework.driver.spi.ChannelValueContainer
 import org.openmuc.jdlms.*
 import org.openmuc.jdlms.datatypes.DataObject
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.text.MessageFormat
 
-internal class DlmsCosemConnection(deviceAddress: String?, settings: String?) : Connection {
+internal class DlmsCosemConnection(deviceAddress: String, settings: String) : Connection {
     private val dlmsConnection: DlmsConnection?
     private val deviceAddress: DeviceAddress
     private val deviceSettings: DeviceSettings
@@ -57,7 +57,7 @@ internal class DlmsCosemConnection(deviceAddress: String?, settings: String?) : 
 
     @Throws(ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
@@ -66,13 +66,13 @@ internal class DlmsCosemConnection(deviceAddress: String?, settings: String?) : 
     }
 
     @Throws(ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
         writeHandle.write(containers)
         return null
     }
 
     @Throws(ConnectionException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String?): List<ChannelScanInfo> {
         if (deviceSettings.useSn()) {
             throw UnsupportedOperationException("Scan devices for SN is not supported, yet.")
         }
@@ -83,7 +83,7 @@ internal class DlmsCosemConnection(deviceAddress: String?, settings: String?) : 
             throw ConnectionException("Cannot scan device for channels.")
         }
         val objectArray = scanResult.resultData.getValue<List<DataObject>>()
-        val result: MutableList<ChannelScanInfo?> = ArrayList(objectArray.size)
+        val result: MutableList<ChannelScanInfo> = ArrayList(objectArray.size)
         for (objectDef in objectArray) {
             val defItems = objectDef.getValue<List<DataObject>>()
             var classId = defItems[0].getValue<Int>()
@@ -109,7 +109,7 @@ internal class DlmsCosemConnection(deviceAddress: String?, settings: String?) : 
     }
 
     @Throws(ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 
@@ -152,9 +152,7 @@ internal class DlmsCosemConnection(deviceAddress: String?, settings: String?) : 
         ): ChannelScanInfo {
             val value = attributeAccess.getValue<List<DataObject>>()
             val attributeId = extractNumVal(value[0])
-            val accessMode = AttributeAccessMode.accessModeFor(
-                value[1]
-            )
+            val accessMode = AttributeAccessMode.accessModeFor(value[1])
             val instanceId = ObisCode(logicalName)
             val channelAddress = MessageFormat.format("a={0}/{1}/{2}", classId, instanceId, attributeId)
             val valueTypeLength = 0
@@ -162,7 +160,7 @@ internal class DlmsCosemConnection(deviceAddress: String?, settings: String?) : 
             // TODO: more/better description
             return ChannelScanInfo(
                 channelAddress, channelAddress, ValueType.DOUBLE, valueTypeLength,
-                accessMode.isReadable(), accessMode.isWriteable()
+                accessMode.isReadable, accessMode.isWriteable
             )
         }
 

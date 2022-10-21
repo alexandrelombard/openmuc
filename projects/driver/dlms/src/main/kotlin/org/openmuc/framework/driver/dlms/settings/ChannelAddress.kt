@@ -21,19 +21,19 @@
 package org.openmuc.framework.driver.dlms.settings
 
 import org.openmuc.framework.config.ArgumentSyntaxException
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.jdlms.AttributeAddress
 import org.openmuc.jdlms.ObisCode
 import org.openmuc.jdlms.datatypes.DataObject
 import java.util.*
 
-class ChannelAddress(channelAddress: String?) : GenericSetting() {
+class ChannelAddress(channelAddress: String) : GenericSetting() {
     @Option(value = "a", mandatory = true, range = LOGICAL_NAME_FORMAT)
     val address: String? = null
 
     @Option(value = "t", range = "DataObject.Type")
     private val type: String? = null
-    var attributeAddress: AttributeAddress? = null
+
+    var attributeAddress: AttributeAddress
     private var dataObjectType: DataObject.Type? = null
 
     init {
@@ -48,7 +48,7 @@ class ChannelAddress(channelAddress: String?) : GenericSetting() {
         } catch (e: NumberFormatException) {
             throw ArgumentSyntaxException("Class ID or Attribute ID is not a number.")
         } catch (e: IllegalArgumentException) {
-            throw ArgumentSyntaxException(e.message)
+            throw ArgumentSyntaxException(e.message ?: "")
         }
         try {
             if (type != null) {

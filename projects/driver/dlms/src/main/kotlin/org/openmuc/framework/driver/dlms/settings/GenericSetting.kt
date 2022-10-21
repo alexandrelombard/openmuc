@@ -21,11 +21,7 @@
 package org.openmuc.framework.driver.dlms.settings
 
 import org.openmuc.framework.config.ArgumentSyntaxException
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.slf4j.LoggerFactory
-import java.lang.annotation.Documented
-import java.lang.annotation.Retention
-import java.lang.annotation.RetentionPolicy
 import java.lang.reflect.Field
 import java.net.InetAddress
 import java.net.UnknownHostException
@@ -36,8 +32,8 @@ import java.text.ParseException
 
 abstract class GenericSetting {
     @Throws(ArgumentSyntaxException::class)
-    protected fun parseFields(settingsStr: String?): Int {
-        if (settingsStr!!.trim { it <= ' ' }.isEmpty()) {
+    protected fun parseFields(settingsStr: String): Int {
+        if (settingsStr.trim { it <= ' ' }.isEmpty()) {
             return 0
         }
         val settingsClass: Class<out GenericSetting> = this.javaClass
@@ -47,7 +43,7 @@ abstract class GenericSetting {
             val option = field.getAnnotation(
                 Option::class.java
             ) ?: continue
-            val `val` = setting[option.value()]
+            val `val` = setting[option.value]
             if (`val` != null) {
                 try {
                     setField(field, `val`, option)
@@ -57,9 +53,9 @@ abstract class GenericSetting {
                 } catch (e: NoSuchFieldException) {
                     logger.error("No field found with name $field", e)
                 }
-            } else if (option.mandatory()) {
+            } else if (option.mandatory) {
                 val message = MessageFormat.format(
-                    "Mandatory parameter {0} is nor present in {1}.", option.value(),
+                    "Mandatory parameter {0} is nor present in {1}.", option.value,
                     this.javaClass.simpleName
                 )
                 throw ArgumentSyntaxException(message)
@@ -241,8 +237,8 @@ abstract class GenericSetting {
         )
     }
 
-    @Documented
-    @Retention(RetentionPolicy.RUNTIME)
+    @MustBeDocumented
+    @kotlin.annotation.Retention(AnnotationRetention.RUNTIME)
     @Target(AnnotationTarget.FIELD)
     annotation class Option(val value: String, val mandatory: Boolean = false, val range: String = "")
     companion object {
@@ -268,8 +264,8 @@ abstract class GenericSetting {
 
         private fun strFor(option: Option, first: Boolean): String {
             val sb = StringBuilder()
-            val value: String = option.value()
-            val mandatory: Boolean = option.mandatory()
+            val value: String = option.value
+            val mandatory: Boolean = option.mandatory
             if (!mandatory) {
                 sb.append('[')
             }
@@ -277,10 +273,10 @@ abstract class GenericSetting {
                 sb.append(SEPARATOR)
             }
             val range: String
-            if (option.range().isEmpty()) {
-                range = option.value()
+            if (option.range.isEmpty()) {
+                range = option.value
             } else {
-                range = option.range()
+                range = option.range
             }
             sb.append(MessageFormat.format("{0}{1}<{2}>", value, PAIR_SEP, range))
             if (!mandatory) {

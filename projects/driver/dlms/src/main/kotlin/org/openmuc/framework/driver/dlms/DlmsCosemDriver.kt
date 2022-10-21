@@ -42,7 +42,7 @@ class DlmsCosemDriver : DriverService {
         get() = Companion.info
 
     @Throws(ArgumentSyntaxException::class, ScanException::class, ScanInterruptedException::class)
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         throw UnsupportedOperationException()
     }
 
@@ -51,7 +51,7 @@ class DlmsCosemDriver : DriverService {
     }
 
     @Throws(ConnectionException::class, ArgumentSyntaxException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         return DlmsCosemConnection(deviceAddress, settings)
     }
 

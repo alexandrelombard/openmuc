@@ -21,15 +21,14 @@
 package org.openmuc.framework.driver.dlms.settings
 
 import org.openmuc.framework.config.ArgumentSyntaxException
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.slf4j.LoggerFactory
 import java.net.InetAddress
 import java.net.UnknownHostException
 import java.text.MessageFormat
 
-class DeviceAddress(deviceAddress: String?) : GenericSetting() {
+class DeviceAddress(deviceAddress: String) : GenericSetting() {
     @Option(value = "t", mandatory = true, range = "serial|tcp")
-    val connectionType: String? = null
+    val connectionType: String = "serial"
 
     @Option(value = "h", range = "inet_address")
     var hostAddress: InetAddress? = null

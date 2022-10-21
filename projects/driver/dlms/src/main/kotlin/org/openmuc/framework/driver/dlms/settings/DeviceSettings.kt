@@ -20,9 +20,7 @@
  */
 package org.openmuc.framework.driver.dlms.settings
 
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
-
-class DeviceSettings(settings: String?) : GenericSetting() {
+class DeviceSettings(settings: String) : GenericSetting() {
     @Option(value = "ld", range = "int")
     val logicalDeviceAddress = 1
 

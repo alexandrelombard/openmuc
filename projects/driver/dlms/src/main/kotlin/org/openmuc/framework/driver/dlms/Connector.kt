@@ -23,7 +23,7 @@ package org.openmuc.framework.driver.dlms
 import org.openmuc.framework.config.ArgumentSyntaxException
 import org.openmuc.framework.driver.dlms.settings.DeviceAddress
 import org.openmuc.framework.driver.dlms.settings.DeviceSettings
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.openmuc.framework.driver.spi.ChannelValueContainer
 import org.openmuc.framework.driver.spi.ConnectionException
 import org.openmuc.jdlms.*
 import org.openmuc.jdlms.SecuritySuite.EncryptionMechanism

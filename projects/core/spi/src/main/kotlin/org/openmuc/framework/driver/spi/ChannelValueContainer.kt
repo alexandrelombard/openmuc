@@ -24,7 +24,7 @@ import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Value
 
 interface ChannelValueContainer {
-    val channelAddress: String?
+    val channelAddress: String
     var channelHandle: Any?
     val value: Value?
     var flag: Flag?

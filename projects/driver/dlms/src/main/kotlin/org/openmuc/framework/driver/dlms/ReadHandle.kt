@@ -24,7 +24,7 @@ import org.openmuc.framework.config.ArgumentSyntaxException
 import org.openmuc.framework.data.*
 import org.openmuc.framework.driver.dlms.settings.ChannelAddress
 import org.openmuc.framework.driver.spi.ChannelRecordContainer
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
+import org.openmuc.framework.driver.spi.ChannelValueContainer
 import org.openmuc.framework.driver.spi.ConnectionException
 import org.openmuc.jdlms.AccessResultCode
 import org.openmuc.jdlms.AttributeAddress
@@ -34,10 +34,10 @@ import org.openmuc.jdlms.datatypes.DataObject
 import org.slf4j.LoggerFactory
 import java.io.IOException
 
-internal class ReadHandle(private val dlmsConnection: DlmsConnection?) {
+internal class ReadHandle(private val dlmsConnection: DlmsConnection) {
     @Throws(ConnectionException::class)
-    fun read(containers: List<ChannelRecordContainer?>?) {
-        val readList: List<ChannelRecordContainer?> = ArrayList(containers)
+    fun read(containers: List<ChannelRecordContainer>) {
+        val readList: List<ChannelRecordContainer> = ArrayList(containers)
         try {
             callGet(dlmsConnection, readList)
         } catch (ex: IOException) {
@@ -46,13 +46,11 @@ internal class ReadHandle(private val dlmsConnection: DlmsConnection?) {
     }
 
     @Throws(ConnectionException::class)
-    private fun createAttributeAddresFor(readList: List<ChannelRecordContainer?>): List<AttributeAddress?> {
-        val getParams: MutableList<AttributeAddress?> = ArrayList(readList.size)
+    private fun createAttributeAddresFor(readList: List<ChannelRecordContainer>): List<AttributeAddress> {
+        val getParams = ArrayList<AttributeAddress>(readList.size)
         for (recordContainer in readList) {
             try {
-                val channelAddress = ChannelAddress(
-                    recordContainer!!.channelAddress
-                )
+                val channelAddress = ChannelAddress(recordContainer.channelAddress)
                 getParams.add(channelAddress.attributeAddress)
             } catch (e: ArgumentSyntaxException) {
                 throw ConnectionException(e)
@@ -62,26 +60,26 @@ internal class ReadHandle(private val dlmsConnection: DlmsConnection?) {
     }
 
     @Throws(IOException::class, ConnectionException::class)
-    private fun callGet(dlmsConnection: DlmsConnection?, readList: List<ChannelRecordContainer?>) {
+    private fun callGet(dlmsConnection: DlmsConnection, readList: List<ChannelRecordContainer>) {
         val timestamp = System.currentTimeMillis()
         val getParams = createAttributeAddresFor(readList)
         val writeListIter = readList.iterator()
-        val resIter: Iterator<GetResult> = this.dlmsConnection!![getParams].iterator()
+        val resIter: Iterator<GetResult> = this.dlmsConnection[getParams].iterator()
         while (writeListIter.hasNext() && resIter.hasNext()) {
             val channelContainer = writeListIter.next()
             val record = createRecordFor(timestamp, resIter.next())
-            channelContainer!!.setRecord(record)
+            channelContainer.record = record
         }
     }
 
     companion object {
         private val logger = LoggerFactory.getLogger(ReadHandle::class.java)
         @Throws(ConnectionException::class)
-        private fun handleIoException(containers: List<ChannelRecordContainer?>?, ex: IOException) {
+        private fun handleIoException(containers: List<ChannelRecordContainer>, ex: IOException) {
             logger.error("Failed to read from device.", ex)
             val timestamp = System.currentTimeMillis()
-            for (c in containers!!) {
-                c!!.setRecord(Record(null, timestamp, Flag.COMM_DEVICE_NOT_CONNECTED))
+            for (c in containers) {
+                c.record = Record(null, timestamp, Flag.COMM_DEVICE_NOT_CONNECTED)
             }
             throw ConnectionException(ex.message)
         }

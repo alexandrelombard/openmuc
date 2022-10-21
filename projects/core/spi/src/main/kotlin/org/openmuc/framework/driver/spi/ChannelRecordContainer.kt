@@ -24,7 +24,7 @@ import org.openmuc.framework.data.Record
 import org.openmuc.framework.dataaccess.ReadRecordContainer
 
 interface ChannelRecordContainer : ReadRecordContainer {
-    val channelAddress: String?
+    val channelAddress: String
     var channelHandle: Any?
 
     override var record: Record?

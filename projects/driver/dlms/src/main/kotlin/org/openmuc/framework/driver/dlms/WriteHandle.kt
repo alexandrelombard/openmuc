@@ -27,7 +27,6 @@ import org.openmuc.framework.data.StringValue
 import org.openmuc.framework.data.Value
 import org.openmuc.framework.driver.dlms.settings.ChannelAddress
 import org.openmuc.framework.driver.spi.ChannelValueContainer
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.framework.driver.spi.ConnectionException
 import org.openmuc.jdlms.AccessResultCode
 import org.openmuc.jdlms.DlmsConnection
@@ -43,14 +42,14 @@ import java.nio.charset.StandardCharsets
 import java.text.MessageFormat
 import java.util.*
 
-internal class WriteHandle(private val dlmsConnection: DlmsConnection?) {
+internal class WriteHandle(private val dlmsConnection: DlmsConnection) {
     @Throws(ConnectionException::class, UnsupportedOperationException::class)
-    fun write(containers: List<ChannelValueContainer?>?) {
+    fun write(containers: List<ChannelValueContainer>) {
         multiSet(ArrayList(containers))
     }
 
     @Throws(ConnectionException::class)
-    private fun multiSet(writeList: List<ChannelValueContainer?>) {
+    private fun multiSet(writeList: List<ChannelValueContainer>) {
         val resultCodes = callSet(writeList)
         val iterResult = resultCodes.iterator()
         val iterWriteList = writeList.iterator()
@@ -58,16 +57,16 @@ internal class WriteHandle(private val dlmsConnection: DlmsConnection?) {
             val valueContainer = iterWriteList.next()
             val resCode = iterResult.next()
             val flag = convertToFlag(resCode)
-            valueContainer!!.flag = flag
+            valueContainer.flag = flag
         }
     }
 
     @Throws(ConnectionException::class)
-    private fun callSet(writeList: List<ChannelValueContainer?>): List<AccessResultCode> {
+    private fun callSet(writeList: List<ChannelValueContainer>): List<AccessResultCode> {
         val setParams = createSetParamsFor(writeList)
         var resultCodes: List<AccessResultCode>? = null
         try {
-            resultCodes = dlmsConnection!!.set(setParams)
+            resultCodes = dlmsConnection.set(setParams)
         } catch (ex: IOException) {
             handleIoException(writeList, ex)
         }
@@ -80,14 +79,12 @@ internal class WriteHandle(private val dlmsConnection: DlmsConnection?) {
     companion object {
         private val logger = LoggerFactory.getLogger(WriteHandle::class.java)
         @Throws(ConnectionException::class)
-        private fun createSetParamsFor(writeList: List<ChannelValueContainer?>): List<SetParameter> {
+        private fun createSetParamsFor(writeList: List<ChannelValueContainer>): List<SetParameter> {
             val setParams: MutableList<SetParameter> = ArrayList(writeList.size)
             for (channelContainer in writeList) {
                 try {
-                    val channelAddress = ChannelAddress(
-                        channelContainer!!.channelAddress
-                    )
-                    val type = channelAddress.type
+                    val channelAddress = ChannelAddress(channelContainer.channelAddress)
+                    val type = channelAddress.getType()
                     if (type == null) {
                         val msg = MessageFormat.format(
                             "Can not set attribute with address {0} where the type is unknown.", channelAddress
@@ -132,8 +129,8 @@ internal class WriteHandle(private val dlmsConnection: DlmsConnection?) {
         }
 
         @Throws(UnsupportedOperationException::class)
-        private fun createDoFor(channelValueContainer: ChannelValueContainer?, type: DataObject.Type): DataObject? {
-            val flag = channelValueContainer!!.flag
+        private fun createDoFor(channelValueContainer: ChannelValueContainer, type: DataObject.Type): DataObject? {
+            val flag = channelValueContainer.flag
             if (flag !== Flag.VALID) {
                 return null
             }
@@ -158,12 +155,10 @@ internal class WriteHandle(private val dlmsConnection: DlmsConnection?) {
                     val byteArrayValue = byteArrayValueOf(value)
                     DataObject.newUtf8StringData(byteArrayValue)
                 }
-
                 DataObject.Type.VISIBLE_STRING -> {
-                    byteArrayValue = byteArrayValueOf(value)
+                    val byteArrayValue = byteArrayValueOf(value)
                     DataObject.newVisibleStringData(byteArrayValue)
                 }
-
                 DataObject.Type.DATE -> {
                     val calendar = getCalendar(value!!.asLong())
                     DataObject.newDateData(
@@ -175,7 +170,7 @@ internal class WriteHandle(private val dlmsConnection: DlmsConnection?) {
                 }
 
                 DataObject.Type.DATE_TIME -> {
-                    calendar = getCalendar(value!!.asLong())
+                    val calendar = getCalendar(value!!.asLong())
                     DataObject.newDateTimeData(
                         CosemDateTime(
                             calendar.get(Calendar.YEAR),
@@ -188,7 +183,7 @@ internal class WriteHandle(private val dlmsConnection: DlmsConnection?) {
                 }
 
                 DataObject.Type.TIME -> {
-                    calendar = getCalendar(value!!.asLong())
+                    val calendar = getCalendar(value!!.asLong())
                     DataObject.newTimeData(
                         CosemTime(
                             calendar.get(Calendar.HOUR_OF_DAY),
@@ -209,7 +204,7 @@ internal class WriteHandle(private val dlmsConnection: DlmsConnection?) {
             }
         }
 
-        private fun byteArrayValueOf(value: Value?): ByteArray? {
+        private fun byteArrayValueOf(value: Value?): ByteArray {
             return (value as? StringValue)?.asString()?.toByteArray(StandardCharsets.UTF_8)
                 ?: if (value is ByteArrayValue) {
                     value.asByteArray()
