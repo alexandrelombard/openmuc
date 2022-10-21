@@ -28,24 +28,20 @@ class SnmpChannelRecordContainer : ChannelRecordContainer {
     private var snmpRecord: Record? = null
     private var snmpChannel: SnmpChannel? = null
 
-    internal constructor() {}
-    internal constructor(channel: SnmpChannel?) {
+    internal constructor()
+    internal constructor(channel: SnmpChannel) {
         snmpChannel = channel
     }
 
-    internal constructor(record: Record?, channel: SnmpChannel?) {
+    internal constructor(record: Record, channel: SnmpChannel) {
         snmpChannel = channel
         snmpRecord = record
     }
 
-    override fun getRecord(): Record? {
-        return snmpRecord
-    }
-
     override val channel: Channel?
         get() = snmpChannel
-    override val channelAddress: String?
-        get() = snmpChannel.getChannelAddress()
+    override val channelAddress: String
+        get() = snmpChannel?.channelAddress ?: ""
 
     // TODO Auto-generated method stub
     override var channelHandle: Any?
@@ -55,14 +51,16 @@ class SnmpChannelRecordContainer : ChannelRecordContainer {
             snmpChannel = handle as SnmpChannel?
         }
 
-    override fun setRecord(record: Record?) {
-        snmpRecord = Record(record!!.value, record.timestamp, record.flag)
-    }
+    override var record: Record? = null
+        set(value) {
+            this.snmpRecord = Record(value?.value, value?.timestamp, value!!.flag)
+            field = value
+        }
 
-    override fun copy(): ChannelRecordContainer? {
+    override fun copy(): ChannelRecordContainer {
         val clone = SnmpChannelRecordContainer()
         clone.channelHandle = snmpChannel
-        clone.setRecord(snmpRecord)
+        clone.record = snmpRecord
         return clone
     }
 }

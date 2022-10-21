@@ -45,6 +45,8 @@ import java.io.IOException
 class SnmpDeviceV1V2c : SnmpDevice {
     private var snmpVersion = 0
 
+    override var authenticationPassphrase: String = ""
+
     /**
      * snmp constructor takes primary parameters in order to create snmp object. this implementation uses UDP protocol
      *
@@ -63,7 +65,7 @@ class SnmpDeviceV1V2c : SnmpDevice {
      * @throws ArgumentSyntaxException
      * thrown if Given snmp version is not correct or supported
      */
-    constructor(version: SNMPVersion, address: String?, authenticationPassphrase: String?) : super(
+    constructor(version: SNMPVersion, address: String, authenticationPassphrase: String) : super(
         address,
         authenticationPassphrase
     ) {
@@ -127,12 +129,13 @@ class SnmpDeviceV1V2c : SnmpDevice {
     }
 
     public override fun setTarget() {
-        target = CommunityTarget()
-        (target as CommunityTarget).community = OctetString(authenticationPassphrase)
+        val target = CommunityTarget()
+        target.community = OctetString(authenticationPassphrase)
         target.address = targetAddress
         target.retries = retries
         target.timeout = timeout.toLong()
         target.version = snmpVersion
+        this.target = target
     }
 
     val interfaceAddress: String?
@@ -141,7 +144,7 @@ class SnmpDeviceV1V2c : SnmpDevice {
         get() = targetAddress.toString()
     val settings: String
         get() = (SnmpDriverSettingVariableNames.SNMP_VERSION.toString() + "="
-                + SnmpDevice.Companion.getSnmpVersionFromSnmpConstantsValue(snmpVersion) + ":COMMUNITY=" + authenticationPassphrase)
+                + getSnmpVersionFromSnmpConstantsValue(snmpVersion) + ":COMMUNITY=" + authenticationPassphrase)
     val connectionHandle: Any
         get() = this
 
@@ -169,7 +172,7 @@ class SnmpDeviceV1V2c : SnmpDevice {
         var startIPRange = startIPRange
         var endIPRange = endIPRange
         val pdu = PDU()
-        for (oid in SnmpDevice.Companion.ScanOIDs.values) {
+        for (oid in ScanOIDs.values) {
             pdu.add(VariableBinding(OID(oid)))
         }
         pdu.type = PDU.GET
@@ -201,7 +204,6 @@ class SnmpDeviceV1V2c : SnmpDevice {
 
                 // loop through all community words
                 for (community in communityWords) {
-
                     // set target V2c
                     authenticationPassphrase = community
                     setTarget()
@@ -218,14 +220,14 @@ class SnmpDeviceV1V2c : SnmpDevice {
                                 val vbs: List<VariableBinding> = event.response.variableBindings
                                 // check if sent and received OIDs are the same
                                 // or else snmp version may not compatible
-                                if (!SnmpDevice.Companion.ScanOIDs.containsValue(vbs[0].oid.toString())) {
+                                if (!SnmpDevice.ScanOIDs.containsValue(vbs[0].oid.toString())) {
                                     // wrong version or not correct response!
                                     return
                                 }
                                 NotifyForNewDevice(
                                     event.peerAddress, SNMPVersion.V2c,
-                                    SnmpDevice.Companion.scannerMakeDescriptionString(
-                                        SnmpDevice.Companion.parseResponseVectorToHashMap(
+                                    SnmpDevice.scannerMakeDescriptionString(
+                                        SnmpDevice.parseResponseVectorToHashMap(
                                             vbs
                                         )
                                     )

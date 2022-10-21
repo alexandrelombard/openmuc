@@ -20,11 +20,16 @@
  */
 package org.openmuc.framework.driver.rest.helper
 
-import com.google.gson.JsonElement
+import org.openmuc.framework.config.ChannelScanInfo
 import org.openmuc.framework.data.Record
 import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.lib.rest1.Const
+import org.openmuc.framework.lib.rest1.FromJson
+import org.openmuc.framework.lib.rest1.ToJson
+import java.io.BufferedReader
+import java.io.IOException
 import java.io.InputStream
+import java.io.InputStreamReader
 
 class JsonWrapper {
     fun fromRecord(remoteRecord: Record?, valueType: ValueType?): String {
@@ -34,15 +39,15 @@ class JsonWrapper {
     }
 
     @Throws(IOException::class)
-    fun tochannelScanInfos(stream: InputStream?): List<ChannelScanInfo> {
+    fun tochannelScanInfos(stream: InputStream): List<ChannelScanInfo> {
         val jsonString = getStringFromInputStream(stream)
         val fromJson = FromJson(jsonString)
-        val channelList: List<RestChannel> = fromJson.getRestChannelList()
-        val channelScanInfos: ArrayList<ChannelScanInfo> = ArrayList<ChannelScanInfo>()
+        val channelList = fromJson.restChannelList
+        val channelScanInfos: ArrayList<ChannelScanInfo> = ArrayList()
         for (restChannel in channelList) {
             // TODO: get channel config list with valueTypeLength, description, ...
             val channelScanInfo = ChannelScanInfo(
-                restChannel.getId(), "", restChannel.getValueType(),
+                restChannel.id, "", restChannel.valueType ?: ValueType.UNKNOWN,
                 0
             )
             channelScanInfos.add(channelScanInfo)
@@ -51,23 +56,22 @@ class JsonWrapper {
     }
 
     @Throws(IOException::class)
-    fun toRecord(stream: InputStream?, valueType: ValueType?): Record {
+    fun toRecord(stream: InputStream, valueType: ValueType?): Record? {
         val jsonString = getStringFromInputStream(stream)
         val fromJson = FromJson(jsonString)
         return fromJson.getRecord(valueType)
     }
 
     @Throws(IOException::class)
-    fun toTimestamp(stream: InputStream?): Long {
+    fun toTimestamp(stream: InputStream): Long {
         val jsonString = getStringFromInputStream(stream)
         val fromJson = FromJson(jsonString)
-        val timestamp: JsonElement = fromJson.getJsonObject().get(Const.TIMESTAMP)
-            ?: return -1
-        return timestamp.getAsNumber().longValue()
+        val timestamp = fromJson.jsonObject[Const.TIMESTAMP] ?: return -1
+        return timestamp.asNumber.toLong()
     }
 
     @Throws(IOException::class)
-    private fun getStringFromInputStream(stream: InputStream?): String {
+    private fun getStringFromInputStream(stream: InputStream): String {
         val streamReader = BufferedReader(InputStreamReader(stream, "UTF-8"))
         val responseStrBuilder = StringBuilder()
         var inputStr: String?

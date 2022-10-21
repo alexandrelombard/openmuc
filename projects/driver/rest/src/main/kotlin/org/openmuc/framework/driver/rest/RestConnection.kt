@@ -29,7 +29,6 @@ import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.dataaccess.DataAccessService
 import org.openmuc.framework.driver.rest.helper.JsonWrapper
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.framework.lib.rest1.Const
 import java.io.*
 import java.net.HttpURLConnection
@@ -55,7 +54,7 @@ class RestConnection internal constructor(
     private val authString: String
     private val dataAccessService: DataAccessService?
     private var connectionAddress: String? = null
-    private val checkTimestamp = false
+    private val checkTimestamp: Boolean
 
     init {
         this.checkTimestamp = checkTimestamp
@@ -70,11 +69,7 @@ class RestConnection internal constructor(
             baseAddress = deviceAddress + "rest/channels/"
             connectionAddress = deviceAddress + "rest/connect/"
         }
-        isHTTPS = if (deviceAddress.startsWith("https://")) {
-            true
-        } else {
-            false
-        }
+        isHTTPS = deviceAddress.startsWith("https://")
         if (isHTTPS) {
             val trustManager = trustManager
             try {
@@ -94,10 +89,10 @@ class RestConnection internal constructor(
     }
 
     private val hostnameVerifier: HostnameVerifier
-        private get() = HostnameVerifier { hostname, session -> true }
+        get() = HostnameVerifier { _, _ -> true }
     private val trustManager: Array<TrustManager>
-        private get() = arrayOf(object : X509TrustManager {
-            override fun getAcceptedIssuers(): Array<X509Certificate> {
+        get() = arrayOf(object : X509TrustManager {
+            override fun getAcceptedIssuers(): Array<X509Certificate>? {
                 return null
             }
 
@@ -106,9 +101,8 @@ class RestConnection internal constructor(
         })
 
     @Throws(ConnectionException::class)
-    private fun readChannel(channelAddress: String?, valueType: ValueType?): Record? {
-        var newRecord: Record? = null
-        newRecord = try {
+    private fun readChannel(channelAddress: String, valueType: ValueType?): Record? {
+        val newRecord = try {
             wrapper.toRecord(get(channelAddress), valueType)
         } catch (e: IOException) {
             throw ConnectionException(e.message)
@@ -117,11 +111,11 @@ class RestConnection internal constructor(
     }
 
     @Throws(ConnectionException::class)
-    private fun readChannelTimestamp(channelAddress: String?): Long {
+    private fun readChannelTimestamp(channelAddress: String): Long {
         var channelAddress = channelAddress
         var timestamp: Long = -1
         try {
-            channelAddress += if (channelAddress!!.endsWith("/")) {
+            channelAddress += if (channelAddress.endsWith("/")) {
                 Const.TIMESTAMP
             } else {
                 '/'.toString() + Const.TIMESTAMP
@@ -134,7 +128,7 @@ class RestConnection internal constructor(
     }
 
     @Throws(ConnectionException::class)
-    private fun readDeviceChannelList(): List<ChannelScanInfo?>? {
+    private fun readDeviceChannelList(): List<ChannelScanInfo> {
         return try {
             wrapper.tochannelScanInfos(get(""))
         } catch (e: IOException) {
@@ -160,7 +154,7 @@ class RestConnection internal constructor(
             throw ConnectionException(e.message)
         }
         try {
-            con.connect()
+            con!!.connect()
             checkResponseCode(con)
         } catch (e: IOException) {
             throw ConnectionException(e.message)
@@ -168,13 +162,13 @@ class RestConnection internal constructor(
     }
 
     @Throws(ConnectionException::class)
-    private operator fun get(suffix: String?): InputStream? {
-        var stream: InputStream? = null
+    private operator fun get(suffix: String): InputStream {
+        var stream: InputStream?
         try {
             url = URL(baseAddress + suffix)
             con = url!!.openConnection()
             setConnectionProberties()
-            stream = con.getInputStream()
+            stream = con!!.getInputStream()
         } catch (e: MalformedURLException) {
             throw ConnectionException("malformed URL: $baseAddress")
         } catch (e: IOException) {
@@ -189,14 +183,14 @@ class RestConnection internal constructor(
         try {
             url = URL(baseAddress + suffix)
             con = url!!.openConnection()
-            con.setDoOutput(true)
+            con!!.setDoOutput(true)
             setConnectionProberties()
             if (isHTTPS) {
                 (con as HttpsURLConnection?)!!.requestMethod = "PUT"
             } else {
                 (con as HttpURLConnection?)!!.requestMethod = "PUT"
             }
-            val out = OutputStreamWriter(con.getOutputStream())
+            val out = OutputStreamWriter(con!!.getOutputStream())
             out.write(output)
             out.close()
         } catch (e: MalformedURLException) {
@@ -250,47 +244,47 @@ class RestConnection internal constructor(
     }
 
     @Throws(ConnectionException::class)
-    override fun read(containerList: List<ChannelRecordContainer?>?, obj: Any?, arg3: String?): Any? {
+    override fun read(containers: List<ChannelRecordContainer>, containerListHandle: Any?, samplingGroup: String?): Any? {
         // TODO: add grouping (reading device/driver at once)
-        for (container in containerList!!) {
+        for (container in containers) {
             var record: Record?
             if (checkTimestamp) {
-                val channelId = container!!.channel!!.id
+                val channelId = container.channel!!.id
                 val channel = dataAccessService!!.getChannel(channelId)
                 record = channel!!.latestRecord
-                if (record!!.timestamp == null || record.flag !== Flag.VALID || record!!.timestamp!! < readChannelTimestamp(
+                if (record!!.timestamp == null || record.flag !== Flag.VALID || record.timestamp!! < readChannelTimestamp(
                         container.channelAddress
                     )
                 ) {
                     record = readChannel(container.channelAddress, container.channel!!.valueType)
                 }
             } else {
-                record = readChannel(container!!.channelAddress, container.channel!!.valueType)
+                record = readChannel(container.channelAddress, container.channel!!.valueType)
             }
             if (record != null) {
-                container.setRecord(record)
+                container.record = record
             } else {
-                container.setRecord(Record(Flag.DRIVER_ERROR_READ_FAILURE))
+                container.record = Record(Flag.DRIVER_ERROR_READ_FAILURE)
             }
         }
         return null
     }
 
     @Throws(ConnectionException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         return readDeviceChannelList()
     }
 
     @Throws(ConnectionException::class)
-    override fun startListening(arg1: List<ChannelRecordContainer?>?, arg2: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 
     @Throws(ConnectionException::class)
-    override fun write(container: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
-        for (cont in container!!) {
-            val value = cont!!.value
-            val flag = writeChannel(cont.channelAddress, value, value!!.valueType)
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
+        for (cont in containers) {
+            val value = cont.value
+            val flag = writeChannel(cont.channelAddress, value, value.valueType)
             cont.flag = flag
         }
         return null

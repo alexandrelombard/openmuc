@@ -29,7 +29,6 @@ import org.openmuc.framework.data.Record
 import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.datalogger.spi.LoggingRecord
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.framework.lib.mqtt.MqttConnection
 import org.openmuc.framework.lib.mqtt.MqttReader
 import org.openmuc.framework.lib.mqtt.MqttSettings
@@ -42,13 +41,13 @@ import java.io.IOException
 import java.io.StringReader
 import java.util.*
 
-class MqttDriverConnection(host: String?, settings: String?) : Connection {
+class MqttDriverConnection(host: String, settings: String) : Connection {
     private val mqttConnection: MqttConnection
     private val mqttWriter: MqttWriter
     private val mqttReader: MqttReader
     private val parsers: MutableMap<String, ParserService> = HashMap()
-    private val lastLoggedRecords: MutableMap<String?, Long?> = HashMap()
-    private val recordContainerList: MutableList<ChannelRecordContainer?> = ArrayList()
+    private val lastLoggedRecords: MutableMap<String, Long> = HashMap()
+    private val recordContainerList: MutableList<ChannelRecordContainer> = ArrayList()
     private val settings = Properties()
 
     init {
@@ -100,13 +99,13 @@ class MqttDriverConnection(host: String?, settings: String?) : Connection {
         ScanException::class,
         ConnectionException::class
     )
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         throw UnsupportedOperationException()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
@@ -114,16 +113,16 @@ class MqttDriverConnection(host: String?, settings: String?) : Connection {
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
-        val topics: MutableList<String?> = ArrayList()
-        for (container in containers!!) {
-            topics.add(container!!.channelAddress)
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
+        val topics: MutableList<String> = ArrayList()
+        for (container in containers) {
+            topics.add(container.channelAddress)
         }
         if (topics.isEmpty()) {
             return
         }
-        mqttReader.listen(topics) { topic: String?, message: ByteArray ->
-            val channel = containers[topics.indexOf(topic)]!!.channel
+        mqttReader.listen(topics) { topic: String, message: ByteArray ->
+            val channel = containers[topics.indexOf(topic)].channel
             val record = getRecord(message, channel!!.valueType)
             if (recordIsOld(channel.id, record)) {
                 return@listen
@@ -141,43 +140,34 @@ class MqttDriverConnection(host: String?, settings: String?) : Connection {
         recordContainerList.clear()
     }
 
-    private fun addMessageToContainerList(record: Record?, container: ChannelRecordContainer?) {
-        val copiedContainer = container!!.copy()
-        copiedContainer!!.setRecord(record)
+    private fun addMessageToContainerList(record: Record, container: ChannelRecordContainer) {
+        val copiedContainer = container.copy()
+        copiedContainer.record = record
         recordContainerList.add(copiedContainer)
     }
 
-    private fun recordIsOld(channelId: String?, record: Record?): Boolean {
+    private fun recordIsOld(channelId: String, record: Record): Boolean {
         val lastTimestamp = lastLoggedRecords[channelId]
         if (lastTimestamp == null) {
-            lastLoggedRecords[channelId] = record!!.timestamp
+            lastLoggedRecords[channelId] = record.timestamp ?: 0
             return false
         }
-        if (record!!.timestamp == null || record.timestamp!! <= lastTimestamp) {
+        if (record.timestamp == null || record.timestamp!! <= lastTimestamp) {
             return true
         }
-        lastLoggedRecords[channelId] = record.timestamp
+        lastLoggedRecords[channelId] = record.timestamp ?: 0
         return false
     }
 
-    private fun getRecord(message: ByteArray, valueType: ValueType?): Record? {
-        val record: Record?
-        record = if (parsers.containsKey(settings.getProperty("parser"))) {
-            parsers[settings.getProperty("parser")]!!.deserialize(message, valueType)
-        } else {
-            Record(
-                ByteArrayValue(message),
-                System.currentTimeMillis()
-            )
-        }
-        return record
+    private fun getRecord(message: ByteArray, valueType: ValueType?): Record {
+        return parsers[settings.getProperty("parser")]?.deserialize(message, valueType) ?: Record(ByteArrayValue(message), System.currentTimeMillis())
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
-        for (container in containers!!) {
-            val record = Record(container!!.value, System.currentTimeMillis())
-            val loggingRecord = LoggingRecord(container.channelAddress!!, record)
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
+        for (container in containers) {
+            val record = Record(container.value, System.currentTimeMillis())
+            val loggingRecord = LoggingRecord(container.channelAddress, record)
             if (parsers.containsKey(settings.getProperty("parser"))) {
                 var message: ByteArray?
                 message = try {

@@ -82,7 +82,7 @@ class MqttReader(private val connection: MqttConnection, private val pid: String
      * @param listener
      * listener which gets notified of new messages coming in
      */
-    fun listen(topics: List<String>, listener: MqttMessageListener) {
+    fun listen(topics: List<String>, listener: (String, ByteArray) -> Unit) {
         val subscribe = buildSubscribe(topics)
         if (subscribe == null) {
             error("No topic given to listen on")

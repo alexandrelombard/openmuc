@@ -45,7 +45,7 @@ interface Channel {
      *
      * @return the ID of this channel.
      */
-    val id: String?
+    val id: String
 
     /**
      * Returns the address of this channel. Returns the empty string if not configured.

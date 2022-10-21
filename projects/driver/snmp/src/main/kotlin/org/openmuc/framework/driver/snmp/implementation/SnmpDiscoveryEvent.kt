@@ -27,8 +27,8 @@ import java.util.*
 class SnmpDiscoveryEvent(
     source: Any?,
     val deviceAddress: Address,
-    val snmpVersion: SNMPVersion?,
-    val description: String?
+    val snmpVersion: SNMPVersion,
+    val description: String = ""
 ) : EventObject(source) {
 
     companion object {

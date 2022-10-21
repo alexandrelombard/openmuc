@@ -23,7 +23,6 @@ package org.openmuc.framework.lib.rest1
 import com.google.gson.*
 import org.openmuc.framework.config.*
 import org.openmuc.framework.data.*
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.dataaccess.DeviceState
 import org.openmuc.framework.lib.rest1.exceptions.MissingJsonObjectException
 import org.openmuc.framework.lib.rest1.exceptions.RestConfigIsNotCorrectException
@@ -40,7 +39,7 @@ class FromJson(jsonString: String?) {
     }
 
     @Throws(ClassCastException::class)
-    fun getRecord(valueType: ValueType): Record? {
+    fun getRecord(valueType: ValueType?): Record? {
         val jse = jsonObject[Const.RECORD]
         return if (jse.isJsonNull) {
             null
@@ -158,7 +157,7 @@ class FromJson(jsonString: String?) {
         return stringArray
     }
 
-    val restChannelList: List<RestChannel>?
+    val restChannelList: List<RestChannel>
         get() {
             val recordList = ArrayList<RestChannel>()
             val jse = jsonObject["records"]
@@ -173,7 +172,7 @@ class FromJson(jsonString: String?) {
                 }
             }
             return if (recordList.isEmpty()) {
-                null
+                listOf()
             } else recordList
         }
     val restUserConfig: RestUserConfig
@@ -253,7 +252,7 @@ class FromJson(jsonString: String?) {
     }
 
     @Throws(ClassCastException::class)
-    private fun convertRestRecordToRecord(rrc: RestRecord, type: ValueType): Record {
+    private fun convertRestRecordToRecord(rrc: RestRecord, type: ValueType?): Record {
         val value = rrc.value
         val flag = rrc.flag
         var retValue: Value? = null
@@ -263,28 +262,28 @@ class FromJson(jsonString: String?) {
         return if (flag == null) {
             Record(retValue, rrc.timestamp)
         } else {
-            Record(retValue, rrc.timestamp, rrc.flag)
+            Record(retValue, rrc.timestamp, flag)
         }
     }
 
     @Throws(ClassCastException::class)
-    private fun convertValueToMucValue(type: ValueType, value: Any): Value {
+    private fun convertValueToMucValue(type: ValueType?, value: Any): Value {
         // TODO: check all value types, if it is really a float, double, ...
         var value: Any? = value
         if (value!!.javaClass.isInstance(RestValue())) {
-            value = (value as RestValue?).getValue()
+            value = (value as RestValue).value
         }
         return when (type) {
             ValueType.FLOAT -> FloatValue((value as Double?)!!.toFloat())
             ValueType.DOUBLE -> DoubleValue((value as Double?)!!)
-            ValueType.SHORT -> ShortValue((value as Double?)!!.toInt())
+            ValueType.SHORT -> ShortValue((value as Double?)!!.toInt().toShort())
             ValueType.INTEGER -> IntValue((value as Double?)!!.toInt())
             ValueType.LONG -> LongValue((value as Double?)!!.toLong())
-            ValueType.BYTE -> ByteValue((value as Double?)!!.toInt())
+            ValueType.BYTE -> ByteValue((value as Double?)!!.toInt().toByte())
             ValueType.BOOLEAN -> BooleanValue((value as Boolean?)!!)
             ValueType.BYTE_ARRAY -> {
-                val arrayList: List<Double>? = value as ArrayList<Double>?
-                val byteArray = ByteArray(arrayList!!.size)
+                val arrayList: List<Double> = value as ArrayList<Double>
+                val byteArray = ByteArray(arrayList.size)
                 var i = 0
                 while (i < arrayList.size) {
                     byteArray[i] = arrayList[i].toInt().toByte()

@@ -37,7 +37,7 @@ class SnmpDeviceV3 : SnmpDevice {
     private val username: String?
     private val securityName: String?
     private val authenticationProtocol: OID
-    private override val authenticationPassphrase: String
+    override val authenticationPassphrase: String
     private val privacyProtocol: OID
     private val privacyPassphrase: String?
 
@@ -73,13 +73,13 @@ class SnmpDeviceV3 : SnmpDevice {
      * thrown if Device address format is wrong
      */
     constructor(
-        address: String?, username: String?, securityName: String?, authenticationProtocol: OID,
-        authenticationPassphrase: String?, privacyProtocol: OID, privacyPassphrase: String?
+        address: String, username: String, securityName: String, authenticationProtocol: OID,
+        authenticationPassphrase: String, privacyProtocol: OID, privacyPassphrase: String
     ) : super(address, authenticationPassphrase) {
         this.username = username
         this.securityName = securityName
         this.authenticationProtocol = authenticationProtocol
-        this.authenticationPassphrase = authenticationPassphrase!!
+        this.authenticationPassphrase = authenticationPassphrase
         this.privacyProtocol = privacyProtocol
         this.privacyPassphrase = privacyPassphrase
     }
@@ -111,20 +111,20 @@ class SnmpDeviceV3 : SnmpDevice {
      * thrown if Device address foramt is wrong
      */
     constructor(
-        address: String?, username: String?, securityName: String?, authenticationPassphrase: String?,
-        privacyPassphrase: String?
+        address: String, username: String, securityName: String?, authenticationPassphrase: String,
+        privacyPassphrase: String
     ) : super(address, authenticationPassphrase) {
         this.username = username
         this.securityName = securityName
         authenticationProtocol = AuthMD5.ID
-        this.authenticationPassphrase = authenticationPassphrase!!
+        this.authenticationPassphrase = authenticationPassphrase
         privacyProtocol = PrivDES.ID
         this.privacyPassphrase = privacyPassphrase
     }
 
     public override fun setTarget() {
         var securityLevel = -1
-        securityLevel = if (authenticationPassphrase == null || authenticationPassphrase.trim { it <= ' ' } == "") {
+        securityLevel = if (authenticationPassphrase.trim { it <= ' ' } == "") {
             // No Authentication and no Privacy
             SecurityLevel.NOAUTH_NOPRIV
         } else {
@@ -147,13 +147,14 @@ class SnmpDeviceV3 : SnmpDevice {
                 )
             )
         // create the target
-        target = UserTarget()
+        val target = UserTarget()
         target.address = targetAddress
         target.retries = retries
         target.timeout = timeout.toLong()
         target.version = SnmpConstants.version3
         target.securityLevel = securityLevel
         target.securityName = OctetString(securityName)
+        this.target = target
     }
 
     val interfaceAddress: String?

@@ -22,7 +22,6 @@ package org.openmuc.framework.driver.mqtt
 
 import org.openmuc.framework.config.*
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.framework.lib.osgi.deployment.RegistrationHandler
 import org.openmuc.framework.parser.spi.ParserService
 import org.openmuc.framework.security.SslManagerInterface
@@ -35,18 +34,16 @@ import java.util.*
 
 @Component
 class MqttDriver : DriverService {
-    private var context: BundleContext? = null
+    private lateinit var context: BundleContext
     private var connection: MqttDriverConnection? = null
     @Activate
-    fun activate(context: BundleContext?) {
+    fun activate(context: BundleContext) {
         this.context = context
     }
 
     @Deactivate
     fun deactivate() {
-        if (connection != null) {
-            connection!!.disconnect()
-        }
+        connection?.disconnect()
     }
 
     override val info: DriverInfo
@@ -69,7 +66,7 @@ class MqttDriver : DriverService {
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
     }
 
     @Throws(UnsupportedOperationException::class)
@@ -78,9 +75,10 @@ class MqttDriver : DriverService {
     }
 
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         synchronized(this) {
-            connection = MqttDriverConnection(deviceAddress, settings)
+            val connection = MqttDriverConnection(deviceAddress, settings)
+            this.connection = connection
             sslManager
             checkForExistingParserService()
             addParserServiceListenerToServiceRegistry()
@@ -89,11 +87,11 @@ class MqttDriver : DriverService {
     }
 
     private val sslManager: Unit
-        private get() {
+        get() {
             val registrationHandler = RegistrationHandler(context)
             registrationHandler.subscribeForService(SslManagerInterface::class.java.name) { instance: Any? ->
                 if (instance != null) {
-                    connection!!.setSslManager(instance as SslManagerInterface)
+                    connection?.setSslManager(instance as SslManagerInterface)
                 }
             }
         }
@@ -102,17 +100,15 @@ class MqttDriver : DriverService {
         val serviceReferences = serviceReferences
         for (serviceReference in serviceReferences) {
             val parserIdInit = serviceReference.getProperty("parserID") as String
-            val parserInit = context!!.getService(serviceReference) as ParserService
-            if (parserInit != null) {
-                logger.info("{} registered, updating Parser in MqttDriver", parserInit.javaClass.name)
-                connection!!.setParser(parserIdInit, parserInit)
-            }
+            val parserInit = context.getService(serviceReference) as ParserService
+            logger.info("{} registered, updating Parser in MqttDriver", parserInit.javaClass.name)
+            connection!!.setParser(parserIdInit, parserInit)
         }
     }
 
     private val serviceReferences: List<ServiceReference<*>>
-        private get() = try {
-            var serviceReferences = context!!.getAllServiceReferences(
+        get() = try {
+            var serviceReferences = context.getAllServiceReferences(
                 ParserService::class.java.name,
                 null
             )
@@ -127,7 +123,7 @@ class MqttDriver : DriverService {
     private fun addParserServiceListenerToServiceRegistry() {
         val filter = '('.toString() + Constants.OBJECTCLASS + '=' + ParserService::class.java.name + ')'
         try {
-            context!!.addServiceListener(
+            context.addServiceListener(
                 { event: ServiceEvent -> getNewParserImplementationFromServiceRegistry(event) },
                 filter
             )
@@ -138,7 +134,7 @@ class MqttDriver : DriverService {
 
     private fun getNewParserImplementationFromServiceRegistry(event: ServiceEvent) {
         val serviceReference = event.serviceReference
-        val parser = context!!.getService(serviceReference) as ParserService
+        val parser = context.getService(serviceReference) as ParserService
         val parserId = serviceReference.getProperty("parserID") as String
         if (event.type == ServiceEvent.UNREGISTERING) {
             logger.info("{} unregistering, removing Parser from MqttDriver", parser.javaClass.name)

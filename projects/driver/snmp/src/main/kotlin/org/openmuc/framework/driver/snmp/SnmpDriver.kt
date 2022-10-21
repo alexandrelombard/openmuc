@@ -60,7 +60,7 @@ class SnmpDriver : DriverService {
      * eg. "AUTHENTICATIONPASSPHRASE=community,public:STARTIP=1.1.1.1:ENDIP=1.10.1.1"
      */
     @Throws(ArgumentSyntaxException::class, ScanException::class, ScanInterruptedException::class)
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         val settingMapper = settingParser(settings)
 
         // Current implementation is only for SNMP version 2c
@@ -73,7 +73,7 @@ class SnmpDriver : DriverService {
         val discoveryListener = SnmpDriverDiscoveryListener(listener)
         snmpScanner.addEventListener(discoveryListener)
         val communityWords = settingMapper[SnmpDriverScanSettingVariableNames.AUTHENTICATIONPASSPHRASE.toString()]
-            .split(",".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            ?.split(",".toRegex())?.dropLastWhile { it.isEmpty() }?.toTypedArray() ?: arrayOf()
         snmpScanner.scanSnmpV2cEnabledDevices(
             settingMapper[SnmpDriverScanSettingVariableNames.STARTIP.toString()],
             settingMapper[SnmpDriverScanSettingVariableNames.ENDIP.toString()], communityWords
@@ -97,14 +97,14 @@ class SnmpDriver : DriverService {
      * thrown if Device address foramt is wrong
      */
     @Throws(ConnectionException::class, ArgumentSyntaxException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         var device: SnmpDevice? = null
         var snmpVersion: SNMPVersion? = null
 
         // check arguments
-        if (deviceAddress == null || deviceAddress == "") {
+        if (deviceAddress == "") {
             throw ArgumentSyntaxException(NULL_DEVICE_ADDRESS_EXCEPTION)
-        } else if (settings == null || settings == "") {
+        } else if (settings == "") {
             throw ArgumentSyntaxException(NULL_SETTINGS_EXCEPTION)
         } else {
             val mappedSettings = settingParser(settings)
@@ -118,15 +118,15 @@ class SnmpDriver : DriverService {
             device = when (snmpVersion) {
                 SNMPVersion.V1, SNMPVersion.V2c -> SnmpDeviceV1V2c(
                     snmpVersion, deviceAddress,
-                    mappedSettings[SnmpDriverSettingVariableNames.AUTHENTICATIONPASSPHRASE.toString()]
+                    mappedSettings[SnmpDriverSettingVariableNames.AUTHENTICATIONPASSPHRASE.toString()]!!
                 )
 
                 SNMPVersion.V3 -> SnmpDeviceV3(
                     deviceAddress,
-                    mappedSettings[SnmpDriverSettingVariableNames.USERNAME.toString()],
+                    mappedSettings[SnmpDriverSettingVariableNames.USERNAME.toString()]!!,
                     mappedSettings[SnmpDriverSettingVariableNames.SECURITYNAME.toString()],
-                    mappedSettings[SnmpDriverSettingVariableNames.AUTHENTICATIONPASSPHRASE.toString()],
-                    mappedSettings[SnmpDriverSettingVariableNames.PRIVACYPASSPHRASE.toString()]
+                    mappedSettings[SnmpDriverSettingVariableNames.AUTHENTICATIONPASSPHRASE.toString()]!!,
+                    mappedSettings[SnmpDriverSettingVariableNames.PRIVACYPASSPHRASE.toString()]!!
                 )
 
                 else -> throw ArgumentSyntaxException(INCORRECT_SNMP_VERSION_EXCEPTION)

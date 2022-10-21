@@ -24,6 +24,6 @@ package org.openmuc.framework.driver.snmp.implementation
  * In order to receive SNMP scanner result, this listener must be implemented. In case of finding new device,
  * onNewDeviceFound method will be called. Respective actions must be implemented in this callback function.
  */
-interface SnmpDiscoveryListener {
+fun interface SnmpDiscoveryListener {
     fun onNewDeviceFound(e: SnmpDiscoveryEvent)
 }

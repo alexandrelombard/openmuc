@@ -46,7 +46,7 @@ import java.util.*
  */
 abstract class SnmpDevice : Connection {
     enum class SNMPVersion {
-        V1, V2c, V3
+        V1, V2c, V3, UNKNOWN
     }
 
     protected var targetAddress: Address? = null
@@ -54,7 +54,7 @@ abstract class SnmpDevice : Connection {
     protected var usm: USM? = null
     protected var timeout = 3000 // in milliseconds
     protected var retries = 3
-    protected var authenticationPassphrase: String? = null
+    open protected val authenticationPassphrase: String
     protected var target: AbstractTarget? = null
     protected var listeners: MutableList<SnmpDiscoveryListener> = ArrayList()
 
@@ -74,7 +74,7 @@ abstract class SnmpDevice : Connection {
      * @throws ArgumentSyntaxException
      * thrown if Device address foramt is wrong
      */
-    constructor(address: String?, authenticationPassphrase: String?) {
+    constructor(address: String, authenticationPassphrase: String) {
 
         // start snmp compatible with all versions
         snmp = try {
@@ -112,7 +112,9 @@ abstract class SnmpDevice : Connection {
     /**
      * Default constructor useful for scanner
      */
-    constructor() {}
+    constructor() {
+        this.authenticationPassphrase = ""
+    }
 
     /**
      * set target parameters. Implementations are different in SNMP v1, v2c and v3
@@ -222,7 +224,7 @@ abstract class SnmpDevice : Connection {
      * other extra information which can be useful
      */
     @Synchronized
-    protected fun NotifyForNewDevice(address: Address, version: SNMPVersion?, description: String?) {
+    protected fun NotifyForNewDevice(address: Address, version: SNMPVersion, description: String) {
         val event = SnmpDiscoveryEvent(this, address, version, description)
         val i: Iterator<*> = listeners.iterator()
         while (i.hasNext()) {
@@ -241,7 +243,7 @@ abstract class SnmpDevice : Connection {
      */
     @Throws(ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
@@ -249,7 +251,7 @@ abstract class SnmpDevice : Connection {
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
         // TODO snmp set request will be implemented here
         throw UnsupportedOperationException()
     }
@@ -264,11 +266,11 @@ abstract class SnmpDevice : Connection {
      * @throws ConnectionException
      */
     @Throws(ConnectionException::class)
-    private fun readChannelGroup(containers: List<ChannelRecordContainer?>?, timeout: Int): Any? {
+    private fun readChannelGroup(containers: List<ChannelRecordContainer>, timeout: Int): Any? {
         Date().time
         val oids: MutableList<String?> = ArrayList()
-        for (container in containers!!) {
-            if (deviceAddress.equals(container!!.channel!!.deviceAddress, ignoreCase = true)) {
+        for (container in containers) {
+            if (deviceAddress.equals(container.channel!!.deviceAddress, ignoreCase = true)) {
                 oids.add(container.channelAddress)
             }
         }
@@ -278,39 +280,35 @@ abstract class SnmpDevice : Connection {
             val receiveTime = System.currentTimeMillis()
             for (container in containers) {
                 // make sure the value exists for corresponding channel
-                if (values[container!!.channelAddress] != null) {
+                if (values[container.channelAddress] != null) {
                     logger.debug(
                         "{}: value = '{}'", container.channelAddress,
                         values[container.channelAddress]
                     )
-                    container.setRecord(
-                        Record(
-                            ByteArrayValue(values[container.channelAddress]!!.toByteArray()), receiveTime
-                        )
-                    )
+                    container.record = Record(ByteArrayValue(values[container.channelAddress]!!.toByteArray()), receiveTime)
                 }
             }
         } catch (e: SnmpTimeoutException) {
             for (container in containers) {
-                container!!.setRecord(Record(Flag.TIMEOUT))
+                container.record = Record(Flag.TIMEOUT)
             }
         }
         return null
     }
 
     @Throws(UnsupportedOperationException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         throw UnsupportedOperationException()
     }
 
     companion object {
         private val logger = LoggerFactory.getLogger(SnmpDevice::class.java)
-        protected val ScanOIDs: MutableMap<String, String> = HashMap()
+        val ScanOIDs: MutableMap<String, String> = HashMap()
 
         init {
             // some general OIDs that are valid in almost every MIB
@@ -340,15 +338,15 @@ abstract class SnmpDevice : Connection {
          * response vector
          * @return HashMap&lt;String, String&gt;
          */
-        fun parseResponseVectorToHashMap(responseVector: List<VariableBinding>): HashMap<String?, String> {
-            val map = HashMap<String?, String>()
+        fun parseResponseVectorToHashMap(responseVector: List<VariableBinding>): HashMap<String, String> {
+            val map = HashMap<String, String>()
             for (elem in responseVector) {
                 map[elem.oid.toString()] = elem.variable.toString()
             }
             return map
         }
 
-        protected fun scannerMakeDescriptionString(scannerResult: HashMap<String?, String>): String {
+        fun scannerMakeDescriptionString(scannerResult: HashMap<String, String>): String {
             val desc = StringBuilder()
             for (key in ScanOIDs.keys) {
                 desc.append('[')
@@ -369,13 +367,13 @@ abstract class SnmpDevice : Connection {
          * the version as int
          * @return SNMPVersion or null if given value is not valid
          */
-        protected fun getSnmpVersionFromSnmpConstantsValue(version: Int): SNMPVersion? {
+        fun getSnmpVersionFromSnmpConstantsValue(version: Int): SNMPVersion {
             when (version) {
                 0 -> return SNMPVersion.V1
                 1 -> return SNMPVersion.V2c
                 3 -> return SNMPVersion.V3
             }
-            return null
+            return SNMPVersion.UNKNOWN
         }
     }
 }

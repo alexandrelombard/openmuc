@@ -31,7 +31,7 @@ import org.openmuc.framework.driver.spi.DriverDeviceScanListener
  */
 class SnmpDriverDiscoveryListener(private val scannerListener: DriverDeviceScanListener?) : SnmpDiscoveryListener {
     override fun onNewDeviceFound(e: SnmpDiscoveryEvent) {
-        val newDevice = DeviceScanInfo(e.deviceAddress.toString(), null, e.description)
-        scannerListener!!.deviceFound(newDevice)
+        val newDevice = DeviceScanInfo(e.deviceAddress.toString(), "", e.description)
+        scannerListener?.deviceFound(newDevice)
     }
 }

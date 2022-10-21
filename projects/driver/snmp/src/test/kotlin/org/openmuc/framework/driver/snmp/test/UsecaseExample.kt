@@ -42,18 +42,18 @@ object UsecaseExample {
                     + "=root:" + SnmpDriverSettingVariableNames.AUTHENTICATIONPASSPHRASE + "=adminadmin:"
                     + SnmpDriverSettingVariableNames.PRIVACYPASSPHRASE + "=adminadmin")
             println(settings)
-            val myDevice = snmpDriver.connect("192.168.1.1/161", settings) as SnmpDevice?
-            val containers: MutableList<ChannelRecordContainer?> = ArrayList()
+            val myDevice = snmpDriver.connect("192.168.1.1/161", settings) as SnmpDevice
+            val containers: MutableList<ChannelRecordContainer> = ArrayList()
             val ch1 = SnmpChannel("192.168.1.1/161", "1.3.6.1.2.1.1.1.0")
             val ch2 = SnmpChannel("192.168.1.1/161", "1.3.6.1.2.1.25.1.1.0")
             val ch3 = SnmpChannel("192.168.1.1/161", "1.3.6.1.2.1.1.5.0")
             containers.add(SnmpChannelRecordContainer(ch1))
             containers.add(SnmpChannelRecordContainer(ch2))
             containers.add(SnmpChannelRecordContainer(ch3))
-            myDevice!!.read(containers, null, null)
+            myDevice.read(containers, null, null)
             for (container in containers) {
-                if (container!!.record != null) {
-                    println(container.record!!.value)
+                container.record?.let {
+                    println(it.value)
                 }
             }
         } catch (e: ConnectionException) {

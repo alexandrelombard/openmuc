@@ -29,5 +29,5 @@ interface ChannelRecordContainer : ReadRecordContainer {
 
     override var record: Record?
 
-    fun copy(): ChannelRecordContainer?
+    fun copy(): ChannelRecordContainer
 }

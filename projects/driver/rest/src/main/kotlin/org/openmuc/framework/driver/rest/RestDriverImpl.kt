@@ -25,7 +25,6 @@ import org.openmuc.framework.config.DriverInfo
 import org.openmuc.framework.config.ScanException
 import org.openmuc.framework.dataaccess.DataAccessService
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.osgi.service.component.annotations.Component
 import org.osgi.service.component.annotations.Reference
 
@@ -33,18 +32,17 @@ import org.osgi.service.component.annotations.Reference
 class RestDriverImpl : DriverService {
     private var dataAccessService: DataAccessService? = null
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         var settings = settings
         val connection: RestConnection
-        if (settings == null || settings.isEmpty() || settings.trim { it <= ' ' }
+        if (settings.isEmpty() || settings.trim { it <= ' ' }
                 .isEmpty() || !settings.contains(":")) {
             throw ArgumentSyntaxException(
                 "Invalid User Credentials provided in settings: " + settings
                         + ". Expected Format: username:password"
             )
         }
-        return if (deviceAddress == null || deviceAddress.isEmpty() || deviceAddress.trim { it <= ' ' }.isEmpty()
-            || !deviceAddress.contains(":")
+        return if (deviceAddress.isEmpty() || deviceAddress.trim { it <= ' ' }.isEmpty() || !deviceAddress.contains(":")
         ) {
             throw ArgumentSyntaxException(
                 "Invalid address or port: " + deviceAddress
@@ -72,7 +70,7 @@ class RestDriverImpl : DriverService {
         get() = Companion.info
 
     @Throws(UnsupportedOperationException::class, ArgumentSyntaxException::class, ScanException::class)
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         throw UnsupportedOperationException()
     }
 

@@ -25,7 +25,7 @@ import org.openmuc.framework.dataaccess.*
 import java.io.IOException
 
 class SnmpChannel : Channel {
-    override val id: String? = null
+    override val id: String = ""
     override var channelAddress: String? = null
         private set
     override val description: String? = null
@@ -90,15 +90,15 @@ class SnmpChannel : Channel {
     }
 
     @Throws(DataLoggerNotAvailableException::class, IOException::class)
-    override fun getLoggedRecords(startTime: Long): List<Record?>? {
-        return null
+    override fun getLoggedRecords(startTime: Long): List<Record> {
+        return listOf()
     }
 
     @Throws(DataLoggerNotAvailableException::class, IOException::class)
-    override fun getLoggedRecords(startTime: Long, endTime: Long): List<Record?>? {
-        return null
+    override fun getLoggedRecords(startTime: Long, endTime: Long): List<Record> {
+        return listOf()
     }
 
     override val scalingFactor: Double
-        get() = 0
+        get() = 0.0
 }

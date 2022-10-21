@@ -23,7 +23,7 @@ package org.openmuc.framework.lib.osgi.deployment
 /**
  * Helper interface to set services
  */
-interface ServiceAccess {
+fun interface ServiceAccess {
     /**
      * @param serviceRef
      * The service to set
