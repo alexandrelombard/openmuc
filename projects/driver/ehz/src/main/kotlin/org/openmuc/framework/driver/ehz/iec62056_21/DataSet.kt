@@ -22,14 +22,14 @@ package org.openmuc.framework.driver.ehz.iec62056_21
 
 import org.openmuc.framework.data.DoubleValue
 
-class DataSet(dataSetStr: String?) {
+class DataSet(dataSetStr: String) {
     val address: String
-    var value: String? = null
+    var value: String
     var unit: String? = null
 
     init {
         var dataSetStr = dataSetStr
-        val bracket = dataSetStr!!.indexOf('(')
+        val bracket = dataSetStr.indexOf('(')
         address = dataSetStr.substring(0, bracket)
         dataSetStr = dataSetStr.substring(bracket)
         val separator = dataSetStr.indexOf('*')
@@ -43,7 +43,7 @@ class DataSet(dataSetStr: String?) {
 
     fun parseValueAsDouble(): DoubleValue {
         return try {
-            DoubleValue(value!!.toDouble())
+            DoubleValue(value.toDouble())
         } catch (e: NumberFormatException) {
             DoubleValue(Double.NaN)
         }

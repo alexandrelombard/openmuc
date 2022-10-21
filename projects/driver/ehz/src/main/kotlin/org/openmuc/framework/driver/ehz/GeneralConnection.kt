@@ -28,17 +28,17 @@ import org.openmuc.framework.driver.spi.*
 
 abstract class GeneralConnection : Connection {
     @Throws(ConnectionException::class)
-    abstract fun read(containers: List<ChannelRecordContainer?>?, timeout: Int)
-    abstract fun scanForChannels(timeout: Int): List<ChannelScanInfo?>
+    abstract fun read(containers: List<ChannelRecordContainer>, timeout: Int)
+    abstract fun scanForChannels(timeout: Int): List<ChannelScanInfo>
     abstract fun works(): Boolean
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         return scanForChannels(20000)
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
@@ -47,26 +47,26 @@ abstract class GeneralConnection : Connection {
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
         throw UnsupportedOperationException()
     }
 
     companion object {
         const val TIMEOUT = 10000
-        protected fun handleChannelRecordContainer(
-            containers: List<ChannelRecordContainer?>?,
-            values: Map<String?, Value?>, timestamp: Long
+        fun handleChannelRecordContainer(
+            containers: List<ChannelRecordContainer>,
+            values: Map<String, Value>, timestamp: Long
         ) {
-            for (container in containers!!) {
-                val address = container!!.channelAddress
+            for (container in containers) {
+                val address = container.channelAddress
                 val value = values[address] ?: continue
                 val record = Record(value, timestamp, Flag.VALID)
-                container.setRecord(record)
+                container.record = record
             }
         }
     }

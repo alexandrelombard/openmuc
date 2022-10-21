@@ -55,7 +55,8 @@ class SmlConnection(serialPortName: String) : GeneralConnection() {
         threadExecutor.shutdown()
         try {
             receiver?.close()
-            if (!serialPort!!.isClosed) {
+            val serialPort = serialPort
+            if(serialPort != null && !serialPort.isClosed) {
                 serialPort.close()
             }
         } catch (e: IOException) {
@@ -64,14 +65,14 @@ class SmlConnection(serialPortName: String) : GeneralConnection() {
     }
 
     @Throws(ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         logger.trace("start listening")
         listenerTask = ListenerTask(containers, listener)
         threadExecutor.execute(listenerTask)
     }
 
     private inner class ListenerTask(
-        private val containers: List<ChannelRecordContainer?>?,
+        private val containers: List<ChannelRecordContainer>,
         private val listener: RecordsReceivedListener?
     ) : Runnable {
         private var stopListening = false
@@ -81,10 +82,11 @@ class SmlConnection(serialPortName: String) : GeneralConnection() {
                     val timestamp = System.currentTimeMillis()
                     val smlListEntries = retrieveSmlListEntries()
                     addEntriesToContainers(containers, timestamp, smlListEntries)
-                    listener!!.newRecords(containers)
+                    listener?.newRecords(containers)
                 } catch (e: InterruptedIOException) {
+                    listener?.connectionInterrupted("ehz", this@SmlConnection)
                 } catch (e: IOException) {
-                    listener!!.connectionInterrupted("ehz", this@SmlConnection)
+                    listener?.connectionInterrupted("ehz", this@SmlConnection)
                 }
             }
         }
@@ -95,11 +97,10 @@ class SmlConnection(serialPortName: String) : GeneralConnection() {
     }
 
     @Throws(ConnectionException::class)
-    override fun read(containers: List<ChannelRecordContainer?>?, timeout: Int) {
+    override fun read(containers: List<ChannelRecordContainer>, timeout: Int) {
         logger.trace("reading channels")
         val timestamp = System.currentTimeMillis()
-        val list: Array<SmlListEntry>?
-        list = try {
+        val list: Array<SmlListEntry> = try {
             retrieveSmlListEntries()
         } catch (e: IOException) {
             logger.error("read failed", e)
@@ -109,12 +110,12 @@ class SmlConnection(serialPortName: String) : GeneralConnection() {
         addEntriesToContainers(containers, timestamp, list)
     }
 
-    override fun scanForChannels(timeout: Int): List<ChannelScanInfo?> {
-        val channelInfos: MutableList<ChannelScanInfo?> = LinkedList()
+    override fun scanForChannels(timeout: Int): List<ChannelScanInfo> {
+        val channelInfos: MutableList<ChannelScanInfo> = LinkedList()
         logger.debug("scanning channels")
         try {
             val list = retrieveSmlListEntries()
-            for (entry in list!!) {
+            for (entry in list) {
                 val channelInfo = convertEntryToScanInfo(entry)
                 channelInfos.add(channelInfo)
             }
@@ -135,7 +136,7 @@ class SmlConnection(serialPortName: String) : GeneralConnection() {
 
     @Synchronized
     @Throws(IOException::class)
-    private fun retrieveSmlListEntries(): Array<SmlListEntry>? {
+    private fun retrieveSmlListEntries(): Array<SmlListEntry> {
         val smlFile = receiver!!.smlFile
         val messages = smlFile.messages
         for (message in messages) {
@@ -149,7 +150,7 @@ class SmlConnection(serialPortName: String) : GeneralConnection() {
             }
             return getListResult.valList.valListEntry
         }
-        return null
+        return arrayOf()
     }
 
     init {
@@ -166,17 +167,17 @@ class SmlConnection(serialPortName: String) : GeneralConnection() {
     companion object {
         private val logger = LoggerFactory.getLogger(GeneralConnection::class.java)
         private fun addEntriesToContainers(
-            containers: List<ChannelRecordContainer?>?, timestamp: Long,
-            smlEntries: Array<SmlListEntry>?
+            containers: List<ChannelRecordContainer>, timestamp: Long,
+            smlEntries: Array<SmlListEntry>
         ) {
-            val values: MutableMap<String?, Value?> = LinkedHashMap()
-            for (entry in smlEntries!!) {
+            val values = LinkedHashMap<String, Value>()
+            for (entry in smlEntries) {
                 val address = convertBytesToHexString(entry.objName.value)
                 val valueContainer = extractValueOf(entry)
-                values[address] = valueContainer.value
+                values[address.toString()] = valueContainer.value
                 logger.trace("{} = {}", address, valueContainer.value)
             }
-            GeneralConnection.Companion.handleChannelRecordContainer(containers, values, timestamp)
+            handleChannelRecordContainer(containers, values, timestamp)
         }
 
         private fun convertEntryToScanInfo(entry: SmlListEntry): ChannelScanInfo {

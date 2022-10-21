@@ -26,7 +26,7 @@ import java.io.DataInputStream
 import java.io.IOException
 import java.io.InterruptedIOException
 
-class IecReceiver(iface: String?) {
+class IecReceiver(iface: String) {
     // public static final int PROTOCOL_NORMAL = 0;
     // public static final int PROTOCOL_SECONDARY = 1;
     // public static final int PROTOCOL_HDLC = 2;
@@ -34,7 +34,7 @@ class IecReceiver(iface: String?) {
     // public static final int MODE_DATA_READOUT = 0;
     // public static final int MODE_PROGRAMMING = 1;
     // public static final int MODE_BINARY_HDLC = 2;,
-    private var serialPort: SerialPort?
+    private val serialPort: SerialPort
     private val msgBuffer = ByteArray(10000)
     private val inputBuffer = ByteArray(2000)
     private val inStream: DataInputStream
@@ -47,6 +47,7 @@ class IecReceiver(iface: String?) {
             try {
                 sleep(time)
             } catch (e: InterruptedException) {
+                //
             }
             isEnd = true
             return
@@ -73,7 +74,7 @@ class IecReceiver(iface: String?) {
 
     @Throws(IOException::class)
     fun receiveMessage(msTimeout: Long): ByteArray {
-        val time: Timeout = Timeout(msTimeout)
+        val time = Timeout(msTimeout)
         time.start()
         var bufferIndex = 0
         var start = false
@@ -103,8 +104,8 @@ class IecReceiver(iface: String?) {
             } catch (e: InterruptedException) {
                 Thread.currentThread().interrupt()
             }
-        } while (!time.isEnd())
-        if (time.isEnd()) {
+        } while (!time.isEnd)
+        if (time.isEnd) {
             throw InterruptedIOException("Timeout")
         }
         val frame = ByteArray(bufferIndex)
@@ -117,7 +118,7 @@ class IecReceiver(iface: String?) {
     fun changeBaudrate(baudrate: Int) {
         try {
             logger.debug("Change baudrate to: {}.", baudrate)
-            serialPort!!.baudRate = baudrate
+            serialPort.baudRate = baudrate
         } catch (e: IOException) {
             logger.warn("Failed to change the baud rate.", e)
         }
@@ -125,11 +126,10 @@ class IecReceiver(iface: String?) {
 
     fun close() {
         try {
-            serialPort!!.close()
+            serialPort.close()
         } catch (e: IOException) {
             logger.warn("Failed to close the serial port properly.", e)
         }
-        serialPort = null
     }
 
     companion object {

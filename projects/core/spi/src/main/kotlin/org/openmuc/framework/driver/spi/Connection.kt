@@ -62,7 +62,7 @@ interface Connection {
         ScanException::class,
         ConnectionException::class
     )
-    fun scanForChannels(settings: String?): List<ChannelScanInfo?>?
+    fun scanForChannels(settings: String): List<ChannelScanInfo>
 
     /**
      * Reads the data channels that correspond to the given record containers. The read result is returned by setting

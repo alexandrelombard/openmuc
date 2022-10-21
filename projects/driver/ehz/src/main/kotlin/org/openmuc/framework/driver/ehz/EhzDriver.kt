@@ -40,7 +40,7 @@ class EhzDriver : DriverService {
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         val serialPortNames = SerialPortBuilder.getSerialPortNames()
         var i = 0.0
         val progress = 0
@@ -124,7 +124,7 @@ class EhzDriver : DriverService {
     }
 
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         logger.trace("Trying to connect to {}", deviceAddress)
         try {
             val device = URI(deviceAddress)

@@ -33,8 +33,8 @@ import java.io.IOException
 import java.text.ParseException
 import java.util.*
 
-class IecConnection(deviceAddress: String?, timeout: Int) : GeneralConnection() {
-    private var receiver: IecReceiver? = null
+class IecConnection(deviceAddress: String, timeout: Int) : GeneralConnection() {
+    private val receiver: IecReceiver
 
     init {
         receiver = try {
@@ -45,26 +45,26 @@ class IecConnection(deviceAddress: String?, timeout: Int) : GeneralConnection() 
     }
 
     override fun disconnect() {
-        receiver!!.close()
+        receiver.close()
     }
 
     @Throws(ConnectionException::class)
-    override fun read(containers: List<ChannelRecordContainer?>?, timeout: Int) {
+    override fun read(containers: List<ChannelRecordContainer>, timeout: Int) {
         logger.trace("reading channels")
         val timestamp = System.currentTimeMillis()
         try {
-            val frame = receiver!!.receiveMessage(timeout.toLong())
+            val frame = receiver.receiveMessage(timeout.toLong())
             val message: ModeDMessage = ModeDMessage.Companion.parse(frame)
             val dataSets = message.dataSets
-            val values: MutableMap<String?, Value?> = LinkedHashMap()
-            for (ds in dataSets!!) {
+            val values = LinkedHashMap<String, Value>()
+            for (ds in dataSets) {
                 val dataSet = DataSet(ds)
                 val address = dataSet.address
-                val value: Value? = dataSet.parseValueAsDouble()
+                val value = dataSet.parseValueAsDouble()
                 values[address] = value
                 logger.trace("{} = {}", address, value)
             }
-            GeneralConnection.Companion.handleChannelRecordContainer(containers, values, timestamp)
+            handleChannelRecordContainer(containers, values, timestamp)
         } catch (e: IOException) {
             logger.error("read failed", e)
             disconnect()
@@ -74,24 +74,24 @@ class IecConnection(deviceAddress: String?, timeout: Int) : GeneralConnection() 
         }
     }
 
-    override fun scanForChannels(timeout: Int): List<ChannelScanInfo?> {
-        val channelInfos: MutableList<ChannelScanInfo?> = LinkedList()
+    override fun scanForChannels(timeout: Int): List<ChannelScanInfo> {
+        val channelInfos = LinkedList<ChannelScanInfo>()
         logger.debug("scanning channels")
         try {
-            val frame = receiver!!.receiveMessage(timeout.toLong())
-            val message: ModeDMessage = ModeDMessage.Companion.parse(frame)
+            val frame = receiver.receiveMessage(timeout.toLong())
+            val message: ModeDMessage = ModeDMessage.parse(frame)
             val dataSets = message.dataSets
-            for (data in dataSets!!) {
+            for (data in dataSets) {
                 val dataSet = DataSet(data)
                 val channelAddress = dataSet.address
                 val description = "Current value: " + dataSet.parseValueAsDouble() + dataSet.unit
                 val valueType = ValueType.DOUBLE
-                val valueTypeLength: Int? = null
+                val valueTypeLength = 0
                 val readable = true
                 val writable = false
                 val channelInfo = ChannelScanInfo(
                     channelAddress, description, valueType,
-                    valueTypeLength!!, readable, writable
+                    valueTypeLength, readable, writable
                 )
                 channelInfos.add(channelInfo)
             }
@@ -105,7 +105,7 @@ class IecConnection(deviceAddress: String?, timeout: Int) : GeneralConnection() 
 
     override fun works(): Boolean {
         try {
-            val frame = receiver!!.receiveMessage(1000)
+            val frame = receiver.receiveMessage(1000)
             ModeDMessage.Companion.parse(frame)
         } catch (e: IOException) {
             return false

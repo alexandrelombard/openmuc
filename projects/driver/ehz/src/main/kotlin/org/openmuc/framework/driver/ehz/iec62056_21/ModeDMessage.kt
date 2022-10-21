@@ -48,7 +48,8 @@ class ModeDMessage private constructor(val vendorId: String, val identifier: Str
                 }
                 position = 5
                 var i = 0
-                /* Search for CRLF to extract identifier */while ((frame[position + i].toInt() == 0x0d && frame[position + i + 1].toInt()) != 0x0a) {
+                /* Search for CRLF to extract identifier */
+                while (!((frame[position + i].toInt() == 0x0d) && (frame[position + i + 1].toInt()) == 0x0a)) {
                     if (frame[position + i] == '!'.code.toByte()) {
                         throw ParseException("Invalid end character", position + i)
                     }
