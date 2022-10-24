@@ -24,7 +24,7 @@ import org.openmuc.framework.authentication.AuthenticationService
 import org.openmuc.framework.config.ConfigChangeListener
 import org.openmuc.framework.config.ConfigService
 import org.openmuc.framework.config.RootConfig
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.Record
 import org.openmuc.framework.dataaccess.DataAccessService
 import org.openmuc.framework.lib.rest1.ToJson
 import org.openmuc.framework.server.restws.RestServer
@@ -41,10 +41,10 @@ import javax.servlet.http.HttpServletResponse
 abstract class GenericServlet : HttpServlet(), ConfigChangeListener {
     @Throws(ServletException::class)
     override fun init() {
-        handleDataAccessService(RestServer.Companion.getDataAccessService())
-        handleConfigService(RestServer.Companion.getConfigService())
+        handleDataAccessService(RestServer.dataAccessService)
+        handleConfigService(RestServer.configService)
         handleRootConfig(configService!!.getConfig(this))
-        handleAuthenticationService(RestServer.Companion.getAuthenticationService())
+        handleAuthenticationService(RestServer.authenticationService)
         corsProperty
     }
 
@@ -179,18 +179,18 @@ abstract class GenericServlet : HttpServlet(), ConfigChangeListener {
     companion object {
         private const val serialVersionUID = 4041357804530863512L
         private val CHARSET = StandardCharsets.UTF_8
-        protected const val APPLICATION_JSON = "application/json"
-        protected const val REST_PATH = " Rest Path = "
+        const val APPLICATION_JSON = "application/json"
+        const val REST_PATH = " Rest Path = "
         private var dataAccess: DataAccessService? = null
         private var configService: ConfigService? = null
         private var authenticationService: AuthenticationService? = null
         private var rootConfig: RootConfig? = null
         private val logger = LoggerFactory.getLogger(GenericServlet::class.java)
-        private var propertyMap: Map<String?, ArrayList<String?>?>? = null
+        private var propertyMap: MutableMap<String, ArrayList<String>> = hashMapOf()
         private var corsEnabled = false
         private val corsProperty: Unit
             private get() {
-                val propertyReader: PropertyReader = PropertyReader.Companion.getInstance()
+                val propertyReader: PropertyReader = PropertyReader.instance
                 corsEnabled = propertyReader.isCorsEnabled
                 propertyMap = propertyReader.propertyMap
             }

@@ -4,6 +4,8 @@ plugins {
 def projectName = "OpenMUC Driver - REST"
 def projectDescription = "REST driver for the OpenMUC framework."
 
+def gsonVersion = '2.8.6'
+
 configurations.create('embed')
 
 if(rootProject.tasks.findByName("codeCoverageReport"))
@@ -13,6 +15,7 @@ dependencies {
     implementation project(':openmuc-core-spi')
     implementation project(':openmuc-core-api')
     implementation project(':openmuc-lib-rest1')
+    implementation group: 'com.google.code.gson', name: 'gson', version: gsonVersion
     implementation 'commons-codec:commons-codec:1.15'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }

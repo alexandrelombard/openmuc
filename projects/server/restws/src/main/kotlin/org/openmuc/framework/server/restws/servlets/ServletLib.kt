@@ -20,7 +20,6 @@
  */
 package org.openmuc.framework.server.restws.servlets
 
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.lib.rest1.FromJson
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -154,8 +153,8 @@ object ServletLib {
         return buildString(request.reader)
     }
 
-    fun getPathInfoArray(pathInfo: String?): Array<String> {
-        return if (pathInfo!!.length > 1) {
+    fun getPathInfoArray(pathInfo: String): Array<String> {
+        return if (pathInfo.length > 1) {
             pathInfo.replaceFirst("/".toRegex(), "").split("/".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         } else {
             arrayOf("/")

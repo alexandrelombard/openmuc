@@ -21,14 +21,14 @@
 package org.openmuc.framework.server.restws.servlets
 
 import org.slf4j.LoggerFactory
-import java.lang.Boolean
 import kotlin.Array
 import kotlin.Exception
 import kotlin.String
 
 class PropertyReader private constructor() {
     // Map<ORIGIN, [METHODS, HEADERS]>
-    private var propertyMap: MutableMap<String, ArrayList<String>>? = null
+    var propertyMap: MutableMap<String, ArrayList<String>> = hashMapOf()
+        private set
     var isCorsEnabled = false
         private set
 
@@ -38,7 +38,7 @@ class PropertyReader private constructor() {
 
     private fun loadAllProperties() {
         propertyMap = HashMap()
-        isCorsEnabled = Boolean.parseBoolean(getProperty("enable_cors"))
+        isCorsEnabled = getProperty("enable_cors").toBoolean()
         if (isCorsEnabled) {
             val urls = getPropertyList("url_cors")
             val methods = getPropertyList("methods_cors")
@@ -70,20 +70,9 @@ class PropertyReader private constructor() {
         return property
     }
 
-    fun getPropertyMap(): Map<String, ArrayList<String>>? {
-        return propertyMap
-    }
-
     companion object {
         private val logger = LoggerFactory.getLogger(PropertyReader::class.java)
         private const val SEPERATOR = ";"
-        var instance: PropertyReader? = null
-            get() {
-                if (field == null) {
-                    field = PropertyReader()
-                }
-                return field
-            }
-            private set
+        val instance: PropertyReader = PropertyReader()
     }
 }

@@ -22,14 +22,19 @@ package org.openmuc.framework.server.restws.servlets
 
 import com.google.gson.JsonElement
 import org.openmuc.framework.config.ChannelConfig
+import org.openmuc.framework.config.ConfigService
+import org.openmuc.framework.config.RootConfig
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Record
 import org.openmuc.framework.data.Value
 import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.dataaccess.Channel
+import org.openmuc.framework.dataaccess.DataAccessService
 import org.openmuc.framework.lib.rest1.Const
 import org.openmuc.framework.lib.rest1.FromJson
+import org.openmuc.framework.lib.rest1.ToJson
 import org.slf4j.LoggerFactory
+import java.io.IOException
 import javax.servlet.ServletException
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
@@ -40,7 +45,7 @@ class ChannelResourceServlet : GenericServlet() {
     private var rootConfig: RootConfig? = null
     @Throws(ServletException::class, IOException::class)
     override fun doGet(request: HttpServletRequest, response: HttpServletResponse) {
-        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        response.contentType = APPLICATION_JSON
         val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
             ?: return
         setConfigAccess()
@@ -128,7 +133,7 @@ class ChannelResourceServlet : GenericServlet() {
             val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
             val channelId = pathInfoArray!![0]!!.replace("/", "")
             val json = ServletLib.getFromJson(request, logger, response) ?: return
-            if (pathInfoArray.size < 1) {
+            if (pathInfoArray.isEmpty()) {
                 ServletLib.sendHTTPErrorAndLogDebug(
                     response, HttpServletResponse.SC_NOT_FOUND, logger,
                     REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
