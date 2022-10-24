@@ -23,7 +23,7 @@ package org.openmuc.framework.lib.rest1
 import com.google.gson.*
 import org.openmuc.framework.config.*
 import org.openmuc.framework.data.*
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.Record
 import org.openmuc.framework.dataaccess.Channel
 import org.openmuc.framework.dataaccess.DeviceState
 import org.openmuc.framework.lib.rest1.rest.objects.*

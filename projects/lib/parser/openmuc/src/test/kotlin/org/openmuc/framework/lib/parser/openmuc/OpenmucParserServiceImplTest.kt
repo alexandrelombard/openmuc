@@ -40,7 +40,7 @@ import java.util.stream.Collectors
 internal class OpenmucParserServiceImplTest {
     private var parserService: ParserService? = null
     @BeforeEach
-    private fun setupService() {
+    fun setupService(): Unit {
         parserService = OpenmucParserServiceImpl()
     }
 
@@ -119,7 +119,7 @@ internal class OpenmucParserServiceImplTest {
     fun deserializeByteArrayValue() {
         val inputString = "{\"timestamp\":1582722316,\"flag\":\"VALID\",\"value\":\"dGVzdA==\"}"
         val recordDes = parserService!!.deserialize(inputString.toByteArray(), ValueType.BYTE_ARRAY)
-        Assertions.assertEquals("test", String(recordDes!!.value!!.asByteArray()!!))
+        Assertions.assertEquals("test", String(recordDes!!.value!!.asByteArray()))
     }
 
     @Test

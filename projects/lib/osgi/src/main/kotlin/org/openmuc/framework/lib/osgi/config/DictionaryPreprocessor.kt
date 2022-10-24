@@ -22,6 +22,7 @@ package org.openmuc.framework.lib.osgi.config
 
 import org.slf4j.LoggerFactory
 import java.util.*
+import java.util.stream.Collectors
 
 /**
  * Intention of this class is to provide a "Special Case Object" for invalid dictionaries. See
@@ -35,12 +36,14 @@ class DictionaryPreprocessor(newDictionary: MutableMap<String, *>) {
     var cleanedUpDeepCopyOfDictionary: MutableMap<String, String> = hashMapOf()
     private var osgiInit: Boolean
 
+    constructor(newDictionary: Dictionary<String, *>) : this(newDictionary.toMap())
+
     init {
 
         // call this first before to print original dictionary passed by MangedService updated()
         logDebugPrintDictionary(newDictionary)
         osgiInit = false
-        if (newDictionary == null || newDictionary.isEmpty()) {
+        if (newDictionary.isEmpty()) {
             cleanedUpDeepCopyOfDictionary = hashMapOf()
         } else {
             // create deep copy to not manipulate the original dictionary
@@ -113,4 +116,9 @@ class DictionaryPreprocessor(newDictionary: MutableMap<String, *>) {
     companion object {
         private val logger = LoggerFactory.getLogger(DictionaryPreprocessor::class.java)
     }
+}
+
+private fun <K, V> Dictionary<K, V>.toMap(): MutableMap<K, V> {
+    val keys = Collections.list(this.keys())
+    return keys.stream().collect(Collectors.toMap({ it }, { this[it] }))
 }

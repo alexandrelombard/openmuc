@@ -20,7 +20,7 @@
  */
 package org.openmuc.framework.lib.rest1.exceptions
 
-class MissingJsonObjectException @JvmOverloads constructor(message: String? = "Searched JsonObject is missing.") :
+class MissingJsonObjectException @JvmOverloads constructor(message: String = "Searched JsonObject is missing.") :
     Exception(message) {
     companion object {
         private const val serialVersionUID = 3245778161912001429L

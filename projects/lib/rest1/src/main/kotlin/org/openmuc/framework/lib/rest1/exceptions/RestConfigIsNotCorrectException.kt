@@ -24,7 +24,7 @@ class RestConfigIsNotCorrectException : Exception {
     override var message = "Something was wrong in the json config message. "
         private set
 
-    constructor() {}
+    constructor()
     constructor(message: String) {
         this.message = message
     }

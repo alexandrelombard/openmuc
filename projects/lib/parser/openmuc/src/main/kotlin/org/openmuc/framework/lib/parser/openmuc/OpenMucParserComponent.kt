@@ -30,7 +30,7 @@ import java.util.*
 
 @Component
 class OpenMucParserComponent {
-    private var registration: ServiceRegistration<*>? = null
+    private lateinit var registration: ServiceRegistration<*>
     @Activate
     fun activate(context: BundleContext) {
         val properties: Dictionary<String, Any> = Hashtable()
@@ -41,6 +41,6 @@ class OpenMucParserComponent {
 
     @Deactivate
     fun deactivate() {
-        registration!!.unregister()
+        registration.unregister()
     }
 }

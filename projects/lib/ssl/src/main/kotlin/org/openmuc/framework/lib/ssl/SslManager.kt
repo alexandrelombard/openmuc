@@ -51,8 +51,10 @@ class SslManager internal constructor() : ManagedService, SslManagerInterface {
         try {
             keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
             trustManagerFactory = TrustManagerFactory.getInstance("SunX509")
-            sslContext = SSLContext.getInstance("TLSv1.2")
-            sslContext.init(null, null, null)
+            SSLContext.getInstance("TLSv1.2").let {
+                it.init(null, null, null)
+                sslContext = it
+            }
         } catch (e: NoSuchAlgorithmException) {
             logger.error("Factory could not be loaded: {}", e.message)
         } catch (e: KeyManagementException) {
@@ -81,12 +83,20 @@ class SslManager internal constructor() : ManagedService, SslManagerInterface {
             )
 
             // get factories
-            keyManagerFactory = KeyManagerFactory.getInstance("SunX509")
-            keyManagerFactory.init(keyStore, keyStorePassword)
-            trustManagerFactory = TrustManagerFactory.getInstance("SunX509")
-            trustManagerFactory.init(trustStore)
-            sslContext = SSLContext.getInstance("TLSv1.2")
-            sslContext.init(keyManagerFactory.getKeyManagers(), trustManagerFactory.getTrustManagers(), null)
+            val keyManagerFactory = KeyManagerFactory.getInstance("SunX509").let {
+                it.init(keyStore, keyStorePassword)
+                keyManagerFactory = it
+                it
+            }
+            val trustManagerFactory = TrustManagerFactory.getInstance("SunX509").let {
+                it.init(trustStore)
+                trustManagerFactory = it
+                it
+            }
+            SSLContext.getInstance("TLSv1.2").let {
+                it.init(keyManagerFactory.keyManagers, trustManagerFactory.trustManagers, null)
+                sslContext = it
+            }
             logger.info("Successfully loaded")
         } catch (e: Exception) {
             logger.error("Could not load key/trust store: {}", e.message)
@@ -114,7 +124,7 @@ class SslManager internal constructor() : ManagedService, SslManagerInterface {
     }
 
     @Throws(ConfigurationException::class)
-    override fun updated(properties: Dictionary<String?, *>?) {
+    override fun updated(properties: Dictionary<String, *>) {
         val dict = DictionaryPreprocessor(properties)
         if (!dict.wasIntermediateOsgiInitCall()) {
             tryProcessConfig(dict)

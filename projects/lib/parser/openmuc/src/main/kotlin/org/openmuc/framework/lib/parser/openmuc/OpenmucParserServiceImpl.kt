@@ -22,7 +22,7 @@ package org.openmuc.framework.lib.parser.openmuc
 
 import com.google.gson.*
 import org.openmuc.framework.data.*
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.Record
 import org.openmuc.framework.datalogger.spi.LoggingRecord
 import org.openmuc.framework.parser.spi.ParserService
 import org.openmuc.framework.parser.spi.SerializationException
