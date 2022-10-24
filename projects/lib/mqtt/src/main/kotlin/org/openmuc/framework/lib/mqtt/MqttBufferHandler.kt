@@ -127,20 +127,20 @@ class MqttBufferHandler(maxBufferSizeKb: Long, maxFileCount: Int, maxFileSizeKb:
     }
 
     private val isFileBufferEnabled: Boolean
-        private get() = maxFileCount > 0 && maxBufferSizeBytes > 0
+        get() = maxFileCount > 0 && maxBufferSizeBytes > 0
 
-    fun add(topic: String?, message: ByteArray?) {
+    fun add(topic: String, message: ByteArray) {
         if (isBufferTooFull(message)) {
             handleFull(topic, message)
         } else {
             synchronized(buffer) {
                 buffer.add(MessageTuple(topic, message))
-                currentBufferSize += message!!.size.toLong()
+                currentBufferSize += message.size.toLong()
             }
             if (logger.isTraceEnabled) {
                 logger.trace(
                     "maxBufferSize = {}, currentBufferSize = {}, messageSize = {}", maxBufferSizeBytes,
-                    currentBufferSize, message!!.size
+                    currentBufferSize, message.size
                 )
             }
         }
@@ -150,7 +150,7 @@ class MqttBufferHandler(maxBufferSizeKb: Long, maxFileCount: Int, maxFileSizeKb:
         return currentBufferSize + message!!.size > maxBufferSizeBytes
     }
 
-    private fun handleFull(topic: String?, message: ByteArray?) {
+    private fun handleFull(topic: String, message: ByteArray) {
         if (isFileBufferEnabled) {
             addToFilePersistence()
             add(topic, message)
@@ -173,8 +173,8 @@ class MqttBufferHandler(maxBufferSizeKb: Long, maxFileCount: Int, maxFileSizeKb:
         try {
             synchronized(filePersistence!!) {
                 filePersistence!!.writeBufferToFile(
-                    messageTuple.topic!!,
-                    messageTuple.message!!
+                    messageTuple.topic,
+                    messageTuple.message
                 )
             }
         } catch (e: IOException) {
@@ -189,7 +189,7 @@ class MqttBufferHandler(maxBufferSizeKb: Long, maxFileCount: Int, maxFileSizeKb:
         var removedMessage: MessageTuple
         synchronized(buffer) {
             removedMessage = buffer.remove()
-            currentBufferSize -= removedMessage.message!!.size.toLong()
+            currentBufferSize -= removedMessage.message.size.toLong()
         }
         return removedMessage
     }

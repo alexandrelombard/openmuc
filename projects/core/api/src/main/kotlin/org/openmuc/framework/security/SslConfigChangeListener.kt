@@ -20,6 +20,6 @@
  */
 package org.openmuc.framework.security
 
-interface SslConfigChangeListener {
+fun interface SslConfigChangeListener {
     fun configChanged()
 }

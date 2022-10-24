@@ -22,15 +22,15 @@ package org.openmuc.framework.lib.mqtt
 
 import org.openmuc.framework.lib.filePersistence.FilePersistence
 
-class MqttBufferMessageIterator(private val buffer: String?, private val filePersistence: FilePersistence?) :
-    MutableIterator<MessageTuple> {
+class MqttBufferMessageIterator(private val buffer: String, private val filePersistence: FilePersistence?) :
+    Iterator<MessageTuple> {
     override fun hasNext(): Boolean {
         return filePersistence!!.fileExistsFor(buffer)
     }
 
     override fun next(): MessageTuple {
         var message: ByteArray
-        synchronized(filePersistence!!) { message = filePersistence.getMessage(buffer!!) }
+        synchronized(filePersistence!!) { message = filePersistence.getMessage(buffer) }
         return MessageTuple(buffer, message)
     }
 }

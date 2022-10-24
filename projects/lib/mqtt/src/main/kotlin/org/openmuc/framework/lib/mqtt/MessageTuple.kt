@@ -20,4 +20,4 @@
  */
 package org.openmuc.framework.lib.mqtt
 
-class MessageTuple(val topic: String?, val message: ByteArray?)
+data class MessageTuple(val topic: String, val message: ByteArray)

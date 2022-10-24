@@ -20,6 +20,6 @@
  */
 package org.openmuc.framework.lib.mqtt
 
-interface MqttReadyListener {
+fun interface MqttReadyListener {
     fun onReady()
 }

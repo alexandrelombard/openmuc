@@ -158,8 +158,8 @@ class MqttConnection(
         val clientBuilder = Mqtt3Client.builder()
             .identifier(UUID.randomUUID().toString())
             .automaticReconnect()
-            .initialDelay(settings.connectionRetryInterval, TimeUnit.SECONDS)
-            .maxDelay(settings.connectionRetryInterval, TimeUnit.SECONDS)
+            .initialDelay(settings.connectionRetryInterval.toLong(), TimeUnit.SECONDS)
+            .maxDelay(settings.connectionRetryInterval.toLong(), TimeUnit.SECONDS)
             .applyAutomaticReconnect()
             .serverHost(settings.host)
             .serverPort(settings.port)
@@ -173,7 +173,7 @@ class MqttConnection(
     }
 
     private val sslConfig: MqttClientSslConfig
-        private get() = MqttClientSslConfig.builder()
+        get() = MqttClientSslConfig.builder()
             .keyManagerFactory(sslManager!!.keyManagerFactory)
             .trustManagerFactory(sslManager!!.trustManagerFactory)
             .handshakeTimeout(10, TimeUnit.SECONDS)
@@ -183,7 +183,7 @@ class MqttConnection(
         return clientBuilder!!.buildAsync()
     }
 
-    fun setSslManager(instance: SslManagerInterface?) {
+    fun setSslManager(instance: SslManagerInterface) {
         if (!settings.isSsl) {
             return
         }
@@ -197,7 +197,7 @@ class MqttConnection(
             addDisconnectedListener(listener)
         }
         disconnectedListeners.clear()
-        sslManager!!.listenForConfigChange(SslConfigChangeListener { sslUpdate() })
+        sslManager!!.listenForConfigChange { sslUpdate() }
         addDisconnectedListener { context: MqttClientDisconnectedContext ->
             if (cancelReconnect.getAndSet(false)) {
                 context.reconnector.reconnect(false)

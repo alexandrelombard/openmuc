@@ -34,7 +34,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
 
 open class MqttWriter(connection: MqttConnection, pid: String) {
-    val connection: MqttConnection?
+    val connection: MqttConnection
     private var connected = false
     private val cancelReconnect = AtomicBoolean(false)
     private var timeOfConnectionLoss: LocalDateTime? = null
@@ -79,26 +79,26 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
     private fun emptyFileBuffer() {
         log("Clearing file buffer.")
         val buffers = buffer.buffers
-        if (buffers!!.size == 0) {
+        if (buffers.isEmpty()) {
             log("File buffer already empty.")
         }
         var messageCount = 0
-        val chunkSize = connection.getSettings().recoveryChunkSize
-        val delay = connection.getSettings().recoveryDelay
+        val chunkSize = connection.settings.recoveryChunkSize
+        val delay = connection.settings.recoveryDelay
         for (buffer in buffers) {
             val iterator = this.buffer.getMessageIterator(buffer)
-            while (iterator!!.hasNext()) {
+            while (iterator.hasNext()) {
                 if (!connected) {
                     warn("Recovery from file buffer interrupted by connection loss.")
                     return
                 }
                 val messageTuple = iterator.next()
                 if (logger.isTraceEnabled) {
-                    trace("Resend from file: {}", String(messageTuple!!.message!!))
+                    trace("Resend from file: {}", String(messageTuple.message))
                 }
-                write(messageTuple!!.topic, messageTuple.message)
+                write(messageTuple.topic, messageTuple.message)
                 messageCount++
-                if (connection.getSettings().isRecoveryLimitSet && messageCount == chunkSize) {
+                if (connection.settings.isRecoveryLimitSet && messageCount == chunkSize) {
                     messageCount = 0
                     try {
                         Thread.sleep(delay.toLong())
@@ -117,8 +117,8 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
             log("Memory buffer already empty.")
         }
         var messageCount = 0
-        val chunkSize = connection.getSettings().recoveryChunkSize
-        val delay = connection.getSettings().recoveryDelay
+        val chunkSize = connection.settings.recoveryChunkSize
+        val delay = connection.settings.recoveryDelay
         while (!buffer.isEmpty) {
             if (!connected) {
                 warn("Recovery from memory buffer interrupted by connection loss.")
@@ -130,7 +130,7 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
             }
             write(messageTuple!!.topic, messageTuple.message)
             messageCount++
-            if (connection.getSettings().isRecoveryLimitSet && messageCount == chunkSize) {
+            if (connection.settings.isRecoveryLimitSet && messageCount == chunkSize) {
                 messageCount = 0
                 try {
                     Thread.sleep(delay.toLong())
@@ -190,7 +190,7 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
      * @param message
      * the message to be published
      */
-    fun write(topic: String?, message: ByteArray?) {
+    fun write(topic: String, message: ByteArray) {
         if (connected) {
             startPublishing(topic, message)
         } else {
@@ -199,7 +199,7 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
         }
     }
 
-    private fun startPublishing(topic: String?, message: ByteArray?) {
+    private fun startPublishing(topic: String, message: ByteArray) {
         publish(topic, message).whenComplete { publish: Mqtt3Publish?, exception: Throwable? ->
             if (exception != null) {
                 warn(
@@ -208,45 +208,45 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
                 )
                 buffer.add(topic, message)
             } else if (logger.isTraceEnabled) {
-                trace("Message successfully delivered on topic {}", topic!!)
+                trace("Message successfully delivered on topic {}", topic)
             }
         }
     }
 
-    open fun publish(topic: String?, message: ByteArray?): CompletableFuture<Mqtt3Publish?> {
-        return connection.getClient().publishWith().topic(topic).payload(message).send()
+    open fun publish(topic: String, message: ByteArray): CompletableFuture<Mqtt3Publish> {
+        return connection.client.publishWith().topic(topic).payload(message).send()
     }
 
     fun isConnected(): Boolean {
-        return connection != null && connected
+        return connected
     }
 
     private fun log(message: String, vararg args: Any) {
-        var message: String? = message
+        var message: String = message
         message = MessageFormatter.arrayFormat(message, args).message
         logger.info("[{}] {}", pid, message)
     }
 
     private fun debug(message: String, vararg args: Any) {
-        var message: String? = message
+        var message: String = message
         message = MessageFormatter.arrayFormat(message, args).message
         logger.debug("[{}] {}", pid, message)
     }
 
     private fun warn(message: String, vararg args: Any) {
-        var message: String? = message
+        var message: String = message
         message = MessageFormatter.arrayFormat(message, args).message
         logger.warn("[{}] {}", pid, message)
     }
 
     private fun error(message: String, vararg args: Any) {
-        var message: String? = message
+        var message: String = message
         message = MessageFormatter.arrayFormat(message, args).message
         logger.error("[{}] {}", pid, message)
     }
 
     private fun trace(message: String, vararg args: Any) {
-        var message: String? = message
+        var message: String = message
         message = MessageFormatter.arrayFormat(message, args).message
         logger.trace("[{}] {}", pid, message)
     }

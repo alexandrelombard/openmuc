@@ -25,7 +25,7 @@ import java.util.*
 /**
  * Gets notified when a MQTT message was received
  */
-interface MqttMessageListener : EventListener {
+fun interface MqttMessageListener : EventListener {
     /**
      * Call this when a new message was received
      *
@@ -34,5 +34,5 @@ interface MqttMessageListener : EventListener {
      * @param message
      * the received message
      */
-    fun newMessage(topic: String?, message: ByteArray?)
+    fun newMessage(topic: String, message: ByteArray)
 }

@@ -21,7 +21,7 @@
 package org.openmuc.framework.lib.mqtt
 
 class MqttSettings(
-    val host: String?,
+    val host: String,
     val port: Int,
     val username: String?,
     val password: String,
@@ -35,21 +35,21 @@ class MqttSettings(
      */
     val maxFileSize: Long,
     val maxFileCount: Int,
-    private val connectionRetryInterval: Int,
+    val connectionRetryInterval: Int,
     val connectionAliveInterval: Int,
     val persistenceDirectory: String?,
     val lastWillTopic: String,
     val lastWillPayload: ByteArray,
     private val lastWillAlways: Boolean,
     val firstWillTopic: String,
-    val firstWillPayload: ByteArray?,
+    val firstWillPayload: ByteArray,
     val recoveryChunkSize: Int,
     val recoveryDelay: Int,
     val isWebSocket: Boolean
 ) {
 
     constructor(
-        host: String?, port: Int, username: String?, password: String, ssl: Boolean, maxBufferSize: Long,
+        host: String, port: Int, username: String?, password: String, ssl: Boolean, maxBufferSize: Long,
         maxFileSize: Long, maxFileCount: Int, connectionRetryInterval: Int, connectionAliveInterval: Int,
         persistenceDirectory: String?, webSocket: Boolean
     ) : this(
@@ -60,7 +60,7 @@ class MqttSettings(
 
     @JvmOverloads
     constructor(
-        host: String?,
+        host: String,
         port: Int,
         username: String?,
         password: String,
@@ -75,25 +75,19 @@ class MqttSettings(
         lastWillPayload: ByteArray = "".toByteArray(),
         lastWillAlways: Boolean = false,
         firstWillTopic: String = "",
-        firstWillPayload: ByteArray? = "".toByteArray(),
+        firstWillPayload: ByteArray = "".toByteArray(),
         webSocket: Boolean = false
     ) : this(
         host, port, username, password, ssl, maxBufferSize, maxFileSize, maxFileCount, connectionRetryInterval,
         connectionAliveInterval, persistenceDirectory, lastWillTopic, lastWillPayload, lastWillAlways,
         firstWillTopic, firstWillPayload, 0, 0, webSocket
-    ) {
-    }
-
-    fun getConnectionRetryInterval(): Long {
-        return connectionRetryInterval.toLong()
-    }
+    )
 
     val isLastWillSet: Boolean
         get() = lastWillTopic != "" && lastWillPayload.size != 0
 
-    fun isLastWillAlways(): Boolean {
-        return lastWillAlways && isLastWillSet
-    }
+    val isLastWillAlways: Boolean
+        get() = lastWillAlways && isLastWillSet
 
     val isFirstWillSet: Boolean
         get() = firstWillTopic != "" && lastWillPayload.size != 0
@@ -115,11 +109,11 @@ class MqttSettings(
         sb.append("maxBufferSize=").append(maxBufferSize).append("\n")
         sb.append("maxFileCount=").append(maxFileCount).append("\n")
         sb.append("maxFileSize=").append(maxFileSize).append("\n")
-        sb.append("connectionRetryInterval=").append(getConnectionRetryInterval()).append("\n")
+        sb.append("connectionRetryInterval=").append(connectionRetryInterval).append("\n")
         sb.append("connectionAliveInterval=").append(connectionAliveInterval).append("\n")
         sb.append("lastWillTopic=").append(lastWillTopic).append("\n")
         sb.append("lastWillPayload=").append(String(lastWillPayload)).append("\n")
-        sb.append("lastWillAlways=").append(isLastWillAlways()).append("\n")
+        sb.append("lastWillAlways=").append(isLastWillAlways).append("\n")
         sb.append("firstWillTopic=").append(firstWillTopic).append("\n")
         sb.append("firstWillPayload=").append(String(firstWillPayload!!))
         sb.append("recoveryChunkSize=").append(recoveryChunkSize).append("\n")
