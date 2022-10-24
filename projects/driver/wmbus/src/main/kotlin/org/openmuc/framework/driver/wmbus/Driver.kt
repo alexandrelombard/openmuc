@@ -40,7 +40,7 @@ class Driver : DriverService {
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         throw UnsupportedOperationException()
     }
 
@@ -50,9 +50,9 @@ class Driver : DriverService {
     }
 
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         val deviceAddressTokens =
-            deviceAddress!!.trim { it <= ' ' }.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            deviceAddress.trim { it <= ' ' }.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         if (deviceAddressTokens.size != 2) {
             throw ArgumentSyntaxException("The device address does not consist of two parameters.")
         }
@@ -89,7 +89,7 @@ class Driver : DriverService {
         var wmBusInterface: WMBusInterface
         if (isTCP) {
             synchronized(this) {
-                wmBusInterface = WMBusInterface.Companion.getTCPInstance(host, port, transceiverString, modeString)
+                wmBusInterface = WMBusInterface.getTCPInstance(host, port, transceiverString, modeString)
                 try {
                     return wmBusInterface.connect(secondaryAddress, keyString)
                 } catch (e: DecoderException) {
@@ -99,7 +99,7 @@ class Driver : DriverService {
         } else {
             synchronized(this) {
                 wmBusInterface =
-                    WMBusInterface.Companion.getSerialInstance(connectionPort, transceiverString, modeString)
+                    WMBusInterface.getSerialInstance(connectionPort, transceiverString, modeString)
                 try {
                     return wmBusInterface.connect(secondaryAddress, keyString)
                 } catch (e: DecoderException) {
@@ -107,7 +107,7 @@ class Driver : DriverService {
                 }
             }
         }
-        return null
+        throw ConnectionException()
     }
 
     @Throws(ArgumentSyntaxException::class)

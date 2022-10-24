@@ -132,36 +132,36 @@ class WMBusInterface {
                     when (dataRecord.dataValueType) {
                         DataValueType.DATE -> {
                             value = DoubleValue((dataRecord.dataValue as Date).time.toDouble())
-                            container.setRecord(Record(value, timestamp))
+                            container.record = Record(value, timestamp)
                         }
 
                         DataValueType.STRING -> {
                             value = StringValue((dataRecord.dataValue as String))
-                            container.setRecord(Record(value, timestamp))
+                            container.record = Record(value, timestamp)
                         }
 
                         DataValueType.DOUBLE -> {
                             value = DoubleValue(dataRecord.scaledDataValue)
-                            container.setRecord(Record(value, timestamp))
+                            container.record = Record(value, timestamp)
                         }
 
                         DataValueType.LONG -> if (dataRecord.multiplierExponent == 0) {
                             value = LongValue((dataRecord.dataValue as Long))
-                            container.setRecord(Record(value, timestamp))
+                            container.record = Record(value, timestamp)
                         } else {
                             value = DoubleValue(dataRecord.scaledDataValue)
-                            container.setRecord(Record(value, timestamp))
+                            container.record = Record(value, timestamp)
                         }
 
                         DataValueType.BCD -> if (dataRecord.multiplierExponent == 0) {
                             value = LongValue((dataRecord.dataValue as Bcd).toLong())
-                            container.setRecord(Record(value, timestamp))
+                            container.record = Record(value, timestamp)
                         } else {
                             value = DoubleValue(
                                 (dataRecord.dataValue as Bcd).toLong()
                                         * Math.pow(10.0, dataRecord.multiplierExponent.toDouble())
                             )
-                            container.setRecord(Record(value, timestamp))
+                            container.record = Record(value, timestamp)
                         }
 
                         DataValueType.NONE -> {
@@ -270,22 +270,19 @@ class WMBusInterface {
 
     companion object {
         private val logger = LoggerFactory.getLogger(WMBusInterface::class.java)
-        private val interfaces: MutableMap<String, WMBusInterface> = HashMap()
+        private val interfaces: MutableMap<String, WMBusInterface> = hashMapOf()
         @Throws(ConnectionException::class, ArgumentSyntaxException::class)
-        fun getSerialInstance(serialPortName: String, transceiverString: String, modeString: String): WMBusInterface? {
-            var wmBusInterface: WMBusInterface?
+        fun getSerialInstance(serialPortName: String, transceiverString: String, modeString: String): WMBusInterface {
+            val wmBusInterface: WMBusInterface
             synchronized(interfaces) {
-                wmBusInterface = interfaces[serialPortName]
-                if (wmBusInterface == null) {
+                val existingWMBusInterface = interfaces[serialPortName]
+                if (existingWMBusInterface == null) {
                     wmBusInterface = WMBusInterface(serialPortName, transceiverString, modeString)
-                    interfaces.put(serialPortName, wmBusInterface!!)
+                    interfaces[serialPortName] = wmBusInterface
                 } else {
-                    if (wmBusInterface!!.modeString != modeString
-                        || wmBusInterface!!.transceiverString != transceiverString
-                    ) {
-                        throw ConnectionException(
-                            "Connections serial interface is already in use with a different transceiver or mode"
-                        )
+                    wmBusInterface = existingWMBusInterface
+                    if (wmBusInterface.modeString != modeString || wmBusInterface.transceiverString != transceiverString) {
+                        throw ConnectionException("Connections serial interface is already in use with a different transceiver or mode")
                     }
                 }
             }
@@ -293,21 +290,18 @@ class WMBusInterface {
         }
 
         @Throws(ConnectionException::class, ArgumentSyntaxException::class)
-        fun getTCPInstance(host: String, port: Int, transceiverString: String, modeString: String): WMBusInterface? {
-            var wmBusInterface: WMBusInterface?
+        fun getTCPInstance(host: String, port: Int, transceiverString: String, modeString: String): WMBusInterface {
+            val wmBusInterface: WMBusInterface
             val hostAndPort = "$host:$port"
             synchronized(interfaces) {
-                wmBusInterface = interfaces[hostAndPort]
-                if (wmBusInterface == null) {
+                val existingWmBusInterface = interfaces[hostAndPort]
+                if (existingWmBusInterface == null) {
                     wmBusInterface = WMBusInterface(host, port, transceiverString, modeString)
-                    interfaces.put(hostAndPort, wmBusInterface!!)
+                    interfaces[hostAndPort] = wmBusInterface
                 } else {
-                    if (wmBusInterface!!.modeString != modeString
-                        || wmBusInterface!!.transceiverString != transceiverString
-                    ) {
-                        throw ConnectionException(
-                            "Connections TCP interface is already in use with a different transceiver or mode"
-                        )
+                    wmBusInterface = existingWmBusInterface
+                    if (wmBusInterface.modeString != modeString || wmBusInterface.transceiverString != transceiverString) {
+                        throw ConnectionException("Connections TCP interface is already in use with a different transceiver or mode")
                     }
                 }
             }
