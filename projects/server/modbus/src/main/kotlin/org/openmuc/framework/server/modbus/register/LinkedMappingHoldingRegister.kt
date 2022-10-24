@@ -23,7 +23,7 @@ package org.openmuc.framework.server.modbus.register
 import com.ghgande.j2mod.modbus.procimg.InputRegister
 import com.ghgande.j2mod.modbus.procimg.Register
 import org.openmuc.framework.data.*
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.Record
 import org.openmuc.framework.dataaccess.Channel
 import java.nio.ByteBuffer
 
@@ -51,8 +51,8 @@ class LinkedMappingHoldingRegister(
     byteHigh: Int,
     byteLow: Int
 ) : MappingInputRegister(channel, byteHigh, byteLow), Register {
-    private var leadingBytes: ByteArray?
-    private var thisRegisterContent: ByteArray?
+    private var leadingBytes: ByteArray? = null
+    private var thisRegisterContent: ByteArray? = null
     private var hasLeadingRegister = false
     private val inputRegister: InputRegister
 

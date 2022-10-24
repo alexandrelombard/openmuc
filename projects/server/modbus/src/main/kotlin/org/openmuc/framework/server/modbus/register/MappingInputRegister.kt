@@ -22,7 +22,6 @@ package org.openmuc.framework.server.modbus.register
 
 import com.ghgande.j2mod.modbus.procimg.InputRegister
 import org.openmuc.framework.dataaccess.Channel
-import java.lang.Boolean
 import java.nio.ByteBuffer
 import kotlin.Exception
 import kotlin.Int
@@ -38,7 +37,7 @@ abstract class MappingInputRegister(
     init {
         try {
             val scalingProperty = System.getProperty("org.openmuc.framework.server.modbus.useUnscaledValues")
-            useUnscaledValues = Boolean.parseBoolean(scalingProperty)
+            useUnscaledValues = scalingProperty.toBoolean()
         } catch (e: Exception) {
             /* will stick to default setting. */
         }

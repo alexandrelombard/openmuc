@@ -27,7 +27,7 @@ import com.ghgande.j2mod.modbus.procimg.SimpleProcessImage
 import com.ghgande.j2mod.modbus.procimg.SimpleRegister
 import com.ghgande.j2mod.modbus.slave.ModbusSlave
 import com.ghgande.j2mod.modbus.slave.ModbusSlaveFactory
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.Record
 import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.dataaccess.Channel
 import org.openmuc.framework.lib.osgi.config.*
@@ -41,6 +41,7 @@ import java.io.IOException
 import java.net.InetAddress
 import java.net.UnknownHostException
 import java.util.*
+import kotlin.ConcurrentModificationException
 
 class ModbusServer : ServerService, ManagedService {
     private val spi = SimpleProcessImage()
@@ -56,9 +57,9 @@ class ModbusServer : ServerService, ManagedService {
 
     @Throws(IOException::class)
     private fun startServer(spi: SimpleProcessImage) {
-        val address = property.getString(Settings.Companion.ADDRESS)
-        val port = property.getInt(Settings.Companion.PORT)
-        val type = property.getString(Settings.Companion.TYPE)!!.lowercase(Locale.getDefault())
+        val address = property.getString(Settings.ADDRESS)
+        val port = property.getInt(Settings.PORT)
+        val type = property.getString(Settings.TYPE)!!.lowercase(Locale.getDefault())
         var isRtuTcp = false
         logServerSettings()
         try {
@@ -69,7 +70,7 @@ class ModbusServer : ServerService, ManagedService {
                     isRtuTcp = true
                     slave = ModbusSlaveFactory.createTCPSlave(
                         InetAddress.getByName(address), port,
-                        property.getInt(Settings.Companion.POOLSIZE), isRtuTcp
+                        property.getInt(Settings.POOLSIZE), isRtuTcp
                     )
                 }
 
@@ -77,23 +78,29 @@ class ModbusServer : ServerService, ManagedService {
                     isRtuTcp = true
                     slave = ModbusSlaveFactory.createTCPSlave(
                         InetAddress.getByName(address), port,
-                        property.getInt(Settings.Companion.POOLSIZE), isRtuTcp
+                        property.getInt(Settings.POOLSIZE), isRtuTcp
                     )
                 }
 
                 "tcp" -> slave = ModbusSlaveFactory.createTCPSlave(
                     InetAddress.getByName(address), port,
-                    property.getInt(Settings.Companion.POOLSIZE), isRtuTcp
+                    property.getInt(Settings.POOLSIZE), isRtuTcp
                 )
 
                 else -> slave = ModbusSlaveFactory.createTCPSlave(
                     InetAddress.getByName(address), port,
-                    property.getInt(Settings.Companion.POOLSIZE), isRtuTcp
+                    property.getInt(Settings.POOLSIZE), isRtuTcp
                 )
             }
-            slave.setThreadName("modbusServerListener")
-            slave.addProcessImage(property.getInt(Settings.Companion.UNITID), spi)
-            slave.open()
+            slave.let {
+                if(it != null) {
+                    it.threadName = "modbusServerListener"
+                    it.addProcessImage(property.getInt(Settings.UNITID), spi)
+                    it.open()
+                } else {
+                    throw ConcurrentModificationException("Slave must not be null")
+                }
+            }
         } catch (e: ModbusException) {
             throw IOException(e.message)
         } catch (e: UnknownHostException) {
@@ -104,11 +111,11 @@ class ModbusServer : ServerService, ManagedService {
 
     private fun logServerSettings() {
         if (logger.isDebugEnabled) {
-            logger.debug("Address:  {}", property.getString(Settings.Companion.ADDRESS))
-            logger.debug("Port:     {}", property.getString(Settings.Companion.PORT))
-            logger.debug("UnitId:   {}", property.getString(Settings.Companion.UNITID))
-            logger.debug("Type:     {}", property.getString(Settings.Companion.TYPE))
-            logger.debug("Poolsize: {}", property.getString(Settings.Companion.POOLSIZE))
+            logger.debug("Address:  {}", property.getString(Settings.ADDRESS))
+            logger.debug("Port:     {}", property.getString(Settings.PORT))
+            logger.debug("UnitId:   {}", property.getString(Settings.UNITID))
+            logger.debug("Type:     {}", property.getString(Settings.TYPE))
+            logger.debug("Poolsize: {}", property.getString(Settings.POOLSIZE))
         }
     }
 
@@ -344,7 +351,7 @@ class ModbusServer : ServerService, ManagedService {
     }
 
     @Throws(ConfigurationException::class)
-    override fun updated(propertiesDict: Dictionary<String?, *>?) {
+    override fun updated(propertiesDict: Dictionary<String, *>) {
         val dict = DictionaryPreprocessor(propertiesDict)
         if (!dict.wasIntermediateOsgiInitCall()) {
             tryProcessConfig(dict)

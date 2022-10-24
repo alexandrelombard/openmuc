@@ -20,7 +20,7 @@
  */
 package org.openmuc.framework.server.modbus
 
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.Record
 import org.openmuc.framework.lib.osgi.deployment.RegistrationHandler
 import org.openmuc.framework.server.spi.ServerService
 import org.osgi.framework.BundleContext

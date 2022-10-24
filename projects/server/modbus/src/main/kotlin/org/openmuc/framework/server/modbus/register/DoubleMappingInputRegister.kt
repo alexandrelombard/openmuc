@@ -33,6 +33,6 @@ class DoubleMappingInputRegister(channel: Channel, byteHigh: Int, byteLow: Int) 
         } else {
             DoubleValue(channel.latestRecord!!.value!!.asDouble()).asByteArray()
         }
-        return byteArrayOf(bytes!![highByte], bytes[lowByte])
+        return byteArrayOf(bytes[highByte], bytes[lowByte])
     }
 }

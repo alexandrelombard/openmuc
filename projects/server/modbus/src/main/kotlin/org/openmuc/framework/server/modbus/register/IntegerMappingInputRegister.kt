@@ -26,13 +26,12 @@ import org.openmuc.framework.dataaccess.Channel
 class IntegerMappingInputRegister(channel: Channel, byteHigh: Int, byteLow: Int) :
     MappingInputRegister(channel, byteHigh, byteLow) {
     override fun toBytes(): ByteArray {
-        val bytes: ByteArray?
-        bytes = if (useUnscaledValues) {
+        val bytes: ByteArray = if (useUnscaledValues) {
             val value = channel.latestRecord!!.value
             IntValue(value!!.asInt() / channel.scalingFactor.toInt()).asByteArray()
         } else {
             IntValue(channel.latestRecord!!.value!!.asInt()).asByteArray()
         }
-        return byteArrayOf(bytes!![highByte], bytes[lowByte])
+        return byteArrayOf(bytes[highByte], bytes[lowByte])
     }
 }

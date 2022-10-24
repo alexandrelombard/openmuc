@@ -26,14 +26,13 @@ import org.openmuc.framework.dataaccess.Channel
 class ShortMappingInputRegister(channel: Channel, byteHigh: Int, byteLow: Int) :
     MappingInputRegister(channel, byteHigh, byteLow) {
     override fun toBytes(): ByteArray {
-        val bytes: ByteArray?
-        bytes = if (useUnscaledValues) {
+        val bytes = if (useUnscaledValues) {
             val value = channel.latestRecord!!.value
-            ShortValue((value!!.asShort() / channel.scalingFactor.toShort()).toShort())
+            ShortValue((value!!.asShort() / channel.scalingFactor.toInt().toShort()).toShort())
                 .asByteArray()
         } else {
             ShortValue(channel.latestRecord!!.value!!.asShort()).asByteArray()
         }
-        return byteArrayOf(bytes!![highByte], bytes[lowByte])
+        return byteArrayOf(bytes[highByte], bytes[lowByte])
     }
 }

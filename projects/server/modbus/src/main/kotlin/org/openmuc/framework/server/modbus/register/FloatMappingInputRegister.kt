@@ -33,6 +33,6 @@ class FloatMappingInputRegister(channel: Channel, byteHigh: Int, byteLow: Int) :
         } else {
             FloatValue(channel.latestRecord!!.value!!.asFloat()).asByteArray()
         }
-        return byteArrayOf(bytes!![highByte], bytes[lowByte])
+        return byteArrayOf(bytes[highByte], bytes[lowByte])
     }
 }

@@ -26,13 +26,12 @@ import org.openmuc.framework.dataaccess.Channel
 class LongMappingInputRegister(channel: Channel, byteHigh: Int, byteLow: Int) :
     MappingInputRegister(channel, byteHigh, byteLow) {
     override fun toBytes(): ByteArray {
-        val bytes: ByteArray?
-        bytes = if (useUnscaledValues) {
+        val bytes = if (useUnscaledValues) {
             val value = channel.latestRecord!!.value
             LongValue(value!!.asLong() / channel.scalingFactor.toLong()).asByteArray()
         } else {
             LongValue(channel.latestRecord!!.value!!.asLong()).asByteArray()
         }
-        return byteArrayOf(bytes!![highByte], bytes[lowByte])
+        return byteArrayOf(bytes[highByte], bytes[lowByte])
     }
 }
