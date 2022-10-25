@@ -117,8 +117,7 @@ abstract class GenericServlet : HttpServlet(), ConfigChangeListener {
         request: HttpServletRequest,
         response: HttpServletResponse,
         logger: Logger
-    ): Array<String?>? {
-        var pathAndQueryString: Array<String?>? = arrayOfNulls(2)
+    ): Array<String>? {
         var pathInfo = request.pathInfo
         var queryStr = request.queryString
         if (pathInfo == null) {
@@ -136,12 +135,10 @@ abstract class GenericServlet : HttpServlet(), ConfigChangeListener {
                 response, HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE, logger,
                 "Requested rest was not a json media type. Requested media type is: " + request.contentType
             )
-            pathAndQueryString = null
+            return null
         } else {
-            pathAndQueryString!![0] = pathInfo
-            pathAndQueryString[1] = queryStr
+            return arrayOf(pathInfo, queryStr)
         }
-        return pathAndQueryString
     }
 
     @Synchronized

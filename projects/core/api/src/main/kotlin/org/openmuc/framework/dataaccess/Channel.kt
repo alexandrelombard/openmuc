@@ -92,7 +92,7 @@ interface Channel {
      *
      * @return the value type of this channel.
      */
-    val valueType: ValueType?
+    val valueType: ValueType
 
     /**
      * Returns the scaling factor. Returns 1.0 if the scaling factor is not configured.

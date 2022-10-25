@@ -32,7 +32,7 @@ interface DeviceScanListener {
      * @param scanInfo
      * the information of the device found
      */
-    fun deviceFound(scanInfo: DeviceScanInfo?)
+    fun deviceFound(scanInfo: DeviceScanInfo)
 
     /**
      * Called when scan is progressing.
@@ -58,5 +58,5 @@ interface DeviceScanListener {
      * @param message
      * the error message
      */
-    fun scanError(message: String?)
+    fun scanError(message: String)
 }

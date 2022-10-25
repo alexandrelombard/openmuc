@@ -20,6 +20,8 @@
  */
 package org.openmuc.framework.config
 
-object DriverNotAvailableException : Exception() {
-    private const val serialVersionUID = -4469071016884028955L
+class DriverNotAvailableException : Exception() {
+    companion object {
+        val serialVersionUID = -4469071016884028955L
+    }
 }

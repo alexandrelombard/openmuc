@@ -22,7 +22,7 @@ package org.openmuc.framework.config
 
 interface DeviceConfig {
     @set:Throws(IdCollisionException::class)
-    var id: String?
+    var id: String
     var description: String?
     var deviceAddress: String?
     var settings: String?
@@ -31,9 +31,9 @@ interface DeviceConfig {
     var isDisabled: Boolean?
 
     @Throws(IdCollisionException::class)
-    fun addChannel(channelId: String?): ChannelConfig?
-    fun getChannel(channelId: String?): ChannelConfig?
-    val channels: Collection<ChannelConfig?>?
+    fun addChannel(channelId: String): ChannelConfig?
+    fun getChannel(channelId: String): ChannelConfig?
+    val channels: Collection<ChannelConfig>
     fun delete()
     val driver: DriverConfig?
 

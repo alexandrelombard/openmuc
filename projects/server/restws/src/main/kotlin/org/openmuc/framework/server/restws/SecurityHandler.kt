@@ -22,7 +22,7 @@ package org.openmuc.framework.server.restws
 
 import org.apache.commons.codec.binary.Base64
 import org.openmuc.framework.authentication.AuthenticationService
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.Record
 import org.osgi.framework.Bundle
 import org.osgi.service.http.HttpContext
 import java.io.IOException
@@ -63,6 +63,6 @@ class SecurityHandler(var contextBundle: Bundle, var authService: Authentication
     }
 
     override fun getMimeType(name: String): String {
-        return null
+        return ""
     }
 }

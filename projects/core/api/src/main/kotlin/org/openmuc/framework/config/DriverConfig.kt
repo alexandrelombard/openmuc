@@ -22,15 +22,15 @@ package org.openmuc.framework.config
 
 interface DriverConfig {
     @set:Throws(IdCollisionException::class)
-    var id: String?
+    var id: String
     var samplingTimeout: Int?
     var connectRetryInterval: Int?
     var isDisabled: Boolean?
 
     @Throws(IdCollisionException::class)
-    fun addDevice(deviceId: String?): DeviceConfig?
-    fun getDevice(deviceId: String?): DeviceConfig?
-    val devices: Collection<DeviceConfig?>?
+    fun addDevice(deviceId: String): DeviceConfig?
+    fun getDevice(deviceId: String): DeviceConfig?
+    val devices: Collection<DeviceConfig>
     fun delete()
 
     companion object {

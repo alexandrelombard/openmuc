@@ -21,24 +21,23 @@
 package org.openmuc.framework.lib.rest1.rest.objects
 
 import com.google.gson.annotations.SerializedName
-import org.openmuc.framework.data.Record.value
 
 class RestUserConfig {
-    var id: String? = null
+    var id: String = ""
         private set
 
     @SerializedName("password")
-    var password: String? = null
+    var password: String = ""
         private set
 
     @SerializedName("oldPassword")
-    val oldPassword: String? = null
-    private var groups: Array<String>?
+    val oldPassword: String = ""
+    private var groups: Array<String> = arrayOf("")
     var description: String? = null
         private set
 
     protected constructor() {}
-    constructor(id: String?) {
+    constructor(id: String) {
         this.id = id
         password = "*****"
         groups = arrayOf("")
@@ -46,10 +45,6 @@ class RestUserConfig {
     }
 
     fun getGroups(): Array<String> {
-        return if (groups != null) {
-            groups!!.clone()
-        } else {
-            arrayOf()
-        }
+        return groups.clone()
     }
 }

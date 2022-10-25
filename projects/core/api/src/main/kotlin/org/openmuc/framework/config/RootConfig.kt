@@ -24,10 +24,10 @@ interface RootConfig {
     var dataLogSource: String?
 
     @Throws(IdCollisionException::class)
-    fun addDriver(id: String?): DriverConfig?
-    fun getOrAddDriver(id: String?): DriverConfig?
-    fun getDriver(id: String?): DriverConfig?
-    fun getDevice(id: String?): DeviceConfig?
-    fun getChannel(id: String?): ChannelConfig?
-    val drivers: Collection<DriverConfig?>?
+    fun addDriver(id: String): DriverConfig?
+    fun getOrAddDriver(id: String): DriverConfig?
+    fun getDriver(id: String): DriverConfig?
+    fun getDevice(id: String): DeviceConfig?
+    fun getChannel(id: String): ChannelConfig?
+    val drivers: Collection<DriverConfig>
 }

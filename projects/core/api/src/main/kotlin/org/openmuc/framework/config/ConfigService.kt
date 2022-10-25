@@ -59,7 +59,7 @@ interface ConfigService {
     fun scanForDevices(driverId: String?, settings: String?, scanListener: DeviceScanListener?)
 
     @Throws(DriverNotAvailableException::class, UnsupportedOperationException::class)
-    fun interruptDeviceScan(driverId: String?)
+    fun interruptDeviceScan(driverId: String)
 
     @Throws(
         DriverNotAvailableException::class,
@@ -67,10 +67,10 @@ interface ConfigService {
         ArgumentSyntaxException::class,
         ScanException::class
     )
-    fun scanForChannels(deviceId: String?, settings: String?): List<ChannelScanInfo?>?
+    fun scanForChannels(deviceId: String, settings: String): List<ChannelScanInfo>
 
     @Throws(DriverNotAvailableException::class)
-    fun getDriverInfo(driverId: String?): DriverInfo?
-    val idsOfRunningDrivers: List<String?>?
-    fun getDeviceState(deviceId: String?): DeviceState?
+    fun getDriverInfo(driverId: String): DriverInfo
+    val idsOfRunningDrivers: List<String>
+    fun getDeviceState(deviceId: String): DeviceState?
 }

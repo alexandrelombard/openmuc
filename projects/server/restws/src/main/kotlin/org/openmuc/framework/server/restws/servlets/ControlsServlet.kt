@@ -39,7 +39,7 @@ class ControlsServlet : GenericServlet() {
             if (pathInfo == "/") {
             } else {
                 val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
-                if (pathInfoArray!!.size == 1) {
+                if (pathInfoArray.size == 1) {
                 } else {
                     ServletLib.sendHTTPErrorAndLogDebug(
                         response, HttpServletResponse.SC_NOT_FOUND, logger,

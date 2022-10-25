@@ -32,7 +32,7 @@ interface DataAccessService {
      *
      * @return the list of all channel IDs.
      */
-    val allIds: List<String>?
+    val allIds: List<String>
     fun getLogicalDevices(type: String?): List<LogicalDevice?>?
     fun getLogicalDevices(
         type: String?,

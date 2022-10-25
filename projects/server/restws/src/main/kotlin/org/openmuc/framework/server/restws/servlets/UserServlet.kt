@@ -34,7 +34,7 @@ class UserServlet : GenericServlet() {
     private var authenticationService: AuthenticationService? = null
     @Throws(ServletException::class, IOException::class)
     override fun doGet(request: HttpServletRequest, response: HttpServletResponse) {
-        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        response.contentType = APPLICATION_JSON
         val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
             setServices()
@@ -43,12 +43,12 @@ class UserServlet : GenericServlet() {
             if (pathInfo == "/") {
                 val userSet = authenticationService!!.allUsers
                 val userList: MutableList<String?> = ArrayList()
-                userList.addAll(userSet!!)
+                userList.addAll(userSet)
                 json.addStringList(Const.USERS, userList)
             } else {
                 val pathInfoArray = ServletLib.getPathInfoArray(pathInfo)
-                if (pathInfoArray!!.size == 1) {
-                    val userId = pathInfoArray[0]!!.replace("/", "")
+                if (pathInfoArray.size == 1) {
+                    val userId = pathInfoArray[0].replace("/", "")
                     if (userId.equals(Const.GROUPS, ignoreCase = true)) {
                         val groupList: MutableList<String?> = ArrayList()
                         groupList.add("") // TODO: add real groups, if groups exists in OpenMUC
@@ -74,37 +74,40 @@ class UserServlet : GenericServlet() {
 
     @Throws(ServletException::class, IOException::class)
     override fun doPost(request: HttpServletRequest, response: HttpServletResponse) {
-        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        response.contentType = APPLICATION_JSON
         val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger) ?: return
         setServices()
         val pathInfo = pathAndQueryString[ServletLib.PATH_ARRAY_NR]
         val json = ServletLib.getFromJson(request, logger, response) ?: return
         if (pathInfo == "/") {
             val userConfig = json.restUserConfig
-            if (authenticationService!!.contains(userConfig.id)) {
+            val authenticationService = authenticationService
+            requireNotNull(authenticationService)
+
+            if (authenticationService.contains(userConfig.id)) {
                 ServletLib.sendHTTPErrorAndLogDebug(
                     response, HttpServletResponse.SC_NOT_FOUND, logger,
                     "User already exists.", " User = ", userConfig.id
                 )
-            } else if (userConfig.password == null || userConfig.password!!.isEmpty()) {
+            } else if (userConfig.password.isEmpty()) {
                 ServletLib.sendHTTPErrorAndLogDebug(
                     response, HttpServletResponse.SC_PRECONDITION_FAILED, logger,
                     "Password is mandatory."
                 )
             } else {
-                authenticationService!!.registerNewUser(userConfig.id, userConfig.password)
+                authenticationService.registerNewUser(userConfig.id, userConfig.password)
             }
         } else {
             ServletLib.sendHTTPErrorAndLogDebug(
                 response, HttpServletResponse.SC_NOT_FOUND, logger,
-                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.pathInfo
             )
         }
     }
 
     @Throws(ServletException::class, IOException::class)
     override fun doPut(request: HttpServletRequest, response: HttpServletResponse) {
-        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        response.contentType = APPLICATION_JSON
         val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
             setServices()
@@ -112,20 +115,23 @@ class UserServlet : GenericServlet() {
             val json = ServletLib.getFromJson(request, logger, response) ?: return
             if (pathInfo == "/") {
                 val userConfig = json.restUserConfig
-                if (userConfig.password == null || userConfig.password!!.isEmpty()) {
+                val authenticationService = authenticationService
+                requireNotNull(authenticationService)
+
+                if (userConfig.password.isEmpty()) {
                     ServletLib.sendHTTPErrorAndLogDebug(
                         response, HttpServletResponse.SC_PRECONDITION_FAILED, logger,
                         "Password is mandatory."
                     )
-                } else if (userConfig.oldPassword == null || userConfig.oldPassword!!.isEmpty()) {
+                } else if (userConfig.oldPassword.isEmpty()) {
                     ServletLib.sendHTTPErrorAndLogDebug(
                         response, HttpServletResponse.SC_PRECONDITION_FAILED, logger,
                         "Old password is mandatory."
                     )
-                } else if (authenticationService!!.contains(userConfig.id)) {
+                } else if (authenticationService.contains(userConfig.id)) {
                     val id = userConfig.id
-                    if (authenticationService!!.login(id, userConfig.oldPassword)) {
-                        authenticationService!!.registerNewUser(id, userConfig.password)
+                    if (authenticationService.login(id, userConfig.oldPassword)) {
+                        authenticationService.registerNewUser(id, userConfig.password)
                     } else {
                         ServletLib.sendHTTPErrorAndLogDebug(
                             response, HttpServletResponse.SC_UNAUTHORIZED, logger,
@@ -141,7 +147,7 @@ class UserServlet : GenericServlet() {
             } else {
                 ServletLib.sendHTTPErrorAndLogDebug(
                     response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.pathInfo
                 )
             }
         }
@@ -149,7 +155,7 @@ class UserServlet : GenericServlet() {
 
     @Throws(ServletException::class, IOException::class)
     override fun doDelete(request: HttpServletRequest, response: HttpServletResponse) {
-        response.contentType = GenericServlet.Companion.APPLICATION_JSON
+        response.contentType = APPLICATION_JSON
         val pathAndQueryString = checkIfItIsACorrectRest(request, response, logger)
         if (pathAndQueryString != null) {
             setServices()
@@ -169,13 +175,13 @@ class UserServlet : GenericServlet() {
             } else {
                 ServletLib.sendHTTPErrorAndLogDebug(
                     response, HttpServletResponse.SC_NOT_FOUND, logger,
-                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                    REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.pathInfo
                 )
             }
         } else {
             ServletLib.sendHTTPErrorAndLogDebug(
                 response, HttpServletResponse.SC_NOT_FOUND, logger,
-                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, GenericServlet.Companion.REST_PATH, request.pathInfo
+                REQUESTED_REST_PATH_IS_NOT_AVAILABLE, REST_PATH, request.pathInfo
             )
         }
     }

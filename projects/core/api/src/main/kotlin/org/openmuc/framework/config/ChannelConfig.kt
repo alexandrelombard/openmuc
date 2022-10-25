@@ -24,7 +24,7 @@ import org.openmuc.framework.data.ValueType
 
 interface ChannelConfig {
     @set:Throws(IdCollisionException::class)
-    var id: String?
+    var id: String
     var description: String?
     var channelAddress: String?
     var unit: String?

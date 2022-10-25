@@ -22,7 +22,6 @@ package org.openmuc.framework.server.restws
 
 import org.openmuc.framework.authentication.AuthenticationService
 import org.openmuc.framework.config.ConfigService
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.dataaccess.DataAccessService
 import org.openmuc.framework.lib.rest1.Const
 import org.openmuc.framework.server.restws.servlets.*

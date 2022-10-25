@@ -23,55 +23,58 @@ package org.openmuc.framework.server.restws.servlets
 import org.openmuc.framework.config.DeviceScanInfo
 import org.openmuc.framework.config.DeviceScanListener
 import org.openmuc.framework.lib.rest1.rest.objects.RestScanProgressInfo
+import java.util.concurrent.locks.ReentrantLock
 
 internal class DeviceScanListenerImplementation : DeviceScanListener {
     val restScanProgressInfo = RestScanProgressInfo()
-    private val scannedDevicesList: MutableList<DeviceScanInfo?>?
+    var scannedDevicesList: MutableList<DeviceScanInfo>
+        @Synchronized get() {
+            while (!restScanProgressInfo.isScanFinished && !restScanProgressInfo.isScanInterrupted && restScanProgressInfo.scanError == null) {
+                try {
+                    condition.await()
+                } catch (e: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                }
+            }
+            return field
+        }
+        private set
+
+    private val lock = ReentrantLock()
+    private val condition = lock.newCondition()
 
     constructor() {
-        scannedDevicesList = ArrayList()
+        scannedDevicesList = arrayListOf()
     }
 
-    constructor(scannedDevicesList: MutableList<DeviceScanInfo?>?) {
+    constructor(scannedDevicesList: MutableList<DeviceScanInfo>) {
         restScanProgressInfo.isScanFinished = false
         this.scannedDevicesList = scannedDevicesList
     }
 
-    override fun deviceFound(scanInfo: DeviceScanInfo?) {
-        scannedDevicesList!!.add(scanInfo)
+    override fun deviceFound(scanInfo: DeviceScanInfo) {
+        scannedDevicesList.add(scanInfo)
     }
 
-    override fun scanProgress(scanProgress: Int) {
-        restScanProgressInfo.scanProgress = scanProgress
+    override fun scanProgress(progress: Int) {
+        restScanProgressInfo.scanProgress = progress
     }
 
     @Synchronized
     override fun scanFinished() {
-        notifyAll()
+        condition.signalAll()
         restScanProgressInfo.isScanFinished = true
     }
 
     @Synchronized
     override fun scanInterrupted() {
-        notifyAll()
+        condition.signalAll()
         restScanProgressInfo.isScanInterrupted = true
     }
 
     @Synchronized
-    override fun scanError(message: String?) {
-        notifyAll()
+    override fun scanError(message: String) {
+        condition.signalAll()
         restScanProgressInfo.scanError = message
-    }
-
-    @Synchronized
-    fun getScannedDevicesList(): MutableList<DeviceScanInfo?>? {
-        while (!restScanProgressInfo.isScanFinished && !restScanProgressInfo.isScanInterrupted && restScanProgressInfo.scanError == null) {
-            try {
-                wait()
-            } catch (e: InterruptedException) {
-                Thread.currentThread().interrupt()
-            }
-        }
-        return scannedDevicesList
     }
 }
