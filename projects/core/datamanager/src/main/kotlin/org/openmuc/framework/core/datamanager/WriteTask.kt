@@ -27,22 +27,20 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.CountDownLatch
 
 class WriteTask(
-    dataManager: DataManager?, device: Device?, writeValueContainers: List<WriteValueContainerImpl?>,
+    override var dataManager: DataManager, override var device: Device, writeValueContainers: List<WriteValueContainerImpl>,
     writeTaskFinishedSignal: CountDownLatch
 ) : DeviceTask(), ConnectedTask {
     private val writeTaskFinishedSignal: CountDownLatch
-    var writeValueContainers: List<WriteValueContainerImpl?>
+    var writeValueContainers: List<WriteValueContainerImpl>
 
     init {
-        this.dataManager = dataManager
-        this.device = device
         this.writeTaskFinishedSignal = writeTaskFinishedSignal
         this.writeValueContainers = writeValueContainers
     }
 
     override fun run() {
         try {
-            device!!.connection!!.write(writeValueContainers as List<ChannelValueContainer?>, null)
+            device.connection!!.write(writeValueContainers as List<ChannelValueContainer>, null)
         } catch (e: UnsupportedOperationException) {
             for (valueContainer in writeValueContainers) {
                 valueContainer!!.setFlag(Flag.ACCESS_METHOD_NOT_SUPPORTED)
@@ -50,15 +48,15 @@ class WriteTask(
         } catch (e: ConnectionException) {
             // Connection to device lost. Signal to device instance and end task without notifying DataManager
             logger.warn(
-                "Connection to device {} lost because {}. Trying to reconnect...", device!!.deviceConfig!!.getId(),
+                "Connection to device {} lost because {}. Trying to reconnect...", device.deviceConfig.id,
                 e.message
             )
             for (valueContainer in writeValueContainers) {
                 valueContainer!!.setFlag(Flag.CONNECTION_EXCEPTION)
             }
             writeTaskFinishedSignal.countDown()
-            synchronized(dataManager!!.disconnectedDevices) { dataManager!!.disconnectedDevices.add(device) }
-            dataManager!!.interrupt()
+            synchronized(dataManager.disconnectedDevices) { dataManager.disconnectedDevices.add(device) }
+            dataManager.interrupt()
             return
         } catch (e: Exception) {
             logger.warn("unexpected exception thrown by write funtion of driver ", e)
@@ -67,8 +65,8 @@ class WriteTask(
             }
         }
         writeTaskFinishedSignal.countDown()
-        synchronized(dataManager!!.tasksFinished) { dataManager!!.tasksFinished.add(this) }
-        dataManager!!.interrupt()
+        synchronized(dataManager.tasksFinished) { dataManager.tasksFinished.add(this) }
+        dataManager.interrupt()
     }
 
     override val type: DeviceTaskType

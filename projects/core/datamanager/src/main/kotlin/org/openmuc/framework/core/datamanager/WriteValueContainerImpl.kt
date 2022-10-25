@@ -25,42 +25,15 @@ import org.openmuc.framework.data.Value
 import org.openmuc.framework.dataaccess.WriteValueContainer
 import org.openmuc.framework.driver.spi.ChannelValueContainer
 
-class WriteValueContainerImpl(override val channel: ChannelImpl) : WriteValueContainer, ChannelValueContainer {
-    private override var value: Value? = null
-    private override var flag = Flag.DRIVER_ERROR_UNSPECIFIED
-    private var channelHandle: Any
-    private val channelAddress: String
+class WriteValueContainerImpl(override val channel: ChannelImpl) :
+    WriteValueContainer, ChannelValueContainer {
+    override var value: Value = null
+    override var flag = Flag.DRIVER_ERROR_UNSPECIFIED
+    override var channelHandle: Any?
+    override val channelAddress: String
 
     init {
-        channelAddress = channel.config!!.getChannelAddress()
-        channelHandle = channel.handle!!
-    }
-
-    override fun setValue(value: Value?) {
-        this.value = value
-    }
-
-    override fun getValue(): Value {
-        return value!!
-    }
-
-    override fun getFlag(): Flag {
-        return flag
-    }
-
-    override fun getChannelAddress(): String {
-        return channelAddress
-    }
-
-    override fun getChannelHandle(): Any {
-        return channelHandle
-    }
-
-    override fun setChannelHandle(handle: Any) {
-        channelHandle = handle
-    }
-
-    override fun setFlag(flag: Flag) {
-        this.flag = flag
+        channelAddress = channel.config.channelAddress ?: ""
+        this.channelHandle = channel.handle!!
     }
 }

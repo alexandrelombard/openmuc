@@ -242,7 +242,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                         this, samplingCollection.device, selectedChannels,
                         samplingCollection.samplingGroup
                     )
-                    val timeout: Int = samplingCollection.device!!.deviceConfig!!.getSamplingTimeout()
+                    val timeout: Int = samplingCollection.device!!.deviceConfig.getSamplingTimeout()
                     val taskAddSuccessful = samplingCollection.device!!.addSamplingTask(
                         samplingTask,
                         samplingCollection.interval
@@ -297,7 +297,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         }
         if (currentAction.connectionRetryDevices != null) {
             for (device in currentAction.connectionRetryDevices!!) {
-                val startTimestamp: Long = currentTime + device!!.deviceConfig!!.getConnectRetryInterval()!!
+                val startTimestamp: Long = currentTime + device!!.deviceConfig.getConnectRetryInterval()!!
                 addReconnectDeviceToActions(device, startTimestamp)
             }
         }
@@ -451,13 +451,13 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             var samplingTask: SamplingTask
             while (samplingTaskFinished.poll().also { samplingTask = it!! } != null) {
                 samplingTask.storeValues()
-                samplingTask.device!!.taskFinished()
+                samplingTask.device.taskFinished()
             }
         }
         synchronized(tasksFinished) {
             var deviceTask: DeviceTask
             while (tasksFinished.poll().also { deviceTask = it!! } != null) {
-                deviceTask.device!!.taskFinished()
+                deviceTask.device.taskFinished()
             }
         }
         synchronized(newDrivers) {
@@ -469,13 +469,13 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                 val driverConfig = rootConfig!!.driverConfigsById[driverId] ?: continue
                 driverConfig.activeDriver = value
                 for (deviceConfig in driverConfig.deviceConfigsById.values) {
-                    deviceConfig!!.device!!.driverRegisteredSignal()
+                    deviceConfig.device!!.driverRegisteredSignal()
                 }
             }
             newDrivers.clear()
         }
         synchronized(newDataLoggers) {
-            if (!newDataLoggers.isEmpty()) {
+            if (newDataLoggers.isNotEmpty()) {
                 activeDataLoggers.addAll(newDataLoggers)
                 for (dataLogger in newDataLoggers) {
                     logger.info("Data logger registered: " + dataLogger.id)
@@ -499,7 +499,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
 
                         // all devices have to be given a chance to finish their current task and disconnect:
                         for (deviceConfig in driverConfig.deviceConfigsById.values) {
-                            deviceConfig!!.device!!.driverDeregisteredSignal()
+                            deviceConfig.device!!.driverDeregisteredSignal()
                         }
                         synchronized(driverRemovedSignal!!) {
                             if (activeDeviceCountDown == 0) {
@@ -553,7 +553,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
     private fun <T> addTasksAndClear(newTasksList: Queue<T>) where T : DeviceTask?, T : ConnectedTask? {
         var nextTask: T
         while (newTasksList.poll().also { nextTask = it } != null) {
-            nextTask!!.device!!.addTask(nextTask)
+            nextTask!!.device.addTask(nextTask)
         }
     }
 
@@ -561,25 +561,25 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         val newRootConfig = configWithoutDefaults!!.cloneWithDefaults()
         val logChannels: MutableList<LogChannel?> = LinkedList()
         for (oldDriverConfig in rootConfig!!.driverConfigsById.values) {
-            val newDriverConfig = newRootConfig!!.driverConfigsById[oldDriverConfig!!.id]
+            val newDriverConfig = newRootConfig.driverConfigsById[oldDriverConfig!!.id]
             if (newDriverConfig != null) {
                 newDriverConfig.activeDriver = oldDriverConfig.activeDriver
             }
             for (oldDeviceConfig in oldDriverConfig.deviceConfigsById.values) {
                 var newDeviceConfig: DeviceConfigImpl? = null
                 if (newDriverConfig != null) {
-                    newDeviceConfig = newDriverConfig.deviceConfigsById[oldDeviceConfig!!.getId()]
+                    newDeviceConfig = newDriverConfig.deviceConfigsById[oldDeviceConfig.id]
                 }
                 if (newDeviceConfig == null) {
                     // Device was deleted in new config
-                    oldDeviceConfig!!.device!!.deleteSignal()
+                    oldDeviceConfig.device!!.deleteSignal()
                 } else {
                     // Device exists in new and old config
-                    oldDeviceConfig!!.device!!.configChangedSignal(newDeviceConfig, currentTime, logChannels)
+                    oldDeviceConfig.device!!.configChangedSignal(newDeviceConfig, currentTime, logChannels)
                 }
             }
         }
-        for (newDriverConfig in newRootConfig!!.driverConfigsById.values) {
+        for (newDriverConfig in newRootConfig.driverConfigsById.values) {
             val oldDriverConfig = rootConfig!!.driverConfigsById[newDriverConfig!!.id]
             if (oldDriverConfig == null) {
                 newDriverConfig.activeDriver = activeDrivers[newDriverConfig.id]
@@ -587,11 +587,11 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             for (newDeviceConfig in newDriverConfig.deviceConfigsById.values) {
                 var oldDeviceConfig: DeviceConfigImpl? = null
                 if (oldDriverConfig != null) {
-                    oldDeviceConfig = oldDriverConfig.deviceConfigsById[newDeviceConfig!!.getId()]
+                    oldDeviceConfig = oldDriverConfig.deviceConfigsById[newDeviceConfig.id]
                 }
                 if (oldDeviceConfig == null) {
                     // Device is new
-                    newDeviceConfig!!.device = Device(this, newDeviceConfig, currentTime, logChannels)
+                    newDeviceConfig.device = Device(this, newDeviceConfig, currentTime, logChannels)
                     if (newDeviceConfig.device.state === DeviceState.CONNECTING) {
                         newDeviceConfig.device!!.connectRetrySignal()
                     }
@@ -599,7 +599,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             }
         }
         for (oldChannelConfig in rootConfig!!.channelConfigsById.values) {
-            val newChannelConfig = newRootConfig.channelConfigsById[oldChannelConfig!!.getId()]
+            val newChannelConfig = newRootConfig.channelConfigsById[oldChannelConfig!!.id]
             if (newChannelConfig == null) {
                 // oldChannelConfig does not exist in the new configuration
                 if (oldChannelConfig.state === ChannelState.SAMPLING) {
@@ -679,7 +679,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         for (action in actions) {
             if (action.samplingCollections != null) {
                 for (samplingCollection in action.samplingCollections!!) {
-                    if (samplingCollection!!.interval == channel.getSamplingInterval() && samplingCollection.timeOffset == channel.getSamplingTimeOffset() && samplingCollection.samplingGroup == channel!!.config!!.getSamplingGroup() && samplingCollection.device == channel.config!!.deviceParent!!.device) {
+                    if (samplingCollection!!.interval == channel.samplingInterval && samplingCollection.timeOffset == channel.samplingTimeOffset && samplingCollection.samplingGroup == channel!!.config.samplingGroup && samplingCollection.device == channel.config.deviceParent!!.device) {
                         fittingSamplingCollection = samplingCollection
                         break
                     }
@@ -688,9 +688,9 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         }
         if (fittingSamplingCollection == null) {
             fittingSamplingCollection = ChannelCollection(
-                channel.getSamplingInterval(),
-                channel.getSamplingTimeOffset(), channel!!.config!!.getSamplingGroup(),
-                channel.config!!.deviceParent!!.device
+                channel.samplingInterval,
+                channel.samplingTimeOffset, channel!!.config.samplingGroup,
+                channel.config.deviceParent!!.device
             )
             addSamplingCollectionToActions(
                 fittingSamplingCollection,
@@ -713,8 +713,8 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         for (action in actions) {
             if (action.loggingCollections != null) {
                 for (loggingCollection in action.loggingCollections!!) {
-                    if (loggingCollection!!.interval == channel.getLoggingInterval()
-                        && loggingCollection.timeOffset == channel.getLoggingTimeOffset()
+                    if (loggingCollection!!.interval == channel.loggingInterval
+                        && loggingCollection.timeOffset == channel.loggingTimeOffset
                     ) {
                         fittingLoggingCollection = loggingCollection
                         break
@@ -724,8 +724,8 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         }
         if (fittingLoggingCollection == null) {
             fittingLoggingCollection = ChannelCollection(
-                channel.getLoggingInterval(),
-                channel.getLoggingTimeOffset(), null, null
+                channel.loggingInterval,
+                channel.loggingTimeOffset, null, null
             )
             addLoggingCollectionToActions(
                 fittingLoggingCollection,
@@ -743,7 +743,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         channel.loggingCollection = fittingLoggingCollection
     }
 
-    fun removeFromLoggingCollections(channel: ChannelImpl?) {
+    fun removeFromLoggingCollections(channel: ChannelImpl) {
         channel!!.loggingCollection!!.channels!!.remove(channel)
         if (channel.loggingCollection!!.channels!!.isEmpty()) {
             channel.loggingCollection!!.action!!.loggingCollections!!.remove(channel.loggingCollection)
@@ -751,7 +751,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         channel.loggingCollection = null
     }
 
-    fun removeFromSamplingCollections(channel: ChannelImpl?) {
+    fun removeFromSamplingCollections(channel: ChannelImpl) {
         channel!!.samplingCollection!!.channels!!.remove(channel)
         if (channel.samplingCollection!!.channels!!.isEmpty()) {
             channel.samplingCollection!!.action!!.samplingCollections!!.remove(channel.samplingCollection)
@@ -759,7 +759,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         channel.samplingCollection = null
     }
 
-    fun removeFromConnectionRetry(device: Device?) {
+    fun removeFromConnectionRetry(device: Device) {
         for (action in actions) {
             if (action.connectionRetryDevices != null && action.connectionRetryDevices!!.remove(device)) {
                 break
@@ -824,10 +824,10 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
     protected fun notifyServer(serverService: ServerService) {
         val relatedServerMappings: MutableList<ServerMappingContainer> = ArrayList()
         for (config in rootConfig!!.channelConfigsById.values) {
-            for (serverMapping in config!!.serverMappings!!) {
-                if (serverMapping!!.id == serverService.id) {
+            for (serverMapping in config!!.serverMappings) {
+                if (serverMapping.id == serverService.id) {
                     relatedServerMappings
-                        .add(ServerMappingContainer(this.getChannel(config.id), serverMapping))
+                        .add(ServerMappingContainer(this.getChannel(config.id)!!, serverMapping))
                 }
             }
         }
@@ -847,6 +847,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             try {
                 driverRemovedSignal!!.await()
             } catch (e: InterruptedException) {
+                // TODO Log exception
             }
         } else {
             if (activeDrivers.remove(driverId) == null) {
@@ -874,6 +875,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             try {
                 dataLoggerRemovedSignal!!.await()
             } catch (e: InterruptedException) {
+                // TODO Log exception
             }
         } else {
             if (!activeDataLoggers.remove(dataLogger)) {
@@ -889,7 +891,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         executor!!.shutdown()
     }
 
-    override fun getChannel(id: String?): Channel? {
+    override fun getChannel(id: String): Channel? {
         if (rootConfig == null) {
             return null
         }
@@ -897,7 +899,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         return channelConfig.channel
     }
 
-    override fun getChannel(id: String?, channelChangeListener: ChannelChangeListener?): Channel? {
+    override fun getChannel(id: String, channelChangeListener: ChannelChangeListener?): Channel? {
         // TODO Auto-generated method stub
         return null
     }
@@ -927,13 +929,13 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
     override fun connectionInterrupted(driverId: String, connection: Connection) {
         // TODO synchronize here
         val driverConfig = rootConfig!!.getDriver(driverId) ?: return
-        for (deviceConfig in driverConfig.devices!!) {
+        for (deviceConfig in driverConfig.devices) {
             val deviceConfigImpl = deviceConfig as DeviceConfigImpl?
             if (deviceConfigImpl!!.device!!.connection !== connection) {
                 continue
             }
             val device = deviceConfigImpl!!.device
-            logger.info("Connection to device {} was interrupted.", device!!.deviceConfig!!.getId())
+            logger.info("Connection to device {} was interrupted.", device!!.deviceConfig.id)
             device!!.disconnectedSignal()
             return
         }
@@ -1135,10 +1137,10 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         for (container in readContainers!!) {
             require(container is ChannelRecordContainerImpl) { "Only use ReadRecordContainer created by Channel.getReadContainer()" }
             val channel = container.channel as ChannelImpl?
-            var containersOfDevice = containersByDevice[channel!!.config!!.deviceParent!!.device]
+            var containersOfDevice = containersByDevice[channel!!.config.deviceParent!!.device]
             if (containersOfDevice == null) {
                 containersOfDevice = LinkedList()
-                containersByDevice[channel.config!!.deviceParent!!.device] = containersOfDevice
+                containersByDevice[channel.config.deviceParent!!.device] = containersOfDevice
             }
             containersOfDevice.add(container)
         }

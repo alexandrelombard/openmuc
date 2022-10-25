@@ -29,7 +29,7 @@ interface ServerService {
      *
      * @return the unique Identifier
      */
-    val id: String?
+    val id: String
 
     /**
      * This method is called when configuration is updated.
