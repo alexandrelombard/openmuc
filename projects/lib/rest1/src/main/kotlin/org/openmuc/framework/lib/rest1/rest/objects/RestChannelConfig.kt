@@ -24,7 +24,7 @@ import org.openmuc.framework.config.ServerMapping
 import org.openmuc.framework.data.ValueType
 
 class RestChannelConfig {
-    var id: String? = null
+    var id: String = ""
     var channelAddress: String? = null
     var description: String? = null
     var unit: String? = null
@@ -42,5 +42,5 @@ class RestChannelConfig {
     var loggingSettings: String? = null
     var isLoggingEvent: Boolean? = null
     var isDisabled: Boolean? = null
-    var serverMappings: List<ServerMapping?>? = null
+    var serverMappings: List<ServerMapping> = arrayListOf()
 }

@@ -50,14 +50,8 @@ object RestChannelConfigMapper {
     }
 
     @Throws(IdCollisionException::class, RestConfigIsNotCorrectException::class)
-    fun setChannelConfig(cc: ChannelConfig?, rcc: RestChannelConfig?, idFromUrl: String) {
-        if (cc == null) {
-            throw RestConfigIsNotCorrectException("ChannelConfig is null!")
-        }
-        if (rcc == null) {
-            throw RestConfigIsNotCorrectException()
-        }
-        if (rcc.id != null && !rcc.id.isEmpty() && idFromUrl != rcc.id) {
+    fun setChannelConfig(cc: ChannelConfig, rcc: RestChannelConfig, idFromUrl: String) {
+        if (rcc.id.isNotEmpty() && idFromUrl != rcc.id) {
             cc.id = rcc.id
         }
         cc.channelAddress = rcc.channelAddress
@@ -73,13 +67,11 @@ object RestChannelConfigMapper {
         cc.samplingTimeOffset = rcc.samplingTimeOffset
         cc.scalingFactor = rcc.scalingFactor
         val serverMappings = rcc.serverMappings
-        if (serverMappings != null) {
-            for (serverMapping in cc.serverMappings!!) {
-                cc.deleteServerMappings(serverMapping!!.id)
-            }
-            for (restServerMapping in serverMappings) {
-                cc.addServerMapping(restServerMapping)
-            }
+        for (serverMapping in cc.serverMappings) {
+            cc.deleteServerMappings(serverMapping.id)
+        }
+        for (restServerMapping in serverMappings) {
+            cc.addServerMapping(restServerMapping)
         }
         cc.settings = rcc.settings
         cc.unit = rcc.unit

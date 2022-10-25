@@ -38,7 +38,7 @@ class TestJsonHelper_fromJson {
             ValueType::class.java
         )
         val it = elements.iterator()
-        var record: Record
+        var record: Record?
         var valueType: ValueType
         var i = 0
         while (it.hasNext()) {
@@ -49,6 +49,7 @@ class TestJsonHelper_fromJson {
             println("$testMethodName; ValueType: $valueType; JsonString: $jsonString")
             val json = FromJson(jsonString)
             record = json.getRecord(valueType)
+            requireNotNull(record)
 
             // test JsonHelper response
             if (record.timestamp != Constants.TIMESTAMP) {
@@ -75,7 +76,7 @@ class TestJsonHelper_fromJson {
 
     companion object {
         private const val stringValueWithTicks = "\"" + Constants.STRING_VALUE + "\""
-        private var sTestJsonValueArray: Array<String>
+        private lateinit var sTestJsonValueArray: Array<String>
         private var sTestRecord: String? = null
         @BeforeAll
         fun setup() {

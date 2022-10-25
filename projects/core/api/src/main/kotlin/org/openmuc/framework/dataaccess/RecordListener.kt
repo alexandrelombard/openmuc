@@ -23,6 +23,6 @@ package org.openmuc.framework.dataaccess
 import org.openmuc.framework.data.Record
 import java.util.*
 
-interface RecordListener : EventListener {
-    fun newRecord(record: Record?)
+fun interface RecordListener : EventListener {
+    fun newRecord(record: Record)
 }
