@@ -25,18 +25,17 @@ import org.openmuc.framework.driver.spi.ConnectionException
 import org.openmuc.framework.driver.spi.DriverService
 import org.slf4j.LoggerFactory
 
-class ConnectTask(driver: DriverService, device: Device, dataManager: DataManager) : DeviceTask() {
-    init {
-        this.driver = driver
-        this.device = device
-        this.dataManager = dataManager
-    }
+class ConnectTask(
+    override var driver: DriverService,
+    override var device: Device,
+    override var dataManager: DataManager
+) : DeviceTask() {
 
     override fun run() {
         try {
             device.connection = driver.connect(
-                device!!.deviceConfig!!.getDeviceAddress(),
-                device!!.deviceConfig!!.getSettings()
+                device.deviceConfig.deviceAddress ?: "",
+                device.deviceConfig.settings ?: ""
             )
             if (logger.isDebugEnabled) {
                 logger.debug("Driver {} connected.", driver.info.id)
@@ -44,7 +43,7 @@ class ConnectTask(driver: DriverService, device: Device, dataManager: DataManage
         } catch (e: ConnectionException) {
             logger.warn(
                 "Unable to connect to device {} because {}.\nWill try again in {} ms.",
-                device.deviceConfig!!.getId(), e.message, device.deviceConfig!!.getConnectRetryInterval()
+                device.deviceConfig.id, e.message, device.deviceConfig.connectRetryInterval
             )
             logger.debug("Trace", e)
             synchronized(dataManager.connectionFailures) { dataManager.connectionFailures.add(device) }
@@ -53,7 +52,7 @@ class ConnectTask(driver: DriverService, device: Device, dataManager: DataManage
         } catch (e: ArgumentSyntaxException) {
             logger.warn(
                 "Unable to connect to device {} because the address or settings syntax is incorrect: {}.\nWill try again in {} ms.",
-                device.deviceConfig!!.getId(), e.message, device.deviceConfig!!.getConnectRetryInterval()
+                device.deviceConfig.id, e.message, device.deviceConfig.connectRetryInterval
             )
             synchronized(dataManager.connectionFailures) { dataManager.connectionFailures.add(device) }
             dataManager.interrupt()
@@ -73,6 +72,7 @@ class ConnectTask(driver: DriverService, device: Device, dataManager: DataManage
         synchronized(dataManager.connectedDevices) { dataManager.connectedDevices.add(device) }
         dataManager.interrupt()
     }
+
 
     override val type: DeviceTaskType
         get() = DeviceTaskType.CONNECT

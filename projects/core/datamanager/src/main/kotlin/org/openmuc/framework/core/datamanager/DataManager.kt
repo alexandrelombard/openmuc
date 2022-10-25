@@ -23,8 +23,6 @@ package org.openmuc.framework.core.datamanager
 import org.apache.felix.service.command.CommandProcessor
 import org.openmuc.framework.config.*
 import org.openmuc.framework.data.Flag
-import org.openmuc.framework.data.FutureValue
-import org.openmuc.framework.data.Record
 import org.openmuc.framework.dataaccess.*
 import org.openmuc.framework.datalogger.spi.DataLoggerService
 import org.openmuc.framework.datalogger.spi.LogChannel
@@ -42,7 +40,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.LinkedBlockingDeque
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.locks.ReentrantLock
-import java.util.function.Supplier
 import java.util.stream.Collectors
 import javax.xml.parsers.ParserConfigurationException
 import javax.xml.transform.TransformerException
@@ -54,18 +51,18 @@ import javax.xml.transform.TransformerFactoryConfigurationError
     property = [CommandProcessor.COMMAND_SCOPE + ":String=openmuc", CommandProcessor.COMMAND_FUNCTION + ":String=reload"]
 )
 class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedListener {
-    val connectedDevices = LinkedList<Device?>()
-    val disconnectedDevices = LinkedList<Device?>()
-    val connectionFailures = LinkedList<Device?>()
-    val samplingTaskFinished = LinkedList<SamplingTask?>()
-    val newWriteTasks = LinkedList<WriteTask?>()
-    val newReadTasks = LinkedList<ReadTask?>()
-    val tasksFinished = LinkedList<DeviceTask?>()
-    private val newDrivers: HashMap<String?, DriverService?> = LinkedHashMap()
+    val connectedDevices = LinkedList<Device>()
+    val disconnectedDevices = LinkedList<Device>()
+    val connectionFailures = LinkedList<Device>()
+    val samplingTaskFinished = LinkedList<SamplingTask>()
+    val newWriteTasks = LinkedList<WriteTask>()
+    val newReadTasks = LinkedList<ReadTask>()
+    val tasksFinished = LinkedList<DeviceTask>()
+    private val newDrivers: HashMap<String, DriverService> = LinkedHashMap()
     private val serverServices = HashMap<String, ServerService>()
-    private val activeDrivers: MutableMap<String?, DriverService?> = LinkedHashMap()
+    private val activeDrivers: MutableMap<String, DriverService> = LinkedHashMap()
     private val actions = LinkedList<Action>()
-    private val configChangeListeners: MutableList<ConfigChangeListener?> = LinkedList()
+    private val configChangeListeners: MutableList<ConfigChangeListener> = LinkedList()
     private val newDataLoggers: MutableList<DataLoggerService> = LinkedList()
     private val activeDataLoggers: Deque<DataLoggerService> = LinkedBlockingDeque()
     private val receivedRecordContainers = LinkedList<List<ChannelRecordContainer>>()
@@ -437,13 +434,13 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                 recordContainers.stream()
                     .map { recContainer: ChannelRecordContainer -> recContainer as ChannelRecordContainerImpl }
                     .filter { containerImpl: ChannelRecordContainerImpl ->
-                        containerImpl.getChannel()
-                            .getChannelState() === ChannelState.LISTENING || containerImpl.getChannel()
+                        containerImpl.channel
+                            .getChannelState() === ChannelState.LISTENING || containerImpl.channel
                             .getDriverName() == "virtual"
                     }
                     .forEach { containerImpl: ChannelRecordContainerImpl ->
-                        containerImpl.getChannel().setNewRecord(containerImpl.getRecord())
-                        if (containerImpl.getChannel().isLoggingEvent()) {
+                        containerImpl.channel.setNewRecord(containerImpl.getRecord())
+                        if (containerImpl.channel.isLoggingEvent()) {
                             channelRecordContainerList.add(containerImpl)
                         }
                     }
@@ -1108,7 +1105,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                 valueContainerImpl.setFlag(Flag.CANNOT_WRITE_NULL_VALUE)
                 continue
             }
-            val device: Device = valueContainerImpl.getChannel().config.deviceParent.device
+            val device: Device = valueContainerImpl.channel.config.deviceParent.device
             var writeValueContainers = containersByDevice[device]
             if (writeValueContainers == null) {
                 writeValueContainers = LinkedList()
@@ -1162,40 +1159,39 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         }
     }
 
-    override val allIds: List<String?>
-        get() = ArrayList(rootConfig!!.channelConfigsById.keys)
+    override val allIds: List<String>
+        get() = rootConfig!!.channelConfigsById.keys.toList()
 
     @Throws(DataLoggerNotAvailableException::class)
     fun getDataLogger(loggerId: String?): DataLoggerService {
-        val dataLogger: DataLoggerService
-        dataLogger = if (loggerId == null || loggerId.isEmpty()) {
+        val dataLogger: DataLoggerService = if (loggerId.isNullOrEmpty()) {
             activeDataLoggers.peekFirst()
         } else {
             activeDataLoggers.stream()
                 .filter { activeLogger: DataLoggerService -> activeLogger.id == loggerId }
                 .findFirst()
-                .orElseThrow(Supplier<DataLoggerNotAvailableException> {
+                .orElseThrow {
                     logger.warn("DataLogger with id $loggerId not found for reading logs!")
                     DataLoggerNotAvailableException()
-                })
+                }
         }
         logger.debug("Accessing logged values using {}", dataLogger.id)
         return dataLogger
     }
 
     @Throws(DriverNotAvailableException::class)
-    override fun getDriverInfo(driverId: String?): DriverInfo? {
+    override fun getDriverInfo(driverId: String): DriverInfo {
         val driver = activeDrivers[driverId] ?: throw DriverNotAvailableException()
         return driver.info
     }
 
-    override fun getDeviceState(deviceId: String?): DeviceState? {
+    override fun getDeviceState(deviceId: String): DeviceState? {
         val deviceConfig = rootConfig!!.getDevice(deviceId) as DeviceConfigImpl? ?: return null
         return deviceConfig.device.state
     }
 
     internal inner class BlockingScanListener : DriverDeviceScanListener {
-        var scanInfos: MutableList<DeviceScanInfo?> = ArrayList()
+        var scanInfos: MutableList<DeviceScanInfo> = ArrayList()
         override fun scanProgressUpdate(progress: Int) {}
         override fun deviceFound(scanInfo: DeviceScanInfo) {
             if (!scanInfos.contains(scanInfo)) {

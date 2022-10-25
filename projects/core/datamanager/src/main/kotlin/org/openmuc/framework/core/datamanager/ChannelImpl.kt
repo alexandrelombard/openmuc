@@ -98,7 +98,7 @@ class ChannelImpl(
     override val samplingTimeOffset: Int
         get() = config.samplingTimeOffset
     override val samplingTimeout: Int
-        get() = config.deviceParent!!.getSamplingTimeout()
+        get() = config.deviceParent!!.samplingTimeout
     override val loggingInterval: Int
         get() = config.loggingInterval
     override val loggingTimeOffset: Int
@@ -114,7 +114,7 @@ class ChannelImpl(
     override val channelState: ChannelState?
         get() = config.state
     override val deviceState: DeviceState?
-        get() = config.deviceParent!!.device.state
+        get() = config.deviceParent?.device?.state
 
     override fun addListener(listener: RecordListener) {
         synchronized(listeners) { listeners.add(listener) }
@@ -125,12 +125,12 @@ class ChannelImpl(
     }
 
     @Throws(DataLoggerNotAvailableException::class, IOException::class)
-    override fun getLoggedRecord(timestamp: Long): Record? {
+    override fun getLoggedRecord(time: Long): Record? {
         val reader = validReaderIdFromConfig
         val records = dataManager.getDataLogger(reader).getRecords(
-            config.id, timestamp, timestamp
+            config.id, time, time
         )
-        return if (!records.isEmpty()) {
+        return if (records.isNotEmpty()) {
             records[0]
         } else {
             null
@@ -138,17 +138,15 @@ class ChannelImpl(
     }
 
     @Throws(DataLoggerNotAvailableException::class, IOException::class)
-    override fun getLoggedRecords(startTime: Long): List<Record?>? {
+    override fun getLoggedRecords(startTime: Long): List<Record> {
         val reader = validReaderIdFromConfig
         return dataManager.getDataLogger(reader).getRecords(config.id, startTime, System.currentTimeMillis())
     }
 
     @Throws(DataLoggerNotAvailableException::class, IOException::class)
-    override fun getLoggedRecords(startTime: Long, endTime: Long): List<Record?>? {
+    override fun getLoggedRecords(startTime: Long, endTime: Long): List<Record> {
         val reader = validReaderIdFromConfig
-        val toReturn = dataManager.getDataLogger(reader).getRecords(
-            config.id, startTime, endTime
-        )
+        val toReturn = dataManager.getDataLogger(reader).getRecords(config.id, startTime, endTime).toMutableList()
 
         // values in the future values list are sorted.
         val currentTime = System.currentTimeMillis()
@@ -168,15 +166,15 @@ class ChannelImpl(
     }
 
     private val validReaderIdFromConfig: String?
-        private get() = if (config.getReader()!!.isEmpty() || config.getReader() == null) {
+        get() = if (config.reader!!.isEmpty() || config.reader == null) {
             firstLoggerFromLogSettings()
         } else {
-            config.getReader()
+            config.reader
         }
 
     private fun firstLoggerFromLogSettings(): String {
         val loggerSegments =
-            config.getLoggingSettings().split(";".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            (config.loggingSettings ?: "").split(";".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         val definedLogger = Arrays.stream(loggerSegments)
             .map { seg: String -> seg.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()[0] }
             .collect(Collectors.toList())
@@ -184,10 +182,11 @@ class ChannelImpl(
     }
 
     fun setNewRecord(record: Record): Record {
-        val convertedRecord: Record
-        convertedRecord = if (record.flag === Flag.VALID) {
+        val convertedRecord = if (record.flag === Flag.VALID) {
             convertValidRecord(record)
         } else {
+            val latestRecord = latestRecord
+            requireNotNull(latestRecord)
             Record(latestRecord.value, latestRecord.timestamp, record.flag)
         }
         latestRecord = convertedRecord
@@ -224,7 +223,7 @@ class ChannelImpl(
             }
         }
         return try {
-            when (config.getValueType()) {
+            when (config.valueType) {
                 ValueType.BOOLEAN -> Record(
                     BooleanValue(
                         record.value!!.asBoolean()
@@ -313,17 +312,17 @@ class ChannelImpl(
     }
 
     fun setFlag(flag: Flag) {
-        if (flag !== latestRecord.flag) {
-            latestRecord = Record(latestRecord.value, latestRecord.timestamp, flag)
+        if (flag !== latestRecord?.flag) {
+            this.latestRecord = Record(latestRecord?.value, latestRecord?.timestamp, flag)
             notifyListeners()
         }
     }
 
     fun setNewDeviceState(state: ChannelState?, flag: Flag) {
-        if (config.isDisabled()) {
+        if (config.isDisabled) {
             config.state = ChannelState.DISABLED
             setFlag(Flag.DISABLED)
-        } else if (!config.isListening && config.getSamplingInterval() < 0) {
+        } else if (!config.isListening && config.samplingInterval < 0) {
             config.state = state
             setFlag(Flag.SAMPLING_AND_LISTENING_DISABLED)
         } else {
@@ -332,13 +331,13 @@ class ChannelImpl(
         }
     }
 
-    override fun write(value: Value?): Flag? {
+    override fun write(value: Value): Flag {
         if (config.deviceParent!!.driverParent!!.id == "virtual") {
             val record = Record(value, System.currentTimeMillis())
-            setLatestRecord(record)
+            this.latestRecord = record
             val recordContainers: MutableList<ChannelRecordContainer> = ArrayList()
             val recordContainer: ChannelRecordContainer = ChannelRecordContainerImpl(this)
-            recordContainer.setRecord(record)
+            recordContainer.record = record
             recordContainers.add(recordContainer)
             dataManager.newRecords(recordContainers)
             dataManager.interrupt()
@@ -350,10 +349,10 @@ class ChannelImpl(
         val valueOffset = config.valueOffset
         val scalingFactor = config.scalingFactor
         if (valueOffset != null) {
-            adjustedValue = DoubleValue(adjustedValue!!.asDouble() - valueOffset)
+            adjustedValue = DoubleValue(adjustedValue.asDouble() - valueOffset)
         }
         if (scalingFactor != null) {
-            adjustedValue = DoubleValue(adjustedValue!!.asDouble() / scalingFactor)
+            adjustedValue = DoubleValue(adjustedValue.asDouble() / scalingFactor)
         }
         writeValueContainer.setValue(adjustedValue)
         val writeValueContainerList = Arrays.asList(writeValueContainer)
@@ -374,10 +373,7 @@ class ChannelImpl(
         return writeValueContainer.getFlag()
     }
 
-    override fun writeFuture(values: List<FutureValue?>?) {
-        if (values == null) {
-            throw NullPointerException("Argument is not allowed to be null.")
-        }
+    override fun writeFuture(values: List<FutureValue>) {
         futureValues = values
         Collections.sort(values) { o1, o2 -> o1.writeTime.compareTo(o2.writeTime) }
         if (timer != null) {

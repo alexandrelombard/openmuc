@@ -38,5 +38,5 @@ interface DriverDeviceScanListener {
      * @param scanInfo
      * the information obtained from the device.
      */
-    fun deviceFound(scanInfo: DeviceScanInfo?)
+    fun deviceFound(scanInfo: DeviceScanInfo)
 }

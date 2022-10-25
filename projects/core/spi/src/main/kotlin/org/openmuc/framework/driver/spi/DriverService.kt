@@ -51,7 +51,7 @@ interface DriverService {
      *
      * @return the driver information
      */
-    val info: DriverInfo?
+    val info: DriverInfo
 
     /**
      * Scans for available devices. Once a device is found it is reported as soon as possible to the DeviceScanListener

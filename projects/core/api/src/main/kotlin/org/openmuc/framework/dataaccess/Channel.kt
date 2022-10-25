@@ -258,7 +258,7 @@ interface Channel {
      * @return the flag indicating whether the value was successfully written ( `Flag.VALID`) or not (any
      * other flag).
      */
-    fun write(value: Value?): Flag?
+    fun write(value: Value): Flag
 
     /**
      * Schedules a List&lt;records&gt; with future timestamps as write tasks <br></br>
@@ -268,7 +268,7 @@ interface Channel {
      * @param values
      * a list of future write values.
      */
-    fun writeFuture(values: List<FutureValue?>?)
+    fun writeFuture(values: List<FutureValue>)
 
     /**
      * Returns a `WriteValueContainer` that corresponds to this channel. This container can be passed to the
@@ -326,7 +326,7 @@ interface Channel {
      * if any kind of error occurs accessing the logged data.
      */
     @Throws(DataLoggerNotAvailableException::class, IOException::class)
-    fun getLoggedRecords(startTime: Long): List<Record?>?
+    fun getLoggedRecords(startTime: Long): List<Record>
 
     /**
      * Returns a list of all logged data records with timestamps from `startTime` to `endTime`

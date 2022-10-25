@@ -23,45 +23,45 @@ package org.openmuc.framework.core.datamanager
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.driver.spi.ChannelRecordContainer
 import org.openmuc.framework.driver.spi.ConnectionException
+import org.openmuc.framework.driver.spi.DriverService
 import org.slf4j.LoggerFactory
 
 class StartListeningTask(
-    dataManager: DataManager?, device: Device?,
-    selectedChannels: List<ChannelRecordContainerImpl?>
+    override var dataManager: DataManager, override var device: Device,
+    selectedChannels: List<ChannelRecordContainerImpl>
 ) : DeviceTask(), ConnectedTask {
-    var selectedChannels: List<ChannelRecordContainerImpl?>
+
+    var selectedChannels: List<ChannelRecordContainerImpl>
 
     init {
-        this.dataManager = dataManager
-        this.device = device
         this.selectedChannels = selectedChannels
     }
 
     override fun run() {
         try {
-            device!!.connection!!.startListening(selectedChannels as List<ChannelRecordContainer?>, dataManager)
+            device.connection!!.startListening(selectedChannels as List<ChannelRecordContainer>, dataManager)
         } catch (e: UnsupportedOperationException) {
             for (chRecContainer in selectedChannels) {
-                chRecContainer.getChannel().setFlag(Flag.ACCESS_METHOD_NOT_SUPPORTED)
+                chRecContainer.channel.setFlag(Flag.ACCESS_METHOD_NOT_SUPPORTED)
             }
         } catch (e: ConnectionException) {
             // Connection to device lost. Signal to device instance and end task
             // without notifying DataManager
             logger.warn(
-                "Connection to device {} lost because {}. Trying to reconnect...", device!!.deviceConfig!!.getId(),
+                "Connection to device {} lost because {}. Trying to reconnect...", device.deviceConfig.id,
                 e.message
             )
-            device!!.disconnectedSignal()
+            device.disconnectedSignal()
             return
         } catch (e: Exception) {
             logger.error(
                 "unexpected exception by startListeningFor function of driver: "
-                        + device!!.deviceConfig!!.driverParent!!.getId(), e
+                        + device.deviceConfig.driverParent!!.id, e
             )
             // TODO set flag?
         }
-        synchronized(dataManager!!.tasksFinished) { dataManager!!.tasksFinished.add(this) }
-        dataManager!!.interrupt()
+        synchronized(dataManager.tasksFinished) { dataManager.tasksFinished.add(this) }
+        dataManager.interrupt()
     }
 
     override val type: DeviceTaskType

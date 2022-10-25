@@ -20,6 +20,6 @@
  */
 package org.openmuc.framework.core.datamanager
 
-internal interface ConnectedTask {
+internal fun interface ConnectedTask {
     fun deviceNotConnected()
 }

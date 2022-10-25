@@ -23,9 +23,9 @@ package org.openmuc.framework.config
 interface DriverConfig {
     @set:Throws(IdCollisionException::class)
     var id: String
-    var samplingTimeout: Int?
-    var connectRetryInterval: Int?
-    var isDisabled: Boolean?
+    var samplingTimeout: Int
+    var connectRetryInterval: Int
+    var isDisabled: Boolean
 
     @Throws(IdCollisionException::class)
     fun addDevice(deviceId: String): DeviceConfig?

@@ -28,7 +28,7 @@ interface ChannelConfig {
     var description: String?
     var channelAddress: String?
     var unit: String?
-    var valueType: ValueType?
+    var valueType: ValueType
     var valueTypeLength: Int?
     var scalingFactor: Double?
     var valueOffset: Double?

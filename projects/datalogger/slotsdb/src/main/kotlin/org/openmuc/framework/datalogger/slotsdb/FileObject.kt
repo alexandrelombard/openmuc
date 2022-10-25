@@ -24,7 +24,6 @@ import org.openmuc.framework.data.DoubleValue
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Flag.Companion.newFlag
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import java.io.*
 import java.nio.ByteBuffer
 import java.util.*
@@ -375,7 +374,7 @@ class FileObject {
             dis!!.read(b, 0, b.size)
             val bb = ByteBuffer.wrap(b)
             bb.rewind()
-            for (i in (0..endPos - startPos) / 9) {
+            for (i in (0..(endPos - startPos) / 9)) {
                 val d = bb.double
                 val s = newFlag(bb.get().toInt())
                 if (!java.lang.Double.isNaN(d)) {

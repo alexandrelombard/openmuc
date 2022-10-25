@@ -164,7 +164,7 @@ class ChannelConfigImpl constructor(id: String, var deviceParent: DeviceConfigIm
         }
         if (samplingTimeOffset != null) {
             childElement = document.createElement("samplingTimeOffset")
-            childElement.textContent = millisToTimeString(samplingTimeOffset!!)
+            childElement.textContent = millisToTimeString(samplingTimeOffset)
             parentElement.appendChild(childElement)
         }
         if (samplingGroup != null) {
@@ -179,12 +179,12 @@ class ChannelConfigImpl constructor(id: String, var deviceParent: DeviceConfigIm
         }
         if (loggingInterval != null) {
             childElement = document.createElement("loggingInterval")
-            childElement.textContent = millisToTimeString(loggingInterval!!)
+            childElement.textContent = millisToTimeString(loggingInterval)
             parentElement.appendChild(childElement)
         }
         if (loggingTimeOffset != null) {
             childElement = document.createElement("loggingTimeOffset")
-            childElement.textContent = millisToTimeString(loggingTimeOffset!!)
+            childElement.textContent = millisToTimeString(loggingTimeOffset)
             parentElement.appendChild(childElement)
         }
         if (isLoggingEvent != null) {
@@ -334,7 +334,7 @@ class ChannelConfigImpl constructor(id: String, var deviceParent: DeviceConfigIm
         if (isDisabled == null) {
             configClone.isDisabled = clonedParentConfig.isDisabled ?: false
         } else {
-            if (clonedParentConfig.isDisabled()!!) {
+            if (clonedParentConfig.isDisabled) {
                 configClone.isDisabled = false
             } else {
                 configClone.isDisabled = isDisabled
@@ -344,7 +344,7 @@ class ChannelConfigImpl constructor(id: String, var deviceParent: DeviceConfigIm
     }
 
     val isSampling: Boolean
-        get() = !isDisabled!! && samplingInterval != null && samplingInterval > 0
+        get() = !isDisabled && samplingInterval != null && samplingInterval > 0
 
     override fun addServerMapping(serverMapping: ServerMapping) {
         if (serverMappings == null) {

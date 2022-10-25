@@ -21,8 +21,6 @@
 package org.openmuc.framework.core.datamanager
 
 import org.openmuc.framework.config.*
-import org.openmuc.framework.data.FutureValue.value
-import org.openmuc.framework.data.Record.value
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -30,20 +28,17 @@ import java.util.*
 
 class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : DeviceConfig {
     @set:Throws(IdCollisionException::class)
-    override var id: String
+    override var id: String = ""
         set(value) {
-            requireNotNull(id) { "The device ID may not be null" }
-            ChannelConfigImpl.checkIdSyntax(id)
-            if (driverParent!!.rootConfigParent!!.deviceConfigsById.containsKey(id)) {
-                throw IdCollisionException("Collision with device ID:$id")
+            ChannelConfigImpl.checkIdSyntax(value)
+            if (driverParent!!.rootConfigParent!!.deviceConfigsById.containsKey(value)) {
+                throw IdCollisionException("Collision with device ID:$value")
             }
-            driverParent!!.deviceConfigsById[id] = driverParent!!.deviceConfigsById.remove(this.id)
-            driverParent!!.rootConfigParent!!.deviceConfigsById[id] =
-                driverParent!!.rootConfigParent!!.deviceConfigsById.remove(this.id)
-            field = id
+            driverParent!!.deviceConfigsById[value] = driverParent!!.deviceConfigsById.remove(field)!!
+            driverParent!!.rootConfigParent!!.deviceConfigsById[value] =
+                driverParent!!.rootConfigParent!!.deviceConfigsById.remove(field)
+            field = value
         }
-
-
 
     override var description: String? = null
     override var deviceAddress: String? = null
@@ -60,7 +55,7 @@ class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : Device
         }
     override var isDisabled: Boolean = false
     var device: Device? = null
-    val channelConfigsById: HashMap<String?, ChannelConfigImpl?> = LinkedHashMap()
+    val channelConfigsById: HashMap<String, ChannelConfigImpl> = LinkedHashMap()
 
     init {
         this.id = id
@@ -98,7 +93,7 @@ class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : Device
 
     override val channels: Collection<ChannelConfig>
         get() = Collections
-            .unmodifiableCollection(channelConfigsById.values) as Collection<*> as Collection<ChannelConfig>
+            .unmodifiableCollection(channelConfigsById.values) as Collection<ChannelConfig>
 
     override fun delete() {
         driverParent!!.deviceConfigsById.remove(id)
@@ -138,15 +133,15 @@ class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : Device
         }
         if (samplingTimeout != null) {
             childElement = document.createElement("samplingTimeout")
-            childElement.textContent = ChannelConfigImpl.millisToTimeString(samplingTimeout!!)
+            childElement.textContent = ChannelConfigImpl.millisToTimeString(samplingTimeout)
             parentElement.appendChild(childElement)
         }
         if (connectRetryInterval != null) {
             childElement = document.createElement("connectRetryInterval")
-            childElement.textContent = ChannelConfigImpl.millisToTimeString(connectRetryInterval!!)
+            childElement.textContent = ChannelConfigImpl.millisToTimeString(connectRetryInterval)
             parentElement.appendChild(childElement)
         }
-        if (disabled != null) {
+        if (isDisabled != null) {
             childElement = document.createElement("disabled")
             if (isDisabled) {
                 childElement.textContent = "true"
@@ -188,7 +183,7 @@ class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : Device
         } else {
             configClone.connectRetryInterval = connectRetryInterval
         }
-        if (isDisabled == null || clonedParentConfig.disabled!!) {
+        if (isDisabled == null || clonedParentConfig.isDisabled) {
             configClone.isDisabled = clonedParentConfig.isDisabled
         } else {
             configClone.isDisabled = isDisabled
@@ -226,11 +221,11 @@ class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : Device
                     } else if (childName == "settings") {
                         config!!.settings = childNode.textContent
                     } else if (childName == "samplingTimeout") {
-                        config!!.setSamplingTimeout(ChannelConfigImpl.timeStringToMillis(childNode.textContent))
+                        config!!.samplingTimeout = (ChannelConfigImpl.timeStringToMillis(childNode.textContent))
                     } else if (childName == "connectRetryInterval") {
-                        config!!.setConnectRetryInterval(ChannelConfigImpl.timeStringToMillis(childNode.textContent))
+                        config!!.connectRetryInterval = (ChannelConfigImpl.timeStringToMillis(childNode.textContent))
                     } else if (childName == "disabled") {
-                        config!!.disabled = java.lang.Boolean.parseBoolean(childNode.textContent)
+                        config!!.isDisabled = childNode.textContent.toBoolean()
                     } else {
                         throw ParseException("found unknown tag:$childName")
                     }

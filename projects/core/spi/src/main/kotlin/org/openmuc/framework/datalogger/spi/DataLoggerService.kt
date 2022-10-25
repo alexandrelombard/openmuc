@@ -24,8 +24,8 @@ import org.openmuc.framework.data.Record
 import java.io.IOException
 
 interface DataLoggerService {
-    val id: String?
-    fun setChannelsToLog(channels: List<LogChannel?>?)
+    val id: String
+    fun setChannelsToLog(channels: List<LogChannel>)
 
     /**
      * Called by data manager to tell the logger that it should log the given records
@@ -38,8 +38,8 @@ interface DataLoggerService {
      * @param timestamp
      * logging timestamp
      */
-    fun log(containers: List<LoggingRecord?>?, timestamp: Long)
-    fun logEvent(containers: List<LoggingRecord?>?, timestamp: Long)
+    fun log(containers: List<LoggingRecord>, timestamp: Long)
+    fun logEvent(containers: List<LoggingRecord>, timestamp: Long)
     fun logSettingsRequired(): Boolean
 
     /**
@@ -58,7 +58,7 @@ interface DataLoggerService {
      * if any kind of error occurs accessing the logged data.
      */
     @Throws(IOException::class)
-    fun getRecords(channelId: String?, startTime: Long, endTime: Long): List<Record?>?
+    fun getRecords(channelId: String, startTime: Long, endTime: Long): List<Record>
 
     /**
      * Returns the Record with the highest timestamp available in all logged data for the channel with the given
@@ -72,5 +72,5 @@ interface DataLoggerService {
      * @throws IOException
      */
     @Throws(IOException::class)
-    fun getLatestLogRecord(channelId: String?): Record?
+    fun getLatestLogRecord(channelId: String): Record?
 }

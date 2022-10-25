@@ -21,67 +21,48 @@
 package org.openmuc.framework.core.datamanager
 
 import org.openmuc.framework.config.*
-import org.openmuc.framework.data.FutureValue.value
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.core.datamanager.ChannelConfigImpl.Companion.timeStringToMillis
 import org.openmuc.framework.driver.spi.DriverService
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import java.util.*
 
-class DriverConfigImpl internal constructor(override var id: String, var rootConfigParent: RootConfigImpl?) :
+class DriverConfigImpl internal constructor(id: String, var rootConfigParent: RootConfigImpl?) :
     DriverConfig {
-    override var samplingTimeout: Int? = null
-    override var connectRetryInterval: Int? = null
-    var disabled: Boolean? = null
-    val deviceConfigsById: HashMap<String?, DeviceConfigImpl?> = LinkedHashMap()
-    var activeDriver: DriverService? = null
-    override fun getId(): String {
-        return id
-    }
 
-    @Throws(IdCollisionException::class)
-    override fun setId(id: String?) {
-        requireNotNull(id) { "The driver ID may not be null" }
-        ChannelConfigImpl.Companion.checkIdSyntax(id)
-        if (rootConfigParent!!.driverConfigsById.containsKey(id)) {
-            throw IdCollisionException("Collision with the driver ID:$id")
+    @set:kotlin.jvm.Throws(IdCollisionException::class)
+    override var id: String = ""
+        set(value) {
+            ChannelConfigImpl.checkIdSyntax(value)
+            if (rootConfigParent!!.driverConfigsById.containsKey(value)) {
+                throw IdCollisionException("Collision with the driver ID:$value")
+            }
+            rootConfigParent!!.driverConfigsById.remove(field)
+            rootConfigParent!!.driverConfigsById[value] = this
+            field = value
         }
-        rootConfigParent!!.driverConfigsById.remove(this.id)
-        rootConfigParent!!.driverConfigsById[id] = this
+    override var samplingTimeout: Int = 0
+        set(value) {
+            require(value >= 0) { "A negative sampling timeout is not allowed" }
+            field = value
+        }
+    override var connectRetryInterval: Int = 0
+        set(value) {
+            require(value >= 0) { "A negative connect retry interval is not allowed" }
+            field = value
+        }
+    override var isDisabled: Boolean = false
+    val deviceConfigsById: HashMap<String, DeviceConfigImpl> = LinkedHashMap()
+    var activeDriver: DriverService? = null
+
+    init {
         this.id = id
     }
 
-    override fun getSamplingTimeout(): Int? {
-        return samplingTimeout
-    }
-
-    override fun setSamplingTimeout(timeout: Int?) {
-        require(!(timeout != null && timeout < 0)) { "A negative sampling timeout is not allowed" }
-        samplingTimeout = timeout
-    }
-
-    override fun getConnectRetryInterval(): Int? {
-        return connectRetryInterval
-    }
-
-    override fun setConnectRetryInterval(interval: Int?) {
-        require(!(interval != null && interval < 0)) { "A negative connect retry interval is not allowed" }
-        connectRetryInterval = interval
-    }
-
-    override fun isDisabled(): Boolean? {
-        return disabled
-    }
-
-    override fun setDisabled(disabled: Boolean?) {
-        this.disabled = disabled
-    }
-
     @Throws(IdCollisionException::class)
-    override fun addDevice(deviceId: String?): DeviceConfig? {
-        requireNotNull(deviceId) { "The device ID may not be null" }
-        ChannelConfigImpl.Companion.checkIdSyntax(deviceId)
+    override fun addDevice(deviceId: String): DeviceConfig {
+        ChannelConfigImpl.checkIdSyntax(deviceId)
         if (rootConfigParent!!.deviceConfigsById.containsKey(deviceId)) {
             throw IdCollisionException("Collision with device ID: $deviceId")
         }
@@ -91,18 +72,18 @@ class DriverConfigImpl internal constructor(override var id: String, var rootCon
         return newDevice
     }
 
-    override fun getDevice(deviceId: String?): DeviceConfig? {
+    override fun getDevice(deviceId: String): DeviceConfig? {
         return deviceConfigsById[deviceId]
     }
 
-    override val devices: Collection<DeviceConfig>?
+    override val devices: Collection<DeviceConfig>
         get() = Collections
-            .unmodifiableCollection(deviceConfigsById.values) as Collection<*> as Collection<DeviceConfig>
+            .unmodifiableCollection(deviceConfigsById.values) as Collection<DeviceConfig>
 
     override fun delete() {
         rootConfigParent!!.driverConfigsById.remove(id)
         for (deviceConfig in deviceConfigsById.values) {
-            deviceConfig!!.clear()
+            deviceConfig.clear()
         }
         deviceConfigsById.clear()
         rootConfigParent = null
@@ -114,21 +95,21 @@ class DriverConfigImpl internal constructor(override var id: String, var rootCon
         var childElement: Element
         if (samplingTimeout != null) {
             childElement = document.createElement("samplingTimeout")
-            childElement.textContent = ChannelConfigImpl.Companion.millisToTimeString(samplingTimeout!!)
+            childElement.textContent = ChannelConfigImpl.millisToTimeString(samplingTimeout)
             parentElement.appendChild(childElement)
         }
         if (connectRetryInterval != null) {
             childElement = document.createElement("connectRetryInterval")
-            childElement.textContent = ChannelConfigImpl.Companion.millisToTimeString(connectRetryInterval!!)
+            childElement.textContent = ChannelConfigImpl.millisToTimeString(connectRetryInterval)
             parentElement.appendChild(childElement)
         }
-        if (disabled != null) {
+        if (isDisabled != null) {
             childElement = document.createElement("disabled")
-            childElement.textContent = disabled.toString()
+            childElement.textContent = isDisabled.toString()
             parentElement.appendChild(childElement)
         }
         for (deviceConfig in deviceConfigsById.values) {
-            parentElement.appendChild(deviceConfig!!.getDomElement(document))
+            parentElement.appendChild(deviceConfig.getDomElement(document))
         }
         return parentElement
     }
@@ -137,9 +118,9 @@ class DriverConfigImpl internal constructor(override var id: String, var rootCon
         val configClone = DriverConfigImpl(id, clonedParentConfig)
         configClone.samplingTimeout = samplingTimeout
         configClone.connectRetryInterval = connectRetryInterval
-        configClone.disabled = disabled
+        configClone.isDisabled = isDisabled
         for (deviceConfig in deviceConfigsById.values) {
-            configClone.deviceConfigsById[deviceConfig!!.getId()] = deviceConfig!!.clone(configClone)
+            configClone.deviceConfigsById[deviceConfig.id] = deviceConfig.clone(configClone)
         }
         return configClone
     }
@@ -156,13 +137,13 @@ class DriverConfigImpl internal constructor(override var id: String, var rootCon
         } else {
             configClone.connectRetryInterval = connectRetryInterval
         }
-        if (disabled == null) {
-            configClone.disabled = DriverConfig.DISABLED_DEFAULT
+        if (isDisabled == null) {
+            configClone.isDisabled = DriverConfig.DISABLED_DEFAULT
         } else {
-            configClone.disabled = disabled
+            configClone.isDisabled = isDisabled
         }
         for (deviceConfig in deviceConfigsById.values) {
-            configClone.deviceConfigsById[deviceConfig!!.getId()] = deviceConfig!!.cloneWithDefaults(configClone)
+            configClone.deviceConfigsById[deviceConfig.id] = deviceConfig.cloneWithDefaults(configClone)
         }
         return configClone
     }
@@ -170,19 +151,18 @@ class DriverConfigImpl internal constructor(override var id: String, var rootCon
     companion object {
         @Throws(ParseException::class)
         fun addDriverFromDomNode(driverConfigNode: Node, parentConfig: RootConfigImpl) {
-            val id: String = ChannelConfigImpl.Companion.getAttributeValue(driverConfigNode, "id")
+            val id: String = ChannelConfigImpl.getAttributeValue(driverConfigNode, "id")
                 ?: throw ParseException("driver has no id attribute")
-            val config: DriverConfigImpl?
-            config = try {
+            val config = try {
                 parentConfig.addDriver(id)
             } catch (e: IdCollisionException) {
                 throw ParseException(e)
             }
-            parseDiverNode(driverConfigNode, config)
+            parseDiverNode(driverConfigNode, config!!)
         }
 
         @Throws(ParseException::class)
-        private fun parseDiverNode(driverConfigNode: Node, config: DriverConfigImpl?) {
+        private fun parseDiverNode(driverConfigNode: Node, config: DriverConfig) {
             val driverChildren = driverConfigNode.childNodes
             try {
                 for (j in 0 until driverChildren.length) {
@@ -190,22 +170,12 @@ class DriverConfigImpl internal constructor(override var id: String, var rootCon
                     val childName = childNode.nodeName
                     when (childName) {
                         "#text" -> continue
-                        "device" -> DeviceConfigImpl.Companion.addDeviceFromDomNode(childNode, config)
-                        "samplingTimeout" -> config!!.setSamplingTimeout(
-                            ChannelConfigImpl.Companion.timeStringToMillis(
-                                childNode.textContent
-                            )
-                        )
-
-                        "connectRetryInterval" -> config!!.setConnectRetryInterval(
-                            ChannelConfigImpl.Companion.timeStringToMillis(
-                                childNode.textContent
-                            )
-                        )
-
+                        "device" -> DeviceConfigImpl.addDeviceFromDomNode(childNode, config)
+                        "samplingTimeout" -> config.samplingTimeout = timeStringToMillis(childNode.textContent)
+                        "connectRetryInterval" -> config.connectRetryInterval = timeStringToMillis(childNode.textContent)
                         "disabled" -> {
                             val disabledString = childNode.textContent
-                            config!!.disabled = java.lang.Boolean.parseBoolean(disabledString)
+                            config.isDisabled = disabledString.toBoolean()
                         }
 
                         else -> throw ParseException("found unknown tag:$childName")

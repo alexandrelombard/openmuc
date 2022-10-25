@@ -72,7 +72,7 @@ internal class DlmsCosemConnection(deviceAddress: String, settings: String) : Co
     }
 
     @Throws(ConnectionException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo> {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         if (deviceSettings.useSn()) {
             throw UnsupportedOperationException("Scan devices for SN is not supported, yet.")
         }

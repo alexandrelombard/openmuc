@@ -21,26 +21,26 @@
 package org.openmuc.framework.core.datamanager
 
 import org.openmuc.framework.config.*
-import org.openmuc.framework.config.ChannelConfig.id
-import org.openmuc.framework.config.DriverConfig.id
-import org.openmuc.framework.config.DriverInfo.id
-import org.openmuc.framework.config.ServerMapping.id
+import org.openmuc.framework.config.ChannelConfig
+import org.openmuc.framework.config.DriverConfig
+import org.openmuc.framework.config.DriverInfo
+import org.openmuc.framework.config.ServerMapping
 import org.openmuc.framework.data.Flag
-import org.openmuc.framework.data.Record.flag
+import org.openmuc.framework.data.Record
 import org.openmuc.framework.dataaccess.*
-import org.openmuc.framework.dataaccess.Channel.id
+import org.openmuc.framework.dataaccess.Channel
 import org.openmuc.framework.datalogger.spi.LogChannel
 import org.openmuc.framework.driver.spi.*
 import org.slf4j.LoggerFactory
 import java.util.*
 
 class Device(
-    dataManager: DataManager, deviceConfig: DeviceConfigImpl?, currentTime: Long,
-    logChannels: MutableList<LogChannel?>
+    dataManager: DataManager, deviceConfig: DeviceConfigImpl, currentTime: Long,
+    logChannels: MutableList<LogChannel>
 ) {
     private val eventList: LinkedList<DeviceEvent>
     private val taskList: LinkedList<DeviceTask>
-    var deviceConfig: DeviceConfigImpl?
+    var deviceConfig: DeviceConfigImpl
     var dataManager: DataManager
     var connection: Connection? = null
     var state: DeviceState? = null
@@ -51,19 +51,19 @@ class Device(
         taskList = LinkedList()
         this.dataManager = dataManager
         this.deviceConfig = deviceConfig
-        if (deviceConfig!!.isDisabled()!!) {
+        if (deviceConfig.isDisabled) {
             state = DeviceState.DISABLED
             for (channelConfig in deviceConfig.channelConfigsById.values) {
-                channelConfig!!.channel = ChannelImpl(
+                channelConfig.channel = ChannelImpl(
                     dataManager, channelConfig, ChannelState.DISABLED,
                     Flag.DISABLED, currentTime, logChannels
                 )
             }
         } else if (deviceConfig.driverParent!!.activeDriver == null) {
             state = DeviceState.DRIVER_UNAVAILABLE
-            logger.warn("No driver bundle available for configured driver: '{}'.", deviceConfig.getDriver().id)
+            logger.warn("No driver bundle available for configured driver: '{}'.", deviceConfig.driver?.id)
             for (channelConfig in deviceConfig.channelConfigsById.values) {
-                channelConfig!!.channel = ChannelImpl(
+                channelConfig.channel = ChannelImpl(
                     dataManager, channelConfig, ChannelState.DRIVER_UNAVAILABLE,
                     Flag.DRIVER_UNAVAILABLE, currentTime, logChannels
                 )
@@ -71,7 +71,7 @@ class Device(
         } else {
             state = DeviceState.CONNECTING
             for (channelConfig in deviceConfig.channelConfigsById.values) {
-                channelConfig!!.channel = ChannelImpl(
+                channelConfig.channel = ChannelImpl(
                     dataManager, channelConfig, ChannelState.CONNECTING,
                     Flag.CONNECTING, currentTime, logChannels
                 )
@@ -82,18 +82,18 @@ class Device(
     fun configChangedSignal(
         newDeviceConfig: DeviceConfigImpl,
         currentTime: Long,
-        logChannels: MutableList<LogChannel?>
+        logChannels: MutableList<LogChannel>
     ) {
         val oldDeviceConfig = deviceConfig
         deviceConfig = newDeviceConfig
         newDeviceConfig.device = this
         if (state === DeviceState.DISABLED) {
-            if (newDeviceConfig.isDisabled()!!) {
+            if (newDeviceConfig.isDisabled) {
                 setStatesForNewDevice(
                     oldDeviceConfig, DeviceState.DISABLED, ChannelState.DISABLED, Flag.DISABLED,
                     currentTime, logChannels
                 )
-            } else if (deviceConfig!!.driverParent!!.activeDriver == null) {
+            } else if (deviceConfig.driverParent!!.activeDriver == null) {
                 setStatesForNewDevice(
                     oldDeviceConfig, DeviceState.DRIVER_UNAVAILABLE, ChannelState.DRIVER_UNAVAILABLE,
                     Flag.DRIVER_UNAVAILABLE, currentTime, logChannels
@@ -106,7 +106,7 @@ class Device(
                 connect()
             }
         } else if (state === DeviceState.DRIVER_UNAVAILABLE) {
-            if (newDeviceConfig.isDisabled()!!) {
+            if (newDeviceConfig.isDisabled) {
                 setStatesForNewDevice(
                     oldDeviceConfig, DeviceState.DISABLED, ChannelState.DISABLED, Flag.DISABLED,
                     currentTime, logChannels
@@ -122,9 +122,9 @@ class Device(
                 oldDeviceConfig, DeviceState.CONNECTING, ChannelState.CONNECTING, Flag.CONNECTING,
                 currentTime, logChannels
             )
-            if (newDeviceConfig.isDisabled()!!) {
+            if (newDeviceConfig.isDisabled) {
                 addEvent(DeviceEvent.DISABLED)
-            } else if (oldDeviceConfig!!.isDisabled()!!) {
+            } else if (oldDeviceConfig.isDisabled) {
                 eventList.remove(DeviceEvent.DISABLED)
             }
         } else if (state === DeviceState.DISCONNECTING) {
@@ -132,13 +132,13 @@ class Device(
                 oldDeviceConfig, DeviceState.DISCONNECTING, ChannelState.DISCONNECTING,
                 Flag.DISCONNECTING, currentTime, logChannels
             )
-            if (newDeviceConfig.isDisabled()!!) {
+            if (newDeviceConfig.isDisabled) {
                 addEvent(DeviceEvent.DISABLED)
-            } else if (oldDeviceConfig!!.isDisabled()!!) {
+            } else if (oldDeviceConfig.isDisabled) {
                 eventList.remove(DeviceEvent.DISABLED)
             }
         } else if (state === DeviceState.WAITING_FOR_CONNECTION_RETRY) {
-            if (newDeviceConfig.isDisabled()!!) {
+            if (newDeviceConfig.isDisabled) {
                 setStatesForNewDevice(
                     oldDeviceConfig, DeviceState.DISABLED, ChannelState.DISABLED, Flag.DISABLED,
                     currentTime, logChannels
@@ -151,7 +151,7 @@ class Device(
                 )
             }
         } else {
-            if (newDeviceConfig.isDisabled()!!) {
+            if (newDeviceConfig.isDisabled) {
                 if (state === DeviceState.CONNECTED) {
                     eventList.add(DeviceEvent.DISABLED)
                     // TODO disable all readworkers
@@ -181,10 +181,10 @@ class Device(
 
     private fun updateChannels(
         oldDeviceConfig: DeviceConfigImpl?, channelState: ChannelState, flag: Flag,
-        currentTime: Long, logChannels: MutableList<LogChannel?>
+        currentTime: Long, logChannels: MutableList<LogChannel>
     ) {
-        var listeningChannels: MutableList<ChannelRecordContainerImpl?>? = null
-        for ((key, newChannelConfig) in deviceConfig!!.channelConfigsById) {
+        var listeningChannels: MutableList<ChannelRecordContainerImpl> = arrayListOf()
+        for ((key, newChannelConfig) in deviceConfig.channelConfigsById) {
             val oldChannelConfig = oldDeviceConfig!!.channelConfigsById[key]
             if (oldChannelConfig == null) {
                 listeningChannels = initalizeListenChannels(
@@ -195,27 +195,25 @@ class Device(
                 updateConfig(currentTime, logChannels, oldChannelConfig, newChannelConfig)
             }
         }
-        if (listeningChannels != null) {
-            addStartListeningTask(StartListeningTask(dataManager, this, listeningChannels))
-        }
+        addStartListeningTask(StartListeningTask(dataManager, this, listeningChannels))
     }
 
     private fun updateConfig(
-        currentTime: Long, logChannels: MutableList<LogChannel?>, oldChannelConfig: ChannelConfigImpl,
-        newChannelConfig: ChannelConfigImpl?
+        currentTime: Long, logChannels: MutableList<LogChannel>, oldChannelConfig: ChannelConfigImpl,
+        newChannelConfig: ChannelConfigImpl
     ) {
-        newChannelConfig!!.channel = oldChannelConfig.channel
+        newChannelConfig.channel = oldChannelConfig.channel
         newChannelConfig.channel!!.config = newChannelConfig
         newChannelConfig.channel!!.setNewDeviceState(
             oldChannelConfig.state,
-            newChannelConfig.channel.getLatestRecord().flag
+            newChannelConfig.channel!!.latestRecord!!.flag
         )
-        if (!newChannelConfig.isDisabled() && newChannelConfig.getLoggingInterval() > 0) {
+        if (!newChannelConfig.isDisabled && newChannelConfig.loggingInterval > 0) {
             dataManager.addToLoggingCollections(newChannelConfig.channel, currentTime)
             logChannels.add(newChannelConfig)
-        } else if (!oldChannelConfig.isDisabled() && oldChannelConfig.getLoggingInterval() > 0) {
+        } else if (!oldChannelConfig.isDisabled && oldChannelConfig.loggingInterval > 0) {
             dataManager.removeFromLoggingCollections(newChannelConfig.channel)
-        } else if (!oldChannelConfig.isDisabled() && oldChannelConfig.getLoggingInterval() == ChannelConfig.LOGGING_INTERVAL_DEFAULT && oldChannelConfig.isLoggingEvent() && oldChannelConfig.isListening()) {
+        } else if (!oldChannelConfig.isDisabled && oldChannelConfig.loggingInterval == ChannelConfig.LOGGING_INTERVAL_DEFAULT && oldChannelConfig.isLoggingEvent && oldChannelConfig.isListening) {
             logChannels.add(newChannelConfig)
         }
         if (newChannelConfig.isSampling) {
@@ -223,7 +221,7 @@ class Device(
         } else if (oldChannelConfig.isSampling) {
             dataManager.removeFromSamplingCollections(newChannelConfig.channel)
         }
-        if (newChannelConfig.getChannelAddress() != oldChannelConfig.getChannelAddress()) {
+        if (newChannelConfig.channelAddress != oldChannelConfig.channelAddress) {
             newChannelConfig.channel!!.handle = null
         }
     }
@@ -232,22 +230,19 @@ class Device(
         channelState: ChannelState,
         flag: Flag,
         currentTime: Long,
-        logChannels: MutableList<LogChannel?>,
-        listeningChannels: MutableList<ChannelRecordContainerImpl?>?,
+        logChannels: MutableList<LogChannel>,
+        listeningChannels: MutableList<ChannelRecordContainerImpl> = LinkedList(),
         newChannelConfig: ChannelConfigImpl?
-    ): MutableList<ChannelRecordContainerImpl?>? {
-        var listeningChannels = listeningChannels
+    ): MutableList<ChannelRecordContainerImpl> {
+        val listeningChannels = listeningChannels
         if (newChannelConfig!!.state !== ChannelState.DISABLED) {
-            if (newChannelConfig!!.isListening()) {
-                if (listeningChannels == null) {
-                    listeningChannels = LinkedList()
-                }
+            if (newChannelConfig!!.isListening) {
                 newChannelConfig.channel = ChannelImpl(
                     dataManager, newChannelConfig, ChannelState.LISTENING,
                     Flag.NO_VALUE_RECEIVED_YET, currentTime, logChannels
                 )
                 listeningChannels.add(newChannelConfig.channel!!.createChannelRecordContainer())
-            } else if (newChannelConfig.getSamplingInterval() != ChannelConfig.SAMPLING_INTERVAL_DEFAULT) {
+            } else if (newChannelConfig.samplingInterval != ChannelConfig.SAMPLING_INTERVAL_DEFAULT) {
                 newChannelConfig.channel = ChannelImpl(
                     dataManager, newChannelConfig, ChannelState.SAMPLING,
                     Flag.NO_VALUE_RECEIVED_YET, currentTime, logChannels
@@ -280,25 +275,25 @@ class Device(
 
     private fun setStatesForNewDevice(
         oldDeviceConfig: DeviceConfigImpl?, deviceState: DeviceState,
-        channelState: ChannelState, flag: Flag, currentTime: Long, logChannels: MutableList<LogChannel?>
+        channelState: ChannelState, flag: Flag, currentTime: Long, logChannels: MutableList<LogChannel>
     ) {
         state = deviceState
-        for ((key, channelConfigImpl) in deviceConfig!!.channelConfigsById) {
+        for ((key, channelConfigImpl) in deviceConfig.channelConfigsById) {
             val oldChannelConfig = oldDeviceConfig!!.channelConfigsById[key]
             if (oldChannelConfig == null) {
-                channelConfigImpl!!.channel = ChannelImpl(
+                channelConfigImpl.channel = ChannelImpl(
                     dataManager, channelConfigImpl, channelState, flag,
                     currentTime, logChannels
                 )
             } else {
-                channelConfigImpl!!.channel = oldChannelConfig.channel
+                channelConfigImpl.channel = oldChannelConfig.channel
                 channelConfigImpl.channel!!.config = channelConfigImpl
                 channelConfigImpl.channel!!.setNewDeviceState(channelState, flag)
-                if (!channelConfigImpl.isDisabled()) {
-                    if (channelConfigImpl.getLoggingInterval() > 0 && !channelConfigImpl.isLoggingEvent()) {
+                if (!channelConfigImpl.isDisabled) {
+                    if (channelConfigImpl.loggingInterval > 0 && !channelConfigImpl.isLoggingEvent) {
                         dataManager.addToLoggingCollections(channelConfigImpl.channel, currentTime)
                         logChannels.add(channelConfigImpl)
-                    } else if (channelConfigImpl.getLoggingInterval() == ChannelConfig.LOGGING_INTERVAL_DEFAULT && channelConfigImpl.isLoggingEvent() && channelConfigImpl.isListening()) {
+                    } else if (channelConfigImpl.loggingInterval == ChannelConfig.LOGGING_INTERVAL_DEFAULT && channelConfigImpl.isLoggingEvent && channelConfigImpl.isListening) {
                         logChannels.add(channelConfigImpl)
                     }
                 }
@@ -308,15 +303,15 @@ class Device(
 
     private fun setStatesForNewConnectedDevice(
         oldDeviceConfig: DeviceConfigImpl?, DeviceState: DeviceState,
-        channelState: ChannelState, flag: Flag, currentTime: Long, logChannels: MutableList<LogChannel?>
+        channelState: ChannelState, flag: Flag, currentTime: Long, logChannels: MutableList<LogChannel>
     ) {
         state = DeviceState
         var listeningChannels: MutableList<ChannelRecordContainerImpl?>? = null
-        for ((key, newChannelConfig) in deviceConfig!!.channelConfigsById) {
+        for ((key, newChannelConfig) in deviceConfig.channelConfigsById) {
             val oldChannelConfig = oldDeviceConfig!!.channelConfigsById[key]
             if (oldChannelConfig == null) {
-                if (newChannelConfig!!.state !== ChannelState.DISABLED) {
-                    if (newChannelConfig!!.isListening()) {
+                if (newChannelConfig.state !== ChannelState.DISABLED) {
+                    if (newChannelConfig.isListening) {
                         if (listeningChannels == null) {
                             listeningChannels = LinkedList()
                         }
@@ -325,7 +320,7 @@ class Device(
                             dataManager, newChannelConfig,
                             ChannelState.LISTENING, Flag.NO_VALUE_RECEIVED_YET, currentTime, logChannels
                         )
-                    } else if (newChannelConfig.getSamplingInterval() != ChannelConfig.SAMPLING_INTERVAL_DEFAULT) {
+                    } else if (newChannelConfig.samplingInterval != ChannelConfig.SAMPLING_INTERVAL_DEFAULT) {
                         newChannelConfig.channel = ChannelImpl(
                             dataManager, newChannelConfig, ChannelState.SAMPLING,
                             Flag.NO_VALUE_RECEIVED_YET, currentTime, logChannels
@@ -338,24 +333,24 @@ class Device(
                         )
                     }
                 } else {
-                    newChannelConfig!!.channel = ChannelImpl(
+                    newChannelConfig.channel = ChannelImpl(
                         dataManager, newChannelConfig, channelState, flag,
                         currentTime, logChannels
                     )
                 }
             } else {
-                newChannelConfig!!.channel = oldChannelConfig.channel
+                newChannelConfig.channel = oldChannelConfig.channel
                 newChannelConfig.channel!!.config = newChannelConfig
                 newChannelConfig.channel!!.setNewDeviceState(channelState, flag)
-                if (!newChannelConfig.isDisabled()) {
-                    if (newChannelConfig.getLoggingInterval() > 0
-                        && !newChannelConfig.isLoggingEvent()
+                if (!newChannelConfig.isDisabled) {
+                    if (newChannelConfig.loggingInterval > 0
+                        && !newChannelConfig.isLoggingEvent
                     ) {
                         dataManager.addToLoggingCollections(newChannelConfig.channel, currentTime)
                         logChannels.add(newChannelConfig)
                     } else if (newChannelConfig
-                            .getLoggingInterval() == ChannelConfig.LOGGING_INTERVAL_DEFAULT && newChannelConfig.isLoggingEvent()
-                        && newChannelConfig.isListening()
+                            .loggingInterval == ChannelConfig.LOGGING_INTERVAL_DEFAULT && newChannelConfig.isLoggingEvent
+                        && newChannelConfig.isListening
                     ) {
                         logChannels.add(newChannelConfig)
                     }
@@ -366,10 +361,10 @@ class Device(
 
     private fun setStates(DeviceState: DeviceState, channelState: ChannelState, flag: Flag) {
         state = DeviceState
-        for (channelConfig in deviceConfig!!.channelConfigsById.values) {
-            if (channelConfig!!.state !== ChannelState.DISABLED) {
-                channelConfig!!.state = channelState
-                if (channelConfig.channel.getLatestRecord().flag !== Flag.SAMPLING_AND_LISTENING_DISABLED) {
+        for (channelConfig in deviceConfig.channelConfigsById.values) {
+            if (channelConfig.state !== ChannelState.DISABLED) {
+                channelConfig.state = channelState
+                if (channelConfig.channel?.latestRecord?.flag !== Flag.SAMPLING_AND_LISTENING_DISABLED) {
                     channelConfig.channel!!.setFlag(flag)
                 }
             }
@@ -441,7 +436,7 @@ class Device(
                 DeviceState.WAITING_FOR_CONNECTION_RETRY, ChannelState.WAITING_FOR_CONNECTION_RETRY,
                 Flag.WAITING_FOR_CONNECTION_RETRY
             )
-            dataManager.addReconnectDeviceToActions(this, currentTime + deviceConfig!!.getConnectRetryInterval()!!)
+            dataManager.addReconnectDeviceToActions(this, currentTime + deviceConfig.connectRetryInterval)
             removeAllTasksOfThisDevice()
         } else {
             handleEventQueueWhenDisconnected()
@@ -472,8 +467,8 @@ class Device(
     }
 
     private fun setDeleted() {
-        for (channelConfig in deviceConfig!!.channelConfigsById.values) {
-            channelConfig!!.state = ChannelState.DELETED
+        for (channelConfig in deviceConfig.channelConfigsById.values) {
+            channelConfig.state = ChannelState.DELETED
             channelConfig.channel!!.setFlag(Flag.CHANNEL_DELETED)
             channelConfig.channel!!.handle = null
         }
@@ -481,10 +476,10 @@ class Device(
     }
 
     private fun disableSampling() {
-        for (channelConfig in deviceConfig!!.channelConfigsById.values) {
-            if (channelConfig!!.state !== ChannelState.DISABLED) {
-                if (channelConfig!!.state === ChannelState.SAMPLING) {
-                    dataManager.removeFromSamplingCollections(channelConfig!!.channel)
+        for (channelConfig in deviceConfig.channelConfigsById.values) {
+            if (channelConfig.state !== ChannelState.DISABLED) {
+                if (channelConfig.state === ChannelState.SAMPLING) {
+                    dataManager.removeFromSamplingCollections(channelConfig.channel)
                 }
             }
         }
@@ -507,7 +502,7 @@ class Device(
         if (!taskList.isEmpty()) {
             val firstDevice = taskList.first
             if (!firstDevice.isAlive) {
-                firstDevice.device!!.executeNextTask()
+                firstDevice.device.executeNextTask()
             }
         }
     }
@@ -537,7 +532,7 @@ class Device(
 
     private fun connect() {
         val connectTask = ConnectTask(
-            deviceConfig!!.driverParent!!.activeDriver, deviceConfig!!.device,
+            deviceConfig.driverParent!!.activeDriver!!, deviceConfig.device!!,
             dataManager
         )
         taskList.add(connectTask)
@@ -552,7 +547,7 @@ class Device(
 
     private fun disconnect() {
         val disconnectTask = DisconnectTask(
-            deviceConfig!!.driverParent!!.activeDriver, deviceConfig!!.device,
+            deviceConfig.driverParent!!.activeDriver, deviceConfig.device,
             dataManager
         )
         taskList.add(disconnectTask)
@@ -588,11 +583,11 @@ class Device(
         }
     }
 
-    fun <T> addTask(deviceTask: T) where T : DeviceTask?, T : ConnectedTask? {
+    fun <T> addTask(deviceTask: T) where T : DeviceTask, T : ConnectedTask? {
         if (isConnected) {
             taskList.add(deviceTask)
             if (containsOneTask()) {
-                state = deviceTask.getType().resultingState
+                state = deviceTask.type.resultingState
                 dataManager.executor!!.execute(deviceTask)
             }
         } else {
@@ -641,16 +636,16 @@ class Device(
 
     private fun setConnected(currentTime: Long) {
         var listeningChannels: MutableList<ChannelRecordContainerImpl?>? = null
-        for (channelConfig in deviceConfig!!.channelConfigsById.values) {
-            if (channelConfig!!.state !== ChannelState.DISABLED) {
-                if (channelConfig!!.isListening()) {
+        for (channelConfig in deviceConfig.channelConfigsById.values) {
+            if (channelConfig.state !== ChannelState.DISABLED) {
+                if (channelConfig.isListening) {
                     if (listeningChannels == null) {
                         listeningChannels = LinkedList()
                     }
                     listeningChannels.add(channelConfig.channel!!.createChannelRecordContainer())
                     channelConfig.state = ChannelState.LISTENING
                     channelConfig.channel!!.setFlag(Flag.NO_VALUE_RECEIVED_YET)
-                } else if (channelConfig.getSamplingInterval() != ChannelConfig.SAMPLING_INTERVAL_DEFAULT) {
+                } else if (channelConfig.samplingInterval != ChannelConfig.SAMPLING_INTERVAL_DEFAULT) {
                     dataManager.addToSamplingCollections(channelConfig.channel, currentTime)
                     channelConfig.state = ChannelState.SAMPLING
                     channelConfig.channel!!.setFlag(Flag.NO_VALUE_RECEIVED_YET)

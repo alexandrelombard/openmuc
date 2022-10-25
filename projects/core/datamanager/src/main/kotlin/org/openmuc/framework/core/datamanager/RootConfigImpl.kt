@@ -21,8 +21,6 @@
 package org.openmuc.framework.core.datamanager
 
 import org.openmuc.framework.config.*
-import org.openmuc.framework.data.FutureValue.value
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.datalogger.spi.LogChannel
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -40,20 +38,14 @@ import javax.xml.transform.dom.DOMSource
 import javax.xml.transform.stream.StreamResult
 
 class RootConfigImpl : RootConfig {
-    private override var dataLogSource: String? = null
-    val driverConfigsById: HashMap<String?, DriverConfigImpl?> = LinkedHashMap()
-    val deviceConfigsById = HashMap<String?, DeviceConfigImpl?>()
-    val channelConfigsById = HashMap<String?, ChannelConfigImpl?>()
+    override var dataLogSource: String? = null
+    val driverConfigsById: HashMap<String, DriverConfigImpl?> = LinkedHashMap()
+    val deviceConfigsById = HashMap<String, DeviceConfigImpl?>()
+    val channelConfigsById = HashMap<String, ChannelConfigImpl?>()
 
     // TODO really needed?:
     var logChannels: List<LogChannel>? = null
-    override fun getDataLogSource(): String? {
-        return dataLogSource
-    }
 
-    override fun setDataLogSource(source: String?) {
-        dataLogSource = source
-    }
 
     @Throws(
         TransformerFactoryConfigurationError::class,
@@ -86,7 +78,7 @@ class RootConfigImpl : RootConfig {
         return rootConfigElement
     }
 
-    override fun getOrAddDriver(id: String?): DriverConfig? {
+    override fun getOrAddDriver(id: String): DriverConfig? {
         return try {
             addDriver(id)
         } catch (e: IdCollisionException) {
@@ -95,9 +87,8 @@ class RootConfigImpl : RootConfig {
     }
 
     @Throws(IdCollisionException::class)
-    override fun addDriver(id: String?): DriverConfigImpl? {
-        requireNotNull(id) { "The driver ID may not be null." }
-        ChannelConfigImpl.Companion.checkIdSyntax(id)
+    override fun addDriver(id: String): DriverConfigImpl {
+        ChannelConfigImpl.checkIdSyntax(id)
         if (driverConfigsById.containsKey(id)) {
             throw IdCollisionException("Collision with the driver ID: $id")
         }
@@ -106,21 +97,21 @@ class RootConfigImpl : RootConfig {
         return driverConfig
     }
 
-    override fun getDriver(id: String?): DriverConfig? {
+    override fun getDriver(id: String): DriverConfig? {
         return driverConfigsById[id]
     }
 
-    override fun getDevice(id: String?): DeviceConfig? {
+    override fun getDevice(id: String): DeviceConfig? {
         return deviceConfigsById[id]
     }
 
-    override fun getChannel(id: String?): ChannelConfig? {
+    override fun getChannel(id: String): ChannelConfig? {
         return channelConfigsById[id]
     }
 
-    override val drivers: Collection<DriverConfig>?
+    override val drivers: Collection<DriverConfig>
         get() = Collections
-            .unmodifiableCollection(driverConfigsById.values) as Collection<*> as Collection<DriverConfig>
+            .unmodifiableCollection(driverConfigsById.values) as Collection<DriverConfig>
 
     constructor() {}
     constructor(other: RootConfigImpl?) {
@@ -143,12 +134,12 @@ class RootConfigImpl : RootConfig {
         return configClone
     }
 
-    private fun addDriver(driverConfig: DriverConfigImpl?) {
-        driverConfigsById[driverConfig!!.getId()] = driverConfig
-        for (deviceConfig in driverConfig!!.deviceConfigsById.values) {
-            deviceConfigsById[deviceConfig!!.getId()] = deviceConfig
-            for (channelConfig in deviceConfig!!.channelConfigsById.values) {
-                channelConfigsById[channelConfig!!.getId()] = channelConfig
+    private fun addDriver(driverConfig: DriverConfigImpl) {
+        driverConfigsById[driverConfig.id] = driverConfig
+        for (deviceConfig in driverConfig.deviceConfigsById.values) {
+            deviceConfigsById[deviceConfig.id] = deviceConfig
+            for (channelConfig in deviceConfig.channelConfigsById.values) {
+                channelConfigsById[channelConfig!!.id] = channelConfig
             }
         }
     }
@@ -191,8 +182,7 @@ class RootConfigImpl : RootConfig {
             val rootConfigChildren = domNode.childNodes
             for (i in 0 until rootConfigChildren.length) {
                 val childNode = rootConfigChildren.item(i)
-                val childName = childNode.nodeName
-                when (childName) {
+                when (val childName = childNode.nodeName) {
                     "#text" -> continue
                     "driver" -> DriverConfigImpl.Companion.addDriverFromDomNode(childNode, rootConfig)
                     "dataLogSource" -> rootConfig.dataLogSource = childNode.textContent
