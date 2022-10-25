@@ -37,7 +37,7 @@ interface ConfigService {
      */
     var config: RootConfig?
     fun getConfig(listener: ConfigChangeListener?): RootConfig?
-    fun stopListeningForConfigChange(listener: ConfigChangeListener?)
+    fun stopListeningForConfigChange(listener: ConfigChangeListener)
 
     @Throws(ConfigWriteException::class)
     fun writeConfigToFile()
@@ -53,10 +53,10 @@ interface ConfigService {
         ScanException::class,
         ScanInterruptedException::class
     )
-    fun scanForDevices(driverId: String?, settings: String?): List<DeviceScanInfo?>?
+    fun scanForDevices(driverId: String, settings: String): List<DeviceScanInfo>
 
     @Throws(DriverNotAvailableException::class)
-    fun scanForDevices(driverId: String?, settings: String?, scanListener: DeviceScanListener?)
+    fun scanForDevices(driverId: String, settings: String, scanListener: DeviceScanListener?)
 
     @Throws(DriverNotAvailableException::class, UnsupportedOperationException::class)
     fun interruptDeviceScan(driverId: String)

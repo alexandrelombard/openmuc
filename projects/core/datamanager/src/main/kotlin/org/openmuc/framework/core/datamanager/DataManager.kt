@@ -972,12 +972,14 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                     configChangeListeners.remove(configChangeListener)
                 }
             }
-            configChangeListeners.add(listener)
+            if (listener != null) {
+                configChangeListeners.add(listener)
+            }
             return config
         }
     }
 
-    override fun stopListeningForConfigChange(listener: ConfigChangeListener?) {
+    override fun stopListeningForConfigChange(listener: ConfigChangeListener) {
         synchronized(configChangeListeners) { configChangeListeners.remove(listener) }
     }
 
@@ -1025,7 +1027,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(driverId: String?, settings: String?): List<DeviceScanInfo?>? {
+    override fun scanForDevices(driverId: String, settings: String): List<DeviceScanInfo> {
         val driver = activeDrivers[driverId] ?: throw DriverNotAvailableException()
         val blockingScanListener = BlockingScanListener()
         try {
@@ -1040,13 +1042,13 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
     }
 
     @Throws(DriverNotAvailableException::class)
-    override fun scanForDevices(driverId: String?, settings: String?, scanListener: DeviceScanListener?) {
+    override fun scanForDevices(driverId: String, settings: String, scanListener: DeviceScanListener?) {
         val driver = activeDrivers[driverId] ?: throw DriverNotAvailableException()
         executor!!.execute(ScanForDevicesTask(driver, settings, scanListener))
     }
 
     @Throws(DriverNotAvailableException::class, UnsupportedOperationException::class)
-    override fun interruptDeviceScan(driverId: String?) {
+    override fun interruptDeviceScan(driverId: String) {
         val driver = activeDrivers[driverId] ?: throw DriverNotAvailableException()
         driver.interruptDeviceScan()
     }
@@ -1057,7 +1059,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         ArgumentSyntaxException::class,
         ScanException::class
     )
-    override fun scanForChannels(deviceId: String?, settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(deviceId: String, settings: String): List<ChannelScanInfo> {
         // TODO this function is probably not thread safe
         val config = rootConfig!!.getDevice(deviceId) as DeviceConfigImpl?
             ?: throw ScanException("No device with ID \"$deviceId\" found.")
@@ -1074,7 +1076,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
     @Throws(ScanException::class)
     private fun waitTilDeviceIsConnected(device: Device?) {
         var i = 0
-        while (i < 10 && device.getState() === DeviceState.CONNECTING) {
+        while (i < 10 && device.state === DeviceState.CONNECTING) {
             try {
                 sleep(10L)
             } catch (e: InterruptedException) {
@@ -1087,9 +1089,9 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         }
     }
 
-    override val idsOfRunningDrivers: List<String?>
+    override val idsOfRunningDrivers: List<String>
         get() {
-            var availableDrivers: MutableList<String?>
+            var availableDrivers: MutableList<String>
             synchronized(activeDrivers) {
                 availableDrivers = ArrayList(activeDrivers.size)
                 for (activeDriverName in activeDrivers.keys) {
@@ -1103,11 +1105,11 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         val containersByDevice: HashMap<Device?, MutableList<WriteValueContainerImpl?>> = LinkedHashMap()
         for (value in values!!) {
             val valueContainerImpl = value as WriteValueContainerImpl?
-            if (valueContainerImpl!!.getValue() == null) {
-                valueContainerImpl.setFlag(Flag.CANNOT_WRITE_NULL_VALUE)
+            if (valueContainerImpl!!.value == null) {
+                valueContainerImpl.flag = Flag.CANNOT_WRITE_NULL_VALUE
                 continue
             }
-            val device: Device = valueContainerImpl.channel.config.deviceParent.device
+            val device = valueContainerImpl.channel.config.deviceParent?.device
             var writeValueContainers = containersByDevice[device]
             if (writeValueContainers == null) {
                 writeValueContainers = LinkedList()
@@ -1129,12 +1131,13 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         try {
             writeTasksFinishedSignal.await()
         } catch (e: InterruptedException) {
+            // TODO Log exception
         }
     }
 
-    override fun read(readContainers: List<ReadRecordContainer?>?) {
+    override fun read(values: List<ReadRecordContainer>) {
         val containersByDevice: MutableMap<Device?, MutableList<ChannelRecordContainerImpl>> = HashMap()
-        for (container in readContainers!!) {
+        for (container in values!!) {
             require(container is ChannelRecordContainerImpl) { "Only use ReadRecordContainer created by Channel.getReadContainer()" }
             val channel = container.channel as ChannelImpl?
             var containersOfDevice = containersByDevice[channel!!.config.deviceParent!!.device]
@@ -1158,6 +1161,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         try {
             readTasksFinishedSignal.await()
         } catch (e: InterruptedException) {
+            // TODO Log exception
         }
     }
 
@@ -1165,7 +1169,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         get() = rootConfig!!.channelConfigsById.keys.toList()
 
     @Throws(DataLoggerNotAvailableException::class)
-    fun getDataLogger(loggerId: String?): DataLoggerService {
+    fun getDataLogger(loggerId: String): DataLoggerService {
         val dataLogger: DataLoggerService = if (loggerId.isNullOrEmpty()) {
             activeDataLoggers.peekFirst()
         } else {
@@ -1189,7 +1193,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
 
     override fun getDeviceState(deviceId: String): DeviceState? {
         val deviceConfig = rootConfig!!.getDevice(deviceId) as DeviceConfigImpl? ?: return null
-        return deviceConfig.device.state
+        return deviceConfig.device?.state
     }
 
     internal inner class BlockingScanListener : DriverDeviceScanListener {
