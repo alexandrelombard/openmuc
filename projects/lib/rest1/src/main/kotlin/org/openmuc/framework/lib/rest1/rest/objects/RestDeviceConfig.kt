@@ -22,7 +22,7 @@ package org.openmuc.framework.lib.rest1.rest.objects
 
 class RestDeviceConfig {
     // Device device = null;
-    var id: String? = null
+    var id: String = ""
     var description: String? = null
     var deviceAddress: String? = null
     var settings: String? = null

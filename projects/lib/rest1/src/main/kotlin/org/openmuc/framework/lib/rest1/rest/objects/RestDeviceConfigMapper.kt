@@ -38,23 +38,15 @@ object RestDeviceConfigMapper {
     }
 
     @Throws(IdCollisionException::class, RestConfigIsNotCorrectException::class)
-    fun setDeviceConfig(dc: DeviceConfig?, rdc: RestDeviceConfig?, idFromUrl: String) {
-        if (dc == null) {
-            throw RestConfigIsNotCorrectException("DriverConfig is null!")
-        } else {
-            if (rdc != null) {
-                if (rdc.id != null && rdc.id != "" && idFromUrl != rdc.id) {
-                    dc.id = rdc.id
-                }
-                dc.connectRetryInterval = rdc.connectRetryInterval
-                dc.description = rdc.description
-                dc.deviceAddress = rdc.deviceAddress
-                dc.isDisabled = rdc.disabled
-                dc.samplingTimeout = rdc.samplingTimeout
-                dc.settings = rdc.settings
-            } else {
-                throw RestConfigIsNotCorrectException()
-            }
+    fun setDeviceConfig(dc: DeviceConfig, rdc: RestDeviceConfig, idFromUrl: String) {
+        if (rdc.id != "" && idFromUrl != rdc.id) {
+            dc.id = rdc.id
         }
+        dc.connectRetryInterval = rdc.connectRetryInterval
+        dc.description = rdc.description
+        dc.deviceAddress = rdc.deviceAddress
+        dc.isDisabled = rdc.disabled
+        dc.samplingTimeout = rdc.samplingTimeout
+        dc.settings = rdc.settings
     }
 }
