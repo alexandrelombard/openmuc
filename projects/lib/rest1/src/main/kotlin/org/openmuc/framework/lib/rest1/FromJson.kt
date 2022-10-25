@@ -94,7 +94,7 @@ class FromJson(jsonString: String?) {
         RestConfigIsNotCorrectException::class,
         MissingJsonObjectException::class
     )
-    fun setChannelConfig(channelConfig: ChannelConfig?, id: String) {
+    fun setChannelConfig(channelConfig: ChannelConfig, id: String) {
         val jse = jsonObject[Const.CONFIGS]
         if (jse.isJsonNull) {
             throw MissingJsonObjectException()
@@ -108,7 +108,7 @@ class FromJson(jsonString: String?) {
         RestConfigIsNotCorrectException::class,
         MissingJsonObjectException::class
     )
-    fun setDeviceConfig(deviceConfig: DeviceConfig?, id: String) {
+    fun setDeviceConfig(deviceConfig: DeviceConfig, id: String) {
         val jse = jsonObject[Const.CONFIGS]
         if (!jse.isJsonNull) {
             RestDeviceConfigMapper.setDeviceConfig(deviceConfig, gson.fromJson(jse, RestDeviceConfig::class.java), id)
@@ -148,13 +148,12 @@ class FromJson(jsonString: String?) {
         return resultList
     }
 
-    fun getStringArray(listName: String?): Array<String?>? {
-        var stringArray: Array<String?>? = null
+    fun getStringArray(listName: String): Array<String> {
         val jse = jsonObject[listName]
         if (!jse.isJsonNull && jse.isJsonArray) {
-            stringArray = gson.fromJson<Array<String?>>(jse, Array<String>::class.java)
+            return gson.fromJson(jse, Array<String>::class.java)
         }
-        return stringArray
+        return arrayOf()
     }
 
     val restChannelList: List<RestChannel>
@@ -269,20 +268,20 @@ class FromJson(jsonString: String?) {
     @Throws(ClassCastException::class)
     private fun convertValueToMucValue(type: ValueType?, value: Any): Value {
         // TODO: check all value types, if it is really a float, double, ...
-        var value: Any? = value
-        if (value!!.javaClass.isInstance(RestValue())) {
-            value = (value as RestValue).value
+        var value = value
+        if (value.javaClass.isInstance(RestValue())) {
+            value = (value as RestValue).value!!
         }
         return when (type) {
-            ValueType.FLOAT -> FloatValue((value as Double?)!!.toFloat())
-            ValueType.DOUBLE -> DoubleValue((value as Double?)!!)
-            ValueType.SHORT -> ShortValue((value as Double?)!!.toInt().toShort())
-            ValueType.INTEGER -> IntValue((value as Double?)!!.toInt())
-            ValueType.LONG -> LongValue((value as Double?)!!.toLong())
-            ValueType.BYTE -> ByteValue((value as Double?)!!.toInt().toByte())
-            ValueType.BOOLEAN -> BooleanValue((value as Boolean?)!!)
+            ValueType.FLOAT -> FloatValue((value as Double).toFloat())
+            ValueType.DOUBLE -> DoubleValue((value as Double))
+            ValueType.SHORT -> ShortValue((value as Double).toInt().toShort())
+            ValueType.INTEGER -> IntValue((value as Double).toInt())
+            ValueType.LONG -> LongValue((value as Double).toLong())
+            ValueType.BYTE -> ByteValue((value as Double).toInt().toByte())
+            ValueType.BOOLEAN -> BooleanValue((value as Boolean))
             ValueType.BYTE_ARRAY -> {
-                val arrayList: List<Double> = value as ArrayList<Double>
+                val arrayList = value as ArrayList<Double>
                 val byteArray = ByteArray(arrayList.size)
                 var i = 0
                 while (i < arrayList.size) {
