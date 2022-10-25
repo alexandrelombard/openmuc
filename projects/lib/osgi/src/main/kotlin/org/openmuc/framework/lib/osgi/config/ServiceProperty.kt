@@ -24,69 +24,31 @@ package org.openmuc.framework.lib.osgi.config
  * Enriches the classical property (key=value) with meta data. A list of ServiceProperties can be managed by a Settings
  * class extending [GenericSettings]
  */
-class ServiceProperty(key: String?, description: String?, defaultValue: String?, mandatory: Boolean) {
-    private var key: String? = null
+class ServiceProperty(key: String, description: String, defaultValue: String, mandatory: Boolean) {
+    private var key: String = ""
+        set(value) {
+            require(value.isNotEmpty()) {
+                // key is important - therefor raise exception
+                "key must not be null or empty!"
+            }
+            field = value
+        }
     private var description: String? = null
-    private var defaultValue: String
+    private var defaultValue: String = ""
     val isMandatory: Boolean
     var value: String
         private set
 
     init {
-        setKey(key)
-        setDescription(description)
-        setDefaultValue(defaultValue)
+        this.key = key
+        this.defaultValue = defaultValue
+        this.description = description
         isMandatory = mandatory
         value = this.defaultValue
     }
 
-    fun update(value: String?) {
-        if (value == null) {
-            // avoid later null checks
-            this.value = ""
-        } else {
-            this.value = value
-        }
-    }
-
-    fun getKey(): String? {
-        return key
-    }
-
-    fun getDescription(): String? {
-        return description
-    }
-
-    fun getDefaultValue(): String {
-        return defaultValue
-    }
-
-    private fun setKey(key: String?) {
-        require(!(key == null || key.isEmpty())) {
-            // key is important - therefor raise exception
-            "key must not be null or empty!"
-        }
-        this.key = key
-    }
-
-    private fun setDescription(description: String?) {
-        if (description == null) {
-            // description is optional, don't raise exception here, but change it to empty string
-            // to avoid countless "null" checks later in classes using this.
-            this.description = ""
-        } else {
-            this.description = description
-        }
-    }
-
-    private fun setDefaultValue(defaultValue: String?) {
-        if (defaultValue == null) {
-            // defaultValue is optional, don't raise exception here, but change it to empty string
-            // to avoid countless "null" checks later in classes using this.
-            this.defaultValue = ""
-        } else {
-            this.defaultValue = defaultValue
-        }
+    fun update(value: String) {
+        this.value = value
     }
 
     override fun toString(): String {

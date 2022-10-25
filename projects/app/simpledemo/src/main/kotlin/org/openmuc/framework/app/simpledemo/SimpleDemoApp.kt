@@ -81,7 +81,7 @@ class SimpleDemoApp {
      * Initialize channel objects
      */
     private fun initializeChannels() {
-        chPowerElectricVehicle = dataAccessService!!.getChannel(ID_POWER_ELECTRIC_VEHICLE)
+        chPowerElectricVehicle = dataAccessService.getChannel(ID_POWER_ELECTRIC_VEHICLE)
         chPowerGrid = dataAccessService.getChannel(ID_POWER_GRID)
         chPowerPhotovoltaics = dataAccessService.getChannel(ID_POWER_PHOTOVOLTAICS)
         chEvStatus = dataAccessService.getChannel(ID_STATUS_ELECTRIC_VEHICLE)
