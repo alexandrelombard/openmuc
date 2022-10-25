@@ -25,22 +25,22 @@ import org.openmuc.framework.data.ValueType
 
 class RestChannelConfig {
     var id: String = ""
-    var channelAddress: String? = null
-    var description: String? = null
+    var channelAddress: String = ""
+    var description: String = ""
     var unit: String? = null
-    var valueType: ValueType? = null
-    var valueTypeLength: Int? = null
+    var valueType: ValueType = ValueType.UNKNOWN
+    var valueTypeLength: Int = 0
     var scalingFactor: Double? = null
     var valueOffset: Double? = null
-    var isListening: Boolean? = null
-    var samplingInterval: Int? = null
-    var samplingTimeOffset: Int? = null
+    var isListening: Boolean = false
+    var samplingInterval: Int = 0
+    var samplingTimeOffset: Int = 0
     var samplingGroup: String? = null
     var settings: String? = null
-    var loggingInterval: Int? = null
-    var loggingTimeOffset: Int? = null
+    var loggingInterval: Int = 0
+    var loggingTimeOffset: Int = 0
     var loggingSettings: String? = null
-    var isLoggingEvent: Boolean? = null
-    var isDisabled: Boolean? = null
+    var isLoggingEvent: Boolean = false
+    var isDisabled: Boolean = false
     var serverMappings: List<ServerMapping> = arrayListOf()
 }

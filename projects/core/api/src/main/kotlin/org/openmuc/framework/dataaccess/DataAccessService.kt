@@ -33,11 +33,11 @@ interface DataAccessService {
      * @return the list of all channel IDs.
      */
     val allIds: List<String>
-    fun getLogicalDevices(type: String?): List<LogicalDevice?>?
+    fun getLogicalDevices(type: String): List<LogicalDevice>?
     fun getLogicalDevices(
-        type: String?,
+        type: String,
         logicalDeviceChangeListener: LogicalDeviceChangeListener?
-    ): List<LogicalDevice?>?
+    ): List<LogicalDevice>
 
     /**
      * Execute the read on the read value containers.
@@ -46,7 +46,7 @@ interface DataAccessService {
      * a list of ReadRecordContainer
      * @see Channel.getReadContainer
      */
-    fun read(values: List<ReadRecordContainer?>?)
+    fun read(values: List<ReadRecordContainer>)
 
     /**
      * Execute the write on the write value containers.
@@ -56,5 +56,5 @@ interface DataAccessService {
      *
      * @see Channel.getWriteContainer
      */
-    fun write(values: List<WriteValueContainer?>?)
+    fun write(values: List<WriteValueContainer>)
 }

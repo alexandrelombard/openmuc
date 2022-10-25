@@ -30,7 +30,7 @@ object RestDeviceConfigMapper {
         rdc.connectRetryInterval = dc.connectRetryInterval
         rdc.description = dc.description
         rdc.deviceAddress = dc.deviceAddress
-        rdc.isDisabled(dc.isDisabled)
+        rdc.disabled = dc.isDisabled
         rdc.id = dc.id
         rdc.samplingTimeout = dc.samplingTimeout
         rdc.settings = dc.settings

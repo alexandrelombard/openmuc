@@ -43,7 +43,7 @@ class WriteTask(
             device.connection!!.write(writeValueContainers as List<ChannelValueContainer>, null)
         } catch (e: UnsupportedOperationException) {
             for (valueContainer in writeValueContainers) {
-                valueContainer!!.setFlag(Flag.ACCESS_METHOD_NOT_SUPPORTED)
+                valueContainer.flag = Flag.ACCESS_METHOD_NOT_SUPPORTED
             }
         } catch (e: ConnectionException) {
             // Connection to device lost. Signal to device instance and end task without notifying DataManager
@@ -52,7 +52,7 @@ class WriteTask(
                 e.message
             )
             for (valueContainer in writeValueContainers) {
-                valueContainer!!.setFlag(Flag.CONNECTION_EXCEPTION)
+                valueContainer.flag = Flag.CONNECTION_EXCEPTION
             }
             writeTaskFinishedSignal.countDown()
             synchronized(dataManager.disconnectedDevices) { dataManager.disconnectedDevices.add(device) }
@@ -61,7 +61,7 @@ class WriteTask(
         } catch (e: Exception) {
             logger.warn("unexpected exception thrown by write funtion of driver ", e)
             for (valueContainer in writeValueContainers) {
-                valueContainer!!.setFlag(Flag.DRIVER_THREW_UNKNOWN_EXCEPTION)
+                valueContainer.flag = Flag.DRIVER_THREW_UNKNOWN_EXCEPTION
             }
         }
         writeTaskFinishedSignal.countDown()
@@ -77,7 +77,7 @@ class WriteTask(
      */
     override fun deviceNotConnected() {
         for (valueContainer in writeValueContainers) {
-            valueContainer!!.setFlag(Flag.COMM_DEVICE_NOT_CONNECTED)
+            valueContainer.flag = Flag.COMM_DEVICE_NOT_CONNECTED
         }
         writeTaskFinishedSignal.countDown()
     }

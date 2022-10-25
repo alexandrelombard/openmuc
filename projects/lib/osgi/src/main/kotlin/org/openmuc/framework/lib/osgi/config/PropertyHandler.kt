@@ -92,7 +92,10 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
         keys.forEach { key ->
             val property = currentProperties[key]
             val dictValue = newDictionary[key]
-            applyNewValue(dictValue, key, property)
+
+            if (dictValue != null && property != null) {
+                applyNewValue(dictValue, key, property)
+            }
         }
         configChanged = hasConfigChanged(oldProperties)
         if (isDefaultConfig && configChanged) {
@@ -101,8 +104,8 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
     }
 
     @Throws(ServicePropertyException::class)
-    private fun applyNewValue(newDictValue: String?, key: String?, property: ServiceProperty?) {
-        if (property!!.isMandatory) {
+    private fun applyNewValue(newDictValue: String, key: String, property: ServiceProperty) {
+        if (property.isMandatory) {
             processMandatoryProperty(newDictValue, key, property)
         } else {
             property.update(newDictValue)
@@ -110,14 +113,11 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
     }
 
     @Throws(ServicePropertyException::class)
-    private fun processMandatoryProperty(newDictValue: String?, key: String?, property: ServiceProperty?) {
-        if (newDictValue == null) {
-            throw ServicePropertyException("mandatory property '$key' value is null")
-        }
+    private fun processMandatoryProperty(newDictValue: String, key: String, property: ServiceProperty) {
         if (newDictValue == "") {
             throw ServicePropertyException("mandatory property '$key' is empty")
         } else {
-            property!!.update(newDictValue)
+            property.update(newDictValue)
         }
     }
 

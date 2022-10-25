@@ -21,8 +21,8 @@
 package org.openmuc.framework.lib.rest1.rest.objects
 
 class RestDriverConfig {
-    var id: String? = ""
-    var samplingTimeout: Int? = null
-    var connectRetryInterval: Int? = null
-    var isDisabled: Boolean? = null
+    var id: String = ""
+    var samplingTimeout: Int = 0
+    var connectRetryInterval: Int = 0
+    var isDisabled: Boolean = false
 }

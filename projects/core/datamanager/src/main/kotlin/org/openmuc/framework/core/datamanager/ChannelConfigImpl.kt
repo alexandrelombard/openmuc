@@ -43,7 +43,7 @@ class ChannelConfigImpl constructor(id: String, var deviceParent: DeviceConfigIm
             }
             val deviceParent = deviceParent
             if(deviceParent != null) {
-                deviceParent.channelConfigsById[value] = deviceParent.channelConfigsById.remove(field)
+                deviceParent.channelConfigsById[value] = deviceParent.channelConfigsById.remove(field)!!
                 deviceParent.driverParent!!.rootConfigParent!!.channelConfigsById[value] =
                     deviceParent.driverParent!!.rootConfigParent!!.channelConfigsById.remove(field)
             }
@@ -52,11 +52,11 @@ class ChannelConfigImpl constructor(id: String, var deviceParent: DeviceConfigIm
 
     var channel: ChannelImpl? = null
     var state: ChannelState? = null
-    override var channelAddress: String? = null
-    override var description: String? = null
+    override var channelAddress: String = ""
+    override var description: String = ""
     override var unit: String? = null
     override var valueType: ValueType = ValueType.UNKNOWN
-    override var valueTypeLength: Int? = null
+    override var valueTypeLength: Int = 0
     override var scalingFactor: Double? = null
     override var valueOffset: Double? = null
     override var isListening: Boolean = false

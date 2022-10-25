@@ -28,7 +28,8 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.CountDownLatch
 
 class ReadTask(
-    dataManager: DataManager?, device: Device?, selectedChannels: List<ChannelRecordContainerImpl>,
+    override var dataManager: DataManager,
+    override var device: Device, selectedChannels: List<ChannelRecordContainerImpl>,
     readTaskFinishedSignal: CountDownLatch
 ) : DeviceTask(), ConnectedTask {
     private val readTaskFinishedSignal: CountDownLatch
@@ -41,8 +42,6 @@ class ReadTask(
     var startedLate = false
 
     init {
-        this.dataManager = dataManager
-        this.device = device
         channelRecordContainers = selectedChannels
         this.readTaskFinishedSignal = readTaskFinishedSignal
     }
@@ -55,15 +54,15 @@ class ReadTask(
         } catch (e: ConnectionException) {
             // Connection to device lost. Signal to device instance and end task without notifying DataManager
             logger.warn(
-                "Connection to device {} lost because {}. Trying to reconnect...", device!!.deviceConfig!!.getId(),
+                "Connection to device {} lost because {}. Trying to reconnect...", device.deviceConfig.id,
                 e.message
             )
             for (driverChannel in channelRecordContainers) {
-                driverChannel.setRecord(Record(Flag.ACCESS_METHOD_NOT_SUPPORTED))
+                driverChannel.record = Record(Flag.ACCESS_METHOD_NOT_SUPPORTED)
             }
             readTaskFinishedSignal.countDown()
-            synchronized(dataManager!!.disconnectedDevices) { dataManager!!.disconnectedDevices.add(device) }
-            dataManager!!.interrupt()
+            synchronized(dataManager.disconnectedDevices) { dataManager.disconnectedDevices.add(device) }
+            dataManager.interrupt()
             return
         } catch (e: Exception) {
             logger.warn("unexpected exception thrown by read funtion of driver ", e)
@@ -77,14 +76,14 @@ class ReadTask(
 
     override fun deviceNotConnected() {
         for (recordContainer in channelRecordContainers) {
-            recordContainer.setRecord(Record(Flag.COMM_DEVICE_NOT_CONNECTED))
+            recordContainer.record = Record(Flag.COMM_DEVICE_NOT_CONNECTED)
         }
         taskAborted()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     protected fun executeRead() {
-        device!!.connection!!.read(channelRecordContainers as List<ChannelRecordContainer?>, true, "")
+        device.connection!!.read(channelRecordContainers as List<ChannelRecordContainer>, true, "")
     }
 
     protected fun taskFinished() {
@@ -92,16 +91,16 @@ class ReadTask(
         val now = System.currentTimeMillis()
         if (methodNotExceptedExceptionThrown) {
             for (driverChannel in channelRecordContainers) {
-                driverChannel.setRecord(Record(null, now, Flag.ACCESS_METHOD_NOT_SUPPORTED))
+                driverChannel.record = Record(null, now, Flag.ACCESS_METHOD_NOT_SUPPORTED)
             }
         } else if (unknownDriverExceptionThrown) {
             for (driverChannel in channelRecordContainers) {
-                driverChannel.setRecord(Record(null, now, Flag.DRIVER_THREW_UNKNOWN_EXCEPTION))
+                driverChannel.record = Record(null, now, Flag.DRIVER_THREW_UNKNOWN_EXCEPTION)
             }
         }
         readTaskFinishedSignal.countDown()
-        synchronized(dataManager!!.tasksFinished) { dataManager!!.tasksFinished.add(this) }
-        dataManager!!.interrupt()
+        synchronized(dataManager.tasksFinished) { dataManager.tasksFinished.add(this) }
+        dataManager.interrupt()
     }
 
     protected fun taskAborted() {

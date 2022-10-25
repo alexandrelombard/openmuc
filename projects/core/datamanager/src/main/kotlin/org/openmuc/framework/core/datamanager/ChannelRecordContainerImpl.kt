@@ -24,43 +24,25 @@ import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Record
 import org.openmuc.framework.driver.spi.ChannelRecordContainer
 
-class ChannelRecordContainerImpl private constructor(override val channel: ChannelImpl, record: Record) :
+class ChannelRecordContainerImpl
+private constructor(override val channel: ChannelImpl, override var record: Record?) :
     ChannelRecordContainer {
-    private val channelAddress: String
-    private override var record: Record
-    private var channelHandle: Any
+    override val channelAddress: String
+    override var channelHandle: Any? = null
 
     constructor(channel: ChannelImpl) : this(channel, defaulRecord) {}
 
     init {
-        channelAddress = channel.config!!.getChannelAddress()
+        channelAddress = channel.config.channelAddress
         channelHandle = channel.handle!!
-        this.record = record
-    }
-
-    override fun getChannelAddress(): String {
-        return channelAddress
-    }
-
-    override fun getChannelHandle(): Any {
-        return channelHandle
-    }
-
-    override fun setChannelHandle(handle: Any) {
-        channelHandle = handle
     }
 
     override fun copy(): ChannelRecordContainer {
+        val record = record
+        requireNotNull(record)
+
         val copiedRecord = Record(record.value, record.timestamp, record.flag)
         return ChannelRecordContainerImpl(channel, copiedRecord)
-    }
-
-    override fun getRecord(): Record {
-        return record
-    }
-
-    override fun setRecord(record: Record) {
-        this.record = record
     }
 
     companion object {

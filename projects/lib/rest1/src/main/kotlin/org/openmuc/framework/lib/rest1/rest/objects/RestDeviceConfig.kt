@@ -23,15 +23,10 @@ package org.openmuc.framework.lib.rest1.rest.objects
 class RestDeviceConfig {
     // Device device = null;
     var id: String = ""
-    var description: String? = null
-    var deviceAddress: String? = null
-    var settings: String? = null
-    var samplingTimeout: Int? = null
-    var connectRetryInterval: Int? = null
-    var disabled: Boolean? = null
-        private set
-
-    fun isDisabled(disabled: Boolean?) {
-        this.disabled = disabled
-    }
+    var description: String = ""
+    var deviceAddress: String = ""
+    var settings: String = ""
+    var samplingTimeout: Int = 0
+    var connectRetryInterval: Int = 0
+    var disabled: Boolean = false
 }

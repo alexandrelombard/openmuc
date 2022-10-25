@@ -208,18 +208,19 @@ class Device(
             oldChannelConfig.state,
             newChannelConfig.channel!!.latestRecord!!.flag
         )
+        val newChannelConfigChannel = newChannelConfig.channel!!
         if (!newChannelConfig.isDisabled && newChannelConfig.loggingInterval > 0) {
             dataManager.addToLoggingCollections(newChannelConfig.channel, currentTime)
             logChannels.add(newChannelConfig)
         } else if (!oldChannelConfig.isDisabled && oldChannelConfig.loggingInterval > 0) {
-            dataManager.removeFromLoggingCollections(newChannelConfig.channel)
+            dataManager.removeFromLoggingCollections(newChannelConfigChannel)
         } else if (!oldChannelConfig.isDisabled && oldChannelConfig.loggingInterval == ChannelConfig.LOGGING_INTERVAL_DEFAULT && oldChannelConfig.isLoggingEvent && oldChannelConfig.isListening) {
             logChannels.add(newChannelConfig)
         }
         if (newChannelConfig.isSampling) {
             dataManager.addToSamplingCollections(newChannelConfig.channel, currentTime)
         } else if (oldChannelConfig.isSampling) {
-            dataManager.removeFromSamplingCollections(newChannelConfig.channel)
+            dataManager.removeFromSamplingCollections(newChannelConfigChannel)
         }
         if (newChannelConfig.channelAddress != oldChannelConfig.channelAddress) {
             newChannelConfig.channel!!.handle = null
@@ -479,7 +480,7 @@ class Device(
         for (channelConfig in deviceConfig.channelConfigsById.values) {
             if (channelConfig.state !== ChannelState.DISABLED) {
                 if (channelConfig.state === ChannelState.SAMPLING) {
-                    dataManager.removeFromSamplingCollections(channelConfig.channel)
+                    dataManager.removeFromSamplingCollections(channelConfig.channel!!)
                 }
             }
         }
@@ -635,7 +636,7 @@ class Device(
         get() = state === DeviceState.CONNECTED || state === DeviceState.READING || state === DeviceState.SCANNING_FOR_CHANNELS || state === DeviceState.STARTING_TO_LISTEN || state === DeviceState.WRITING
 
     private fun setConnected(currentTime: Long) {
-        var listeningChannels: MutableList<ChannelRecordContainerImpl?>? = null
+        var listeningChannels: MutableList<ChannelRecordContainerImpl>? = null
         for (channelConfig in deviceConfig.channelConfigsById.values) {
             if (channelConfig.state !== ChannelState.DISABLED) {
                 if (channelConfig.isListening) {

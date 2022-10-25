@@ -27,9 +27,9 @@ import org.openmuc.framework.driver.spi.ChannelValueContainer
 
 class WriteValueContainerImpl(override val channel: ChannelImpl) :
     WriteValueContainer, ChannelValueContainer {
-    override var value: Value = null
-    override var flag = Flag.DRIVER_ERROR_UNSPECIFIED
-    override var channelHandle: Any?
+    override var value: Value? = null
+    override var flag: Flag? = Flag.DRIVER_ERROR_UNSPECIFIED
+    override var channelHandle: Any? = null
     override val channelAddress: String
 
     init {

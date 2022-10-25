@@ -20,7 +20,6 @@
  */
 package org.openmuc.framework.datalogger.slotsdb
 
-import org.openmuc.framework.data.Record.value
 import java.io.*
 import java.text.ParseException
 import java.text.SimpleDateFormat
@@ -43,7 +42,7 @@ import java.util.*
 class FileObjectList( // private File folder;
     private var foldername: String
 ) {
-    private var files: MutableList<FileObject>? = null
+    private var files: MutableList<FileObject> = arrayListOf()
 
     /**
      * Returns first recorded timestamp of oldest FileObject in this list. If List is empty, this timestamp will be set
@@ -91,9 +90,9 @@ class FileObjectList( // private File folder;
      */
     @Throws(IOException::class)
     fun reLoadFolder() {
-        var folder: File? = File(foldername)
+        var folder = File(foldername)
         files = Vector(1)
-        if (folder!!.isDirectory) {
+        if (folder.isDirectory) {
             for (file in folder.listFiles()) {
                 if (file.length() >= 16) { // otherwise is corrupted or empty
                     // file.
@@ -127,7 +126,6 @@ class FileObjectList( // private File folder;
         } else {
             files.get(0).startTimeStamp
         }
-        folder = null
     }
 
     /*
@@ -168,7 +166,7 @@ class FileObjectList( // private File folder;
      * @return FileObject at position
      */
     operator fun get(position: Int): FileObject {
-        return files!![position]
+        return files[position]
     }
 
     /**
@@ -188,7 +186,7 @@ class FileObjectList( // private File folder;
      */
     @Throws(IOException::class)
     fun closeAllFiles() {
-        for (f in files!!) {
+        for (f in files) {
             f.close()
         }
     }
@@ -202,22 +200,22 @@ class FileObjectList( // private File folder;
      * @return FileObject of timestamp
      */
     fun getFileObjectForTimestamp(timestamp: Long): FileObject? {
-        if (files!!.size > 1) {
-            for (f in files!!) {
+        if (files.size > 1) {
+            for (f in files) {
                 if (f.startTimeStamp <= timestamp && f.timestampForLatestValue >= timestamp) {
                     // File
                     // found!
                     return f
                 }
             }
-        } else if (files!!.size == 1) {
-            if (files!![0].startTimeStamp <= timestamp
-                && files!![0].timestampForLatestValue >= timestamp
+        } else if (files.size == 1) {
+            if (files[0].startTimeStamp <= timestamp
+                && files[0].timestampForLatestValue >= timestamp
             ) {
                 // contains
                 // this
                 // TS
-                return files!![0]
+                return files[0]
             }
         }
         return null
@@ -232,9 +230,9 @@ class FileObjectList( // private File folder;
      */
     fun getFileObjectsStartingAt(timestamp: Long): List<FileObject> {
         val toReturn: MutableList<FileObject> = Vector(1)
-        for (i in files!!.indices) {
-            if (files!![i].timestampForLatestValue >= timestamp) {
-                toReturn.add(files!![i])
+        for (i in files.indices) {
+            if (files[i].timestampForLatestValue >= timestamp) {
+                toReturn.add(files[i])
             }
         }
         return toReturn
@@ -257,9 +255,9 @@ class FileObjectList( // private File folder;
      */
     fun getFileObjectsUntil(timestamp: Long): List<FileObject> {
         val toReturn: MutableList<FileObject> = Vector(1)
-        for (i in files!!.indices) {
-            if (files!![i].startTimeStamp <= timestamp) {
-                toReturn.add(files!![i])
+        for (i in files.indices) {
+            if (files[i].startTimeStamp <= timestamp) {
+                toReturn.add(files[i])
             }
         }
         return toReturn
@@ -276,22 +274,22 @@ class FileObjectList( // private File folder;
      */
     fun getFileObjectsFromTo(start: Long, end: Long): List<FileObject> {
         val toReturn: MutableList<FileObject> = Vector(1)
-        if (files!!.size > 1) {
-            for (i in files!!.indices) {
-                if (files!![i].startTimeStamp <= start && files!![i].timestampForLatestValue >= start || files!![i].startTimeStamp <= end && files!![i].timestampForLatestValue >= end
-                    || (files!![i].startTimeStamp >= start
-                            && files!![i].timestampForLatestValue <= end)
+        if (files.size > 1) {
+            for (i in files.indices) {
+                if (files[i].startTimeStamp <= start && files[i].timestampForLatestValue >= start || files[i].startTimeStamp <= end && files[i].timestampForLatestValue >= end
+                    || (files[i].startTimeStamp >= start
+                            && files[i].timestampForLatestValue <= end)
                 ) {
                     // needed files.
-                    toReturn.add(files!![i])
+                    toReturn.add(files[i])
                 }
             }
-        } else if (files!!.size == 1) {
-            if (files!![0].startTimeStamp <= end && files!![0].timestampForLatestValue >= start) {
+        } else if (files.size == 1) {
+            if (files[0].startTimeStamp <= end && files[0].timestampForLatestValue >= start) {
                 // contains
                 // this
                 // TS
-                toReturn.add(files!![0])
+                toReturn.add(files[0])
             }
         }
         return toReturn
@@ -305,7 +303,7 @@ class FileObjectList( // private File folder;
      */
     @Throws(IOException::class)
     fun flush() {
-        for (f in files!!) {
+        for (f in files) {
             f.flush()
         }
     }

@@ -165,11 +165,11 @@ class ChannelImpl(
         return toReturn
     }
 
-    private val validReaderIdFromConfig: String?
-        get() = if (config.reader!!.isEmpty() || config.reader == null) {
+    private val validReaderIdFromConfig: String
+        get() = if (config.reader == null || config.reader!!.isEmpty()) {
             firstLoggerFromLogSettings()
         } else {
-            config.reader
+            config.reader!!
         }
 
     private fun firstLoggerFromLogSettings(): String {
@@ -354,10 +354,10 @@ class ChannelImpl(
         if (scalingFactor != null) {
             adjustedValue = DoubleValue(adjustedValue.asDouble() / scalingFactor)
         }
-        writeValueContainer.setValue(adjustedValue)
-        val writeValueContainerList = Arrays.asList(writeValueContainer)
+        writeValueContainer.value = adjustedValue
+        val writeValueContainerList = listOf(writeValueContainer)
         val writeTask = WriteTask(
-            dataManager, config.deviceParent!!.device, writeValueContainerList,
+            dataManager, config.deviceParent!!.device!!, writeValueContainerList,
             writeTaskFinishedSignal
         )
         synchronized(dataManager.newWriteTasks) { dataManager.newWriteTasks.add(writeTask) }
@@ -368,9 +368,9 @@ class ChannelImpl(
             Thread.currentThread().interrupt()
         }
         val timestamp = System.currentTimeMillis()
-        latestRecord = Record(value, timestamp, writeValueContainer.getFlag())
+        latestRecord = Record(value, timestamp, writeValueContainer.flag)
         notifyListeners()
-        return writeValueContainer.getFlag()
+        return writeValueContainer.flag
     }
 
     override fun writeFuture(values: List<FutureValue>) {
@@ -395,10 +395,10 @@ class ChannelImpl(
         }
     }
 
-    override fun read(): Record? {
+    override fun read(): Record {
         val readTaskFinishedSignal = CountDownLatch(1)
         val readValueContainer = ChannelRecordContainerImpl(this)
-        val readValueContainerList = Arrays.asList(readValueContainer)
+        val readValueContainerList = listOf(readValueContainer)
         val readTask = ReadTask(
             dataManager, config.deviceParent!!.device, readValueContainerList,
             readTaskFinishedSignal
@@ -410,7 +410,7 @@ class ChannelImpl(
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
         }
-        return setNewRecord(readValueContainer.getRecord())
+        return setNewRecord(readValueContainer.record!!)
     }
 
     override val isConnected: Boolean

@@ -40,9 +40,9 @@ class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : Device
             field = value
         }
 
-    override var description: String? = null
-    override var deviceAddress: String? = null
-    override var settings: String? = null
+    override var description: String = ""
+    override var deviceAddress: String = ""
+    override var settings: String = ""
     override var samplingTimeout: Int = 0
         set (value) {
             require(!(value < 0)) { "A negative sampling timeout is not allowed" }
@@ -70,7 +70,7 @@ class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : Device
         configClone.connectRetryInterval = connectRetryInterval
         configClone.isDisabled = isDisabled
         for (channelConfig in channelConfigsById.values) {
-            configClone.channelConfigsById[channelConfig!!.id] = channelConfig.clone(configClone)
+            configClone.channelConfigsById[channelConfig.id] = channelConfig.clone(configClone)
         }
         return configClone
     }
@@ -102,7 +102,7 @@ class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : Device
 
     fun clear() {
         for (channelConfig in channelConfigsById.values) {
-            channelConfig!!.clear()
+            channelConfig.clear()
         }
         channelConfigsById.clear()
         driverParent!!.rootConfigParent!!.deviceConfigsById.remove(id)
@@ -151,7 +151,7 @@ class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : Device
             parentElement.appendChild(childElement)
         }
         for (channelConfig in channelConfigsById.values) {
-            parentElement.appendChild(channelConfig!!.getDomElement(document))
+            parentElement.appendChild(channelConfig.getDomElement(document))
         }
         return parentElement
     }
@@ -189,7 +189,7 @@ class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : Device
             configClone.isDisabled = isDisabled
         }
         for (channelConfig in channelConfigsById.values) {
-            configClone.channelConfigsById[channelConfig!!.id] = channelConfig.cloneWithDefaults(configClone)
+            configClone.channelConfigsById[channelConfig.id] = channelConfig.cloneWithDefaults(configClone)
         }
         return configClone
     }

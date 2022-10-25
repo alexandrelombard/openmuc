@@ -23,9 +23,9 @@ package org.openmuc.framework.config
 interface DeviceConfig {
     @set:Throws(IdCollisionException::class)
     var id: String
-    var description: String?
-    var deviceAddress: String?
-    var settings: String?
+    var description: String
+    var deviceAddress: String
+    var settings: String
     var samplingTimeout: Int
     var connectRetryInterval: Int
     var isDisabled: Boolean

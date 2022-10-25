@@ -23,8 +23,8 @@ package org.openmuc.framework.core.datamanager
 import org.openmuc.framework.data.Record
 import org.openmuc.framework.dataaccess.RecordListener
 
-class ListenerNotifier(var listener: RecordListener?, var record: Record?) : Thread() {
+class ListenerNotifier(var listener: RecordListener, var record: Record) : Thread() {
     override fun run() {
-        listener!!.newRecord(record)
+        listener.newRecord(record)
     }
 }

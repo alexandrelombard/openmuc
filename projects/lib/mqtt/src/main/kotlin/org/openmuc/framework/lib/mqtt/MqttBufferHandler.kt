@@ -205,7 +205,7 @@ class MqttBufferHandler(maxBufferSizeKb: Long, maxFileCount: Int, maxFileSizeKb:
             return buffers
         }
 
-    fun getMessageIterator(buffer: String?): Iterator<MessageTuple> {
+    fun getMessageIterator(buffer: String): Iterator<MessageTuple> {
         return MqttBufferMessageIterator(buffer, filePersistence)
     }
 

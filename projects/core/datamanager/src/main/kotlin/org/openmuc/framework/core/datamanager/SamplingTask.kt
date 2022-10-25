@@ -27,10 +27,12 @@ import org.openmuc.framework.driver.spi.ConnectionException
 import org.slf4j.LoggerFactory
 
 class SamplingTask(
-    dataManager: DataManager?, device: Device?, selectedChannels: List<ChannelRecordContainerImpl?>,
+    override var dataManager: DataManager,
+    override var device: Device,
+    selectedChannels: List<ChannelRecordContainerImpl>,
     samplingGroup: String?
 ) : DeviceTask() {
-    var channelRecordContainers: List<ChannelRecordContainerImpl?>
+    var channelRecordContainers: List<ChannelRecordContainerImpl>
     private var methodNotExceptedExceptionThrown = false
     private var unknownDriverExceptionThrown = false
 
@@ -41,8 +43,6 @@ class SamplingTask(
     var samplingGroup: String?
 
     init {
-        this.dataManager = dataManager
-        this.device = device
         channelRecordContainers = selectedChannels
         this.samplingGroup = samplingGroup
     }
@@ -55,15 +55,15 @@ class SamplingTask(
         disabled = true
         if (methodNotExceptedExceptionThrown) {
             for (channelRecordContainer in channelRecordContainers) {
-                channelRecordContainer.getChannel().setFlag(Flag.ACCESS_METHOD_NOT_SUPPORTED)
+                channelRecordContainer.channel.setFlag(Flag.ACCESS_METHOD_NOT_SUPPORTED)
             }
         } else if (unknownDriverExceptionThrown) {
             for (channelRecordContainer in channelRecordContainers) {
-                channelRecordContainer.getChannel().setFlag(Flag.DRIVER_THREW_UNKNOWN_EXCEPTION)
+                channelRecordContainer.channel.setFlag(Flag.DRIVER_THREW_UNKNOWN_EXCEPTION)
             }
         } else {
             for (channelRecordContainer in channelRecordContainers) {
-                channelRecordContainer.getChannel().setNewRecord(channelRecordContainer!!.getRecord())
+                channelRecordContainer.channel.setNewRecord(channelRecordContainer.record!!)
             }
         }
     }
@@ -71,7 +71,7 @@ class SamplingTask(
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     protected fun executeRead() {
         // TODO must pass containerListHandle
-        device!!.connection!!.read(channelRecordContainers as List<ChannelRecordContainer?>, null, samplingGroup)
+        device.connection!!.read(channelRecordContainers as List<ChannelRecordContainer>, null, samplingGroup)
     }
 
     protected fun taskAborted() {}
@@ -83,21 +83,21 @@ class SamplingTask(
         } catch (e: ConnectionException) {
             // Connection to device lost. Signal to device instance and end task without notifying DataManager
             logger.warn(
-                "Connection to device {} lost because {}. Trying to reconnect...", device!!.deviceConfig!!.getId(),
+                "Connection to device {} lost because {}. Trying to reconnect...", device.deviceConfig.id,
                 e.message
             )
-            synchronized(dataManager!!.disconnectedDevices) { dataManager!!.disconnectedDevices.add(device) }
-            dataManager!!.interrupt()
+            synchronized(dataManager.disconnectedDevices) { dataManager.disconnectedDevices.add(device) }
+            dataManager.interrupt()
             return
         } catch (e: Exception) {
             logger.warn("unexpected exception thrown by read funtion of driver ", e)
             unknownDriverExceptionThrown = true
         }
         for (channelRecordContainer in channelRecordContainers) {
-            channelRecordContainer.getChannel().handle = channelRecordContainer!!.channelHandle
+            channelRecordContainer.channel.handle = channelRecordContainer.channelHandle
         }
-        synchronized(dataManager!!.samplingTaskFinished) { dataManager!!.samplingTaskFinished.add(this) }
-        dataManager!!.interrupt()
+        synchronized(dataManager.samplingTaskFinished) { dataManager.samplingTaskFinished.add(this) }
+        dataManager.interrupt()
     }
 
     // called by main thread
@@ -108,17 +108,17 @@ class SamplingTask(
         disabled = true
         if (startedLate) {
             for (driverChannel in channelRecordContainers) {
-                driverChannel.getChannel().setFlag(Flag.STARTED_LATE_AND_TIMED_OUT)
+                driverChannel.channel.setFlag(Flag.STARTED_LATE_AND_TIMED_OUT)
             }
         } else if (running) {
             for (driverChannel in channelRecordContainers) {
-                driverChannel.getChannel().setFlag(Flag.TIMEOUT)
+                driverChannel.channel.setFlag(Flag.TIMEOUT)
             }
         } else {
             for (driverChannel in channelRecordContainers) {
-                driverChannel.getChannel().setFlag(Flag.DEVICE_OR_INTERFACE_BUSY)
+                driverChannel.channel.setFlag(Flag.DEVICE_OR_INTERFACE_BUSY)
             }
-            device!!.removeTask(this)
+            device.removeTask(this)
         }
     }
 
@@ -127,7 +127,7 @@ class SamplingTask(
 
     fun deviceNotConnected() {
         for (recordContainer in channelRecordContainers) {
-            recordContainer!!.setRecord(Record(Flag.COMM_DEVICE_NOT_CONNECTED))
+            recordContainer.record = Record(Flag.COMM_DEVICE_NOT_CONNECTED)
         }
         taskAborted()
     }

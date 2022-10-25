@@ -20,6 +20,8 @@
  */
 package org.openmuc.framework.dataaccess
 
-object DataLoggerNotAvailableException : Exception() {
-    private const val serialVersionUID = 8154261296935773357L
+class DataLoggerNotAvailableException : Exception() {
+    companion object {
+        const val serialVersionUID = 8154261296935773357L
+    }
 }

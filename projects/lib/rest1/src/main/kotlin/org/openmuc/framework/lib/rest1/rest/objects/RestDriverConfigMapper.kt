@@ -35,20 +35,12 @@ object RestDriverConfigMapper {
     }
 
     @Throws(IdCollisionException::class, RestConfigIsNotCorrectException::class)
-    fun setDriverConfig(dc: DriverConfig?, rdc: RestDriverConfig?, idFromUrl: String) {
-        if (dc == null) {
-            throw RestConfigIsNotCorrectException("DriverConfig is null!")
-        } else {
-            if (rdc != null) {
-                if (rdc.id != null && rdc.id != "" && idFromUrl != rdc.id) {
-                    dc.id = rdc.id
-                }
-                dc.connectRetryInterval = rdc.connectRetryInterval
-                dc.isDisabled = rdc.isDisabled
-                dc.samplingTimeout = rdc.samplingTimeout
-            } else {
-                throw RestConfigIsNotCorrectException()
-            }
+    fun setDriverConfig(dc: DriverConfig, rdc: RestDriverConfig, idFromUrl: String) {
+        if (rdc.id != "" && idFromUrl != rdc.id) {
+            dc.id = rdc.id
         }
+        dc.connectRetryInterval = rdc.connectRetryInterval
+        dc.isDisabled = rdc.isDisabled
+        dc.samplingTimeout = rdc.samplingTimeout
     }
 }

@@ -21,8 +21,8 @@
 package org.openmuc.framework.core.datamanager
 
 class Action(var startTime: Long) {
-    var samplingCollections: MutableList<ChannelCollection?>? = null
-    var timeouts: MutableList<SamplingTask?>? = null
-    var loggingCollections: MutableList<ChannelCollection?>? = null
-    var connectionRetryDevices: MutableList<Device?>? = null
+    var samplingCollections: MutableList<ChannelCollection>? = null
+    var timeouts: MutableList<SamplingTask>? = null
+    var loggingCollections: MutableList<ChannelCollection>? = null
+    var connectionRetryDevices: MutableList<Device>? = null
 }

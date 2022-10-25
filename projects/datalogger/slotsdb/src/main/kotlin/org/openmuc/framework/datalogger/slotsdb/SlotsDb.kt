@@ -21,7 +21,6 @@
 package org.openmuc.framework.datalogger.slotsdb
 
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.data.TypeConversionException
 import org.openmuc.framework.datalogger.spi.DataLoggerService
 import org.openmuc.framework.datalogger.spi.LogChannel
@@ -56,26 +55,26 @@ class SlotsDb : DataLoggerService {
         get() = "slotsdb"
 
     @Throws(IOException::class)
-    override fun getRecords(channelId: String?, startTime: Long, endTime: Long): List<Record?>? {
+    override fun getRecords(channelId: String, startTime: Long, endTime: Long): List<Record> {
         return fileObjectProxy!!.read(channelId, startTime, endTime)
     }
 
     @Throws(IOException::class)
-    override fun getLatestLogRecord(channelId: String?): Record? {
+    override fun getLatestLogRecord(channelId: String): Record? {
         return fileObjectProxy!!.readLatest(channelId)
     }
 
-    override fun setChannelsToLog(channels: List<LogChannel?>?) {
+    override fun setChannelsToLog(channels: List<LogChannel>) {
         loggingIntervalsById.clear()
-        for (channel in channels!!) {
-            loggingIntervalsById[channel!!.id] = channel.loggingInterval
+        for (channel in channels) {
+            loggingIntervalsById[channel.id] = channel.loggingInterval
         }
     }
 
-    override fun log(containers: List<LoggingRecord?>?, timestamp: Long) {
-        for (container in containers!!) {
+    override fun log(containers: List<LoggingRecord>, timestamp: Long) {
+        for (container in containers) {
             var value: Double
-            value = if (container!!.record.value == null) {
+            value = if (container.record.value == null) {
                 Double.NaN
             } else {
                 try {
@@ -101,7 +100,7 @@ class SlotsDb : DataLoggerService {
         }
     }
 
-    override fun logEvent(containers: List<LoggingRecord?>?, timestamp: Long) {
+    override fun logEvent(containers: List<LoggingRecord>, timestamp: Long) {
         logger.warn("Event logging is not implemented, yet.")
     }
 

@@ -29,27 +29,27 @@ import java.util.*
 import java.util.stream.Collectors
 
 class LoggingController(private val activeDataLoggers: Deque<DataLoggerService>) {
-    private var logContainerMap: MutableMap<String, MutableList<LoggingRecord>?>? = null
+    private var logContainerMap: MutableMap<String, MutableList<LoggingRecord>> = hashMapOf()
     fun channelsHaveToBeLogged(currentAction: Action): Boolean {
-        return currentAction.loggingCollections != null && !currentAction.loggingCollections!!.isEmpty()
+        return currentAction.loggingCollections != null && currentAction.loggingCollections!!.isNotEmpty()
     }
 
-    fun triggerLogging(currentAction: Action): List<Optional<ChannelCollection?>> {
+    fun triggerLogging(currentAction: Action): List<Optional<ChannelCollection>> {
         initLoggingRecordMap()
-        val filledChannels: MutableList<Optional<ChannelCollection?>> = ArrayList()
+        val filledChannels: MutableList<Optional<ChannelCollection>> = ArrayList()
         for (loggingCollection in currentAction.loggingCollections!!) {
-            val toRemove: MutableList<ChannelImpl?> = LinkedList()
+            val toRemove: MutableList<ChannelImpl> = LinkedList()
             for (channel in loggingCollection!!.channels!!) {
-                if (channel.getChannelState() === ChannelState.DELETED) {
+                if (channel?.channelState === ChannelState.DELETED) {
                     toRemove.add(channel)
-                } else if (!channel!!.config!!.isDisabled()) {
+                } else if (!channel!!.config.isDisabled) {
                     fillLoggingRecordMapWithChannel(channel)
                 }
             }
             for (channel in toRemove) {
                 loggingCollection.channels!!.remove(channel)
             }
-            if (loggingCollection.channels != null && !loggingCollection.channels!!.isEmpty()) {
+            if (loggingCollection.channels != null && loggingCollection.channels!!.isNotEmpty()) {
                 filledChannels.add(Optional.of(loggingCollection))
             }
         }
@@ -60,10 +60,10 @@ class LoggingController(private val activeDataLoggers: Deque<DataLoggerService>)
     fun deliverLogsToEventBasedLogServices(channelRecordContainerList: List<ChannelRecordContainerImpl>) {
         initLoggingRecordMap()
         channelRecordContainerList.stream()
-            .forEach { channelRecord: ChannelRecordContainerImpl -> fillLoggingRecordMapWithChannel(channelRecord.getChannel()) }
+            .forEach { channelRecord: ChannelRecordContainerImpl -> fillLoggingRecordMapWithChannel(channelRecord.channel) }
         for (dataLogger in activeDataLoggers) {
-            val logContainers: List<LoggingRecord>? = logContainerMap!![dataLogger.id]
-            if (!logContainers!!.isEmpty()) {
+            val logContainers: List<LoggingRecord>? = logContainerMap[dataLogger.id]
+            if (logContainers!!.isNotEmpty()) {
                 dataLogger.logEvent(logContainers, System.currentTimeMillis())
             }
         }
@@ -76,20 +76,20 @@ class LoggingController(private val activeDataLoggers: Deque<DataLoggerService>)
         }
     }
 
-    private fun fillLoggingRecordMapWithChannel(channel: ChannelImpl?) {
-        val logSettings: String = channel.getLoggingSettings()
-        if (logSettings != null && !logSettings.isEmpty()) {
+    private fun fillLoggingRecordMapWithChannel(channel: ChannelImpl) {
+        val logSettings = channel.loggingSettings
+        if (logSettings != null && logSettings.isNotEmpty()) {
             extendMapForDefinedLoggerFromSettings(channel, logSettings)
         } else {
             addRecordToAllLoggerWhichNotRequiresSettings(channel)
         }
     }
 
-    private fun addRecordToAllLoggerWhichNotRequiresSettings(channel: Channel?) {
-        val latestRecord = channel!!.latestRecord
-        logContainerMap!!.forEach { (k: String, v: MutableList<LoggingRecord>?) ->
+    private fun addRecordToAllLoggerWhichNotRequiresSettings(channel: Channel) {
+        val latestRecord = channel.latestRecord
+        logContainerMap.forEach { (k: String, v: MutableList<LoggingRecord>) ->
             if (loggerWithIdNotRequiresSettings(k)) {
-                v!!.add(LoggingRecord(channel.id, latestRecord))
+                v.add(LoggingRecord(channel.id, latestRecord!!))
             }
         }
     }
@@ -101,16 +101,16 @@ class LoggingController(private val activeDataLoggers: Deque<DataLoggerService>)
             .noneMatch { filteredId: String -> filteredId == loggerId }
     }
 
-    private fun extendMapForDefinedLoggerFromSettings(channel: ChannelImpl?, logSettings: String) {
+    private fun extendMapForDefinedLoggerFromSettings(channel: ChannelImpl, logSettings: String) {
         val definedLoggerInChannel = parseDefinedLogger(logSettings)
         for (definedLogger in definedLoggerInChannel) {
-            if (logContainerMap!![definedLogger] != null) {
-                val latestRecord: Record = channel.getLatestRecord()
-                logContainerMap!![definedLogger]!!.add(LoggingRecord(channel.getId(), latestRecord))
+            if (logContainerMap[definedLogger] != null) {
+                val latestRecord = channel.latestRecord
+                logContainerMap[definedLogger]!!.add(LoggingRecord(channel.id, latestRecord!!))
             } else {
                 logger.warn(
                     "DataLoggerService with Id {} not found for channel {}", definedLogger,
-                    channel!!.config!!.getId()
+                    channel.config.id
                 )
                 logger.warn("Correct configuration in channel.xml?")
             }
@@ -127,7 +127,7 @@ class LoggingController(private val activeDataLoggers: Deque<DataLoggerService>)
 
     private fun deliverLogsToLogServices(startTime: Long) {
         for (dataLogger in activeDataLoggers) {
-            val logContainers: List<LoggingRecord>? = logContainerMap!![dataLogger.id]
+            val logContainers: List<LoggingRecord> = logContainerMap[dataLogger.id] ?: listOf()
             dataLogger.log(logContainers, startTime)
         }
     }

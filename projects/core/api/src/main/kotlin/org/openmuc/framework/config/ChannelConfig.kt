@@ -25,11 +25,11 @@ import org.openmuc.framework.data.ValueType
 interface ChannelConfig {
     @set:Throws(IdCollisionException::class)
     var id: String
-    var description: String?
-    var channelAddress: String?
+    var description: String
+    var channelAddress: String
     var unit: String?
     var valueType: ValueType
-    var valueTypeLength: Int?
+    var valueTypeLength: Int
     var scalingFactor: Double?
     var valueOffset: Double?
     var isListening: Boolean

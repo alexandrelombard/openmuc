@@ -120,7 +120,7 @@ class AmqpBufferHandler(maxBufferSize: Long, maxFileCount: Int, maxFileSize: Lon
             return buffers
         }
 
-    fun getMessageIterator(buffer: String?): Iterator<AmqpMessageTuple> {
+    fun getMessageIterator(buffer: String): Iterator<AmqpMessageTuple> {
         return AmqpBufferMessageIterator(buffer, filePersistence)
     }
 

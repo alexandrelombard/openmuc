@@ -26,7 +26,7 @@ import org.openmuc.framework.driver.spi.DriverService
 
 class ScanForDevicesTask(
     private val driver: DriverService,
-    private val settings: String?,
+    private val settings: String,
     private val listener: DeviceScanListener?
 ) : Runnable {
     override fun run() {

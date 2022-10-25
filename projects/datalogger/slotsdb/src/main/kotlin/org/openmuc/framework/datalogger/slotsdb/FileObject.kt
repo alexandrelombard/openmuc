@@ -347,14 +347,14 @@ class FileObject {
      * if an I/O error occurs.
      */
     @Throws(IOException::class)
-    fun read(start: Long, end: Long): List<Record?> {
+    fun read(start: Long, end: Long): List<Record> {
         var start = start
         var end = end
         start = getClosestTimestamp(start) // round to: startTimestamp +
         // n*stepIntervall
         end = getClosestTimestamp(end) // round to: startTimestamp +
         // n*stepIntervall
-        val toReturn: MutableList<Record?> = Vector()
+        val toReturn: MutableList<Record> = Vector()
         if (start < end) {
             if (start < startTimeStamp) {
                 // of this file.
@@ -383,7 +383,7 @@ class FileObject {
                 timestampcounter += storingPeriod
             }
         } else if (start == end) {
-            toReturn.add(read(start))
+            read(start)?.let { toReturn.add(it) }
             toReturn.removeAll(setOf<Any?>(null))
         }
         return toReturn // Always return a list -> might be empty -> never is
@@ -391,7 +391,7 @@ class FileObject {
     }
 
     @Throws(IOException::class)
-    fun readFully(): List<Record?> {
+    fun readFully(): List<Record> {
         return read(startTimeStamp, timestampForLatestValue)
     }
 

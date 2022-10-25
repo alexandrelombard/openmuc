@@ -22,17 +22,11 @@ package org.openmuc.framework.core.datamanager
 
 import org.openmuc.framework.driver.spi.DriverService
 
-class DisconnectTask(driver: DriverService?, device: Device?, dataManager: DataManager?) : DeviceTask() {
-    init {
-        this.driver = driver
-        this.device = device
-        this.dataManager = dataManager
-    }
-
+class DisconnectTask(override var driver: DriverService, override var device: Device, override var dataManager: DataManager) : DeviceTask() {
     override fun run() {
-        device!!.connection!!.disconnect()
-        synchronized(dataManager!!.disconnectedDevices) { dataManager!!.disconnectedDevices.add(device) }
-        dataManager!!.interrupt()
+        device.connection!!.disconnect()
+        synchronized(dataManager.disconnectedDevices) { dataManager.disconnectedDevices.add(device) }
+        dataManager.interrupt()
     }
 
     override val type: DeviceTaskType

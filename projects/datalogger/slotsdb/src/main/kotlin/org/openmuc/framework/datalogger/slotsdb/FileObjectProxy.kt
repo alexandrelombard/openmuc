@@ -21,7 +21,6 @@
 package org.openmuc.framework.datalogger.slotsdb
 
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.slf4j.LoggerFactory
 import java.io.*
 import java.net.URLEncoder
@@ -33,11 +32,11 @@ import java.util.*
 class FileObjectProxy(rootNodePath: String?) {
     private val rootNode: File
     private var openFilesHM: HashMap<String, FileObjectList>
-    private val encodedLabels: HashMap<String?, String?>
+    private val encodedLabels: HashMap<String, String>
     private val sdf: SimpleDateFormat
     private val date: Date
     private val timer: Timer
-    private var days: MutableList<File>? = null
+    private var days: MutableList<File> = mutableListOf()
     private var size: Long = 0
 
     /*
@@ -47,7 +46,7 @@ class FileObjectProxy(rootNodePath: String?) {
     private var limit_days = 0
     private var limit_size = 0
     private var max_open_files = 0
-    private var strCurrentDay: String? = null
+    private var strCurrentDay: String = ""
     private var currentDayFirstTS: Long = 0
     private var currentDayLastTS: Long = 0
 
@@ -170,7 +169,7 @@ class FileObjectProxy(rootNodePath: String?) {
         private fun deleteFoldersOlderThen(limit_days: Int) {
             val limit = Calendar.getInstance()
             limit.timeInMillis = System.currentTimeMillis() - 86400000L * limit_days
-            val iterator: Iterator<File> = days!!.iterator()
+            val iterator: Iterator<File> = days.iterator()
             try {
                 while (iterator.hasNext()) {
                     val curElement = iterator.next()
@@ -207,7 +206,7 @@ class FileObjectProxy(rootNodePath: String?) {
     internal inner class SizeWatcher : TimerTask() {
         override fun run() {
             try {
-                while (getDiskUsage(rootNode) / 1000000 > limit_size && days!!.size >= 2) { /*
+                while (getDiskUsage(rootNode) / 1000000 > limit_size && days.size >= 2) { /*
                                                   * avoid deleting current folder
                                                   */
                     deleteOldestFolder()
@@ -219,13 +218,13 @@ class FileObjectProxy(rootNodePath: String?) {
 
         @Throws(IOException::class)
         private fun deleteOldestFolder() {
-            if (days!!.size >= 2) {
+            if (days.size >= 2) {
                 logger.info(
-                    "Exceeded Maximum Database Size: $limit_size MB. Current size: $size" / 1000000
-                            + " MB. Deleting: " + days!![0].canonicalPath
+                    "Exceeded Maximum Database Size: $limit_size MB. Current size: ${size / 1000000}"
+                            + " MB. Deleting: " + days[0].canonicalPath
                 )
-                deleteRecursiveFolder(days!![0])
-                days!!.removeAt(0)
+                deleteRecursiveFolder(days[0])
+                days.removeAt(0)
                 clearOpenFilesHashMap()
             }
         }
@@ -238,6 +237,7 @@ class FileObjectProxy(rootNodePath: String?) {
                 if (f.isDirectory) {
                     deleteRecursiveFolder(f)
                     if (f.delete()) {
+                        //
                     }
                 } else {
                     f.delete()
@@ -285,7 +285,7 @@ class FileObjectProxy(rootNodePath: String?) {
      */
     @Synchronized
     @Throws(IOException::class)
-    fun appendValue(id: String?, value: Double, timestamp: Long, state: Byte, storingPeriod: Long) {
+    fun appendValue(id: String, value: Double, timestamp: Long, state: Byte, storingPeriod: Long) {
         var id = id
         var toStoreIn: FileObject? = null
         id = encodeLabel(id)
@@ -336,7 +336,7 @@ class FileObjectProxy(rootNodePath: String?) {
         /*
          * The storing Period may have changed. In this case, a new FileObject must be created.
          */if (toStoreIn.storingPeriod == storingPeriod || toStoreIn.storingPeriod == 0L) {
-            toStoreIn = openFilesHM[id + strDate].getCurrentFileObject()
+            toStoreIn = openFilesHM[id + strDate]!!.currentFileObject
             toStoreIn.append(value, timestamp, state)
             if (flush_period == 0) {
                 toStoreIn.flush()
@@ -362,19 +362,19 @@ class FileObjectProxy(rootNodePath: String?) {
     }
 
     @Throws(IOException::class)
-    private fun encodeLabel(label: String?): String? {
+    private fun encodeLabel(label: String): String {
         var encodedLabel = encodedLabels[label]
         if (encodedLabel == null) {
             encodedLabel = URLEncoder.encode(label, Charset.defaultCharset().toString()) // encodes label to supported
             // String for Filenames.
             encodedLabels[label] = encodedLabel
         }
-        return encodedLabel
+        return encodedLabel!!
     }
 
     @Synchronized
     @Throws(IOException::class)
-    fun read(label: String?, timestamp: Long): Record? {
+    fun read(label: String, timestamp: Long): Record {
         // label = URLEncoder.encode(label,Charset.defaultCharset().toString());
         // //encodes label to supported String for Filenames.
         var label = label
@@ -386,18 +386,18 @@ class FileObjectProxy(rootNodePath: String?) {
             openFilesHM[label + strDate] = fol
         }
         val toReadFrom = openFilesHM[label + strDate]!!.getFileObjectForTimestamp(timestamp)
-        return toReadFrom?.read(timestamp)
+        return toReadFrom!!.read(timestamp)!!
     }
 
     @Synchronized
     @Throws(IOException::class)
-    fun read(label: String?, start: Long, end: Long): List<Record?> {
+    fun read(label: String, start: Long, end: Long): List<Record> {
         var label = label
         var end = end
         if (logger.isTraceEnabled) {
             logger.trace("Called: read($label, $start, $end)")
         }
-        val toReturn: MutableList<Record?> = Vector()
+        val toReturn: MutableList<Record> = Vector()
         if (start > end) {
             logger.trace("Invalid Read Request: startTS > endTS")
             return toReturn
@@ -418,7 +418,7 @@ class FileObjectProxy(rootNodePath: String?) {
         label = encodeLabel(label)
         val strStartDate = getStrDate(start)
         val strEndDate = getStrDate(end)
-        val toRead: MutableList<FileObject?> = Vector()
+        val toRead: MutableList<FileObject> = Vector()
         if (strStartDate != strEndDate) {
             logger.trace("Reading Multiple Days. Scanning for Folders.")
             val days: MutableList<FileObjectList> = Vector()
@@ -431,7 +431,7 @@ class FileObjectProxy(rootNodePath: String?) {
             for (folder in rootNode.listFiles()) {
                 if (folder.isDirectory) {
                     if (isFolderBetweenStartAndEnd(folder.name, start, end)) {
-                        if (Arrays.asList(*folder.list()).contains(label)) {
+                        if (listOf(*folder.list()).contains(label)) {
                             strSubfolder = rootNode.path + "/" + folder.name + "/" + label
                             days.add(FileObjectList(strSubfolder))
                             logger.trace(strSubfolder + " contains " + SlotsDb.Companion.FILE_EXTENSION + " files to read from.")
@@ -453,7 +453,7 @@ class FileObjectProxy(rootNodePath: String?) {
             } else { // days.size()>1
                 toRead.addAll(days[0].getFileObjectsStartingAt(start))
                 for (i in 1 until days.size - 1) {
-                    toRead.addAll(days[i].allFileObjects)
+                    toRead.addAll(days[i].allFileObjects ?: listOf())
                 }
                 toRead.addAll(days[days.size - 1].getFileObjectsUntil(end))
             }
@@ -476,22 +476,22 @@ class FileObjectProxy(rootNodePath: String?) {
          * timestamp range.
          */if (toRead != null) {
             if (toRead.size > 1) {
-                toReturn.addAll(toRead[0]!!.read(start, toRead[0].getTimestampForLatestValue()))
-                toRead[0]!!.close()
+                toReturn.addAll(toRead[0].read(start, toRead[0].timestampForLatestValue))
+                toRead[0].close()
                 for (i in 1 until toRead.size - 1) {
-                    toReturn.addAll(toRead[i]!!.readFully())
-                    toRead[i]!!.close()
+                    toReturn.addAll(toRead[i].readFully())
+                    toRead[i].close()
                 }
                 toReturn.addAll(
-                    toRead[toRead.size - 1]!!.read(toRead[toRead.size - 1].getStartTimeStamp(), end)
+                    toRead[toRead.size - 1].read(toRead[toRead.size - 1].startTimeStamp, end)
                 )
-                toRead[toRead.size - 1]!!.close()
+                toRead[toRead.size - 1].close()
 
                 /*
                  * Some Values might be null -> remove
                  */toReturn.removeAll(setOf<Any?>(null))
             } else if (toRead.size == 1) { // single FileObject
-                toReturn.addAll(toRead[0]!!.read(start, end))
+                toReturn.addAll(toRead[0].read(start, end))
                 toReturn.removeAll(setOf<Any?>(null))
             }
         }
@@ -501,7 +501,7 @@ class FileObjectProxy(rootNodePath: String?) {
 
     @Synchronized
     @Throws(IOException::class)
-    fun readLatest(label: String?): Record? {
+    fun readLatest(label: String): Record? {
         var label = label
         if (logger.isTraceEnabled) {
             logger.trace("Called: readLatest($label)")
@@ -539,15 +539,15 @@ class FileObjectProxy(rootNodePath: String?) {
         /*
          * For each file get the latest Record and compare those
          */
-        var toRead: List<FileObject?>? = Vector()
-        toRead = fileObjects.getAllFileObjects()
+        var toRead: List<FileObject> = Vector()
+        toRead = fileObjects?.allFileObjects!!
         var latestTimestamp: Long = 0
         var latestRecord: Record? = null
-        for (file in toRead!!) {
+        for (file in toRead) {
             val timestamp = file.timestampForLatestValue
             if (timestamp > latestTimestamp) {
                 latestTimestamp = timestamp
-                latestRecord = file!!.read(timestamp) // function calculates closest available timestamp to given
+                latestRecord = file.read(timestamp) // function calculates closest available timestamp to given
                 // timestamp. This should always be equal though
             }
         }
