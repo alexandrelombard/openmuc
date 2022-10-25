@@ -20,7 +20,7 @@
  */
 package org.openmuc.framework.datalogger.slotsdb
 
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.Record
 import org.slf4j.LoggerFactory
 import java.io.*
 

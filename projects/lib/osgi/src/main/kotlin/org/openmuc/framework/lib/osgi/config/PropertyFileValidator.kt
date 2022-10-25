@@ -35,11 +35,11 @@ import java.util.stream.Collectors
  */
 class PropertyFileValidator {
     private val logger = LoggerFactory.getLogger(this.javaClass) as Logger
-    private var serviceProperties: Map<String?, ServiceProperty?>? = null
+    private var serviceProperties: Map<String, ServiceProperty>? = null
     private var pid: String? = null
     private var existingProperties: List<String>? = null
     private var filename: String? = null
-    fun initServiceProperties(serviceProperties: Map<String?, ServiceProperty?>?, pid: String) {
+    fun initServiceProperties(serviceProperties: Map<String, ServiceProperty>, pid: String) {
         this.pid = pid
         this.serviceProperties = serviceProperties
         File(RESOURCE_DIR).mkdir()

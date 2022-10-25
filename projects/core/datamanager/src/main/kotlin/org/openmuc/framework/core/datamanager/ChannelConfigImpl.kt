@@ -32,71 +32,73 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 import java.util.regex.Pattern
 
-class ChannelConfigImpl constructor(override var id: String, var deviceParent: DeviceConfigImpl?) :
+class ChannelConfigImpl constructor(id: String, var deviceParent: DeviceConfigImpl?) :
     ChannelConfig, LogChannel {
+    @set:Throws(IdCollisionException::class)
+    override var id: String = ""
+        set(value) {
+            checkIdSyntax(value)
+            if (deviceParent?.driverParent!!.rootConfigParent!!.channelConfigsById.containsKey(value)) {
+                throw IdCollisionException("Collision with channel ID:$value")
+            }
+            val deviceParent = deviceParent
+            if(deviceParent != null) {
+                deviceParent.channelConfigsById[value] = deviceParent.channelConfigsById.remove(field)
+                deviceParent.driverParent!!.rootConfigParent!!.channelConfigsById[value] =
+                    deviceParent.driverParent!!.rootConfigParent!!.channelConfigsById.remove(field)
+            }
+            field = value
+        }
+
     var channel: ChannelImpl? = null
     var state: ChannelState? = null
     override var channelAddress: String? = null
     override var description: String? = null
     override var unit: String? = null
-    override var valueType: ValueType? = null
+    override var valueType: ValueType = ValueType.UNKNOWN
     override var valueTypeLength: Int? = null
     override var scalingFactor: Double? = null
     override var valueOffset: Double? = null
-    private var listening: Boolean? = null
+    override var isListening: Boolean = false
         set(value) {
-            check((samplingInterval != null && value != null && value && samplingInterval!!) <= 0) { "Listening may not be enabled while sampling is enabled." }
+            check(value && samplingInterval <= 0) { "Listening may not be enabled while sampling is enabled." }
             field = value
         }
-    override var samplingInterval: Int? = null
+    override var samplingInterval: Int = 0
         set(value) {
-            check(listening != null && value != null && isListening() && value <= 0) { "Sampling may not be enabled while listening is enabled." }
+            check(isListening && value <= 0) { "Sampling may not be enabled while listening is enabled." }
             field = value
         }
-    override var samplingTimeOffset: Int? = null
+    override var samplingTimeOffset: Int = 0
         set(value) {
-            require(!(value != null && value < 0)) { "The sampling time offset may not be negative." }
+            require(!(value < 0)) { "The sampling time offset may not be negative." }
             field = value
         }
     override var samplingGroup: String? = null
     override var settings: String? = null
-    private var loggingEvent: Boolean? = null
-    override var loggingInterval: Int? = null
-    override var loggingTimeOffset: Int? = null
+    override var isLoggingEvent: Boolean = false
+    override var loggingInterval: Int = 0
+    override var loggingTimeOffset: Int = 0
         set(value) {
-            require(!(value != null && value < 0)) { "The logging time offset may not be negative." }
+            require(!(value < 0)) { "The logging time offset may not be negative." }
             field = value
         }
     override var loggingSettings: String? = null
-    var disabled: Boolean? = null
+    override var isDisabled: Boolean = false
     override var serverMappings = arrayListOf<ServerMapping>()
     override var reader: String? = null
 
-    @Throws(IdCollisionException::class)
-    override fun setId(id: String?) {
-        requireNotNull(id) { "The channel ID may not be null" }
-        checkIdSyntax(id)
-        if (deviceParent!!.driverParent!!.rootConfigParent!!.channelConfigsById.containsKey(id)) {
-            throw IdCollisionException("Collision with channel ID:$id")
-        }
-        deviceParent!!.channelConfigsById[id] = deviceParent!!.channelConfigsById.remove(this.id)
-        deviceParent!!.driverParent!!.rootConfigParent!!.channelConfigsById[id] =
-            deviceParent!!.driverParent!!.rootConfigParent!!.channelConfigsById.remove(this.id)
+    init {
         this.id = id
     }
 
-
     override fun delete() {
-        deviceParent!!.channelConfigsById.remove(id)
+        deviceParent?.channelConfigsById?.remove(id)
         clear()
     }
 
-    override fun getServerMappings(): List<ServerMapping?>? {
-
-    }
-
     fun clear() {
-        deviceParent!!.driverParent!!.rootConfigParent!!.channelConfigsById.remove(id)
+        deviceParent?.driverParent!!.rootConfigParent!!.channelConfigsById.remove(id)
         deviceParent = null
     }
 
@@ -118,9 +120,9 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
             parentElement.appendChild(childElement)
         }
         if (serverMappings != null) {
-            for (serverMapping in serverMappings!!) {
+            for (serverMapping in serverMappings) {
                 childElement = document.createElement("serverMapping")
-                childElement.setAttribute("id", serverMapping!!.id)
+                childElement.setAttribute("id", serverMapping.id)
                 childElement.textContent = serverMapping.serverAddress
                 parentElement.appendChild(childElement)
             }
@@ -150,14 +152,14 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
             childElement.textContent = java.lang.Double.toString(valueOffset!!)
             parentElement.appendChild(childElement)
         }
-        if (listening != null) {
+        if (isListening != null) {
             childElement = document.createElement("listening")
-            childElement.textContent = listening.toString()
+            childElement.textContent = isListening.toString()
             parentElement.appendChild(childElement)
         }
         if (samplingInterval != null) {
             childElement = document.createElement("samplingInterval")
-            childElement.textContent = millisToTimeString(samplingInterval!!)
+            childElement.textContent = millisToTimeString(samplingInterval)
             parentElement.appendChild(childElement)
         }
         if (samplingTimeOffset != null) {
@@ -185,9 +187,9 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
             childElement.textContent = millisToTimeString(loggingTimeOffset!!)
             parentElement.appendChild(childElement)
         }
-        if (loggingEvent != null) {
+        if (isLoggingEvent != null) {
             childElement = document.createElement("loggingEvent")
-            childElement.textContent = loggingEvent.toString()
+            childElement.textContent = isLoggingEvent.toString()
             parentElement.appendChild(childElement)
         }
         if (loggingSettings != null) {
@@ -195,9 +197,9 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
             childElement.textContent = loggingSettings
             parentElement.appendChild(childElement)
         }
-        if (disabled != null) {
+        if (isDisabled != null) {
             childElement = document.createElement("disabled")
-            childElement.textContent = disabled.toString()
+            childElement.textContent = isDisabled.toString()
             parentElement.appendChild(childElement)
         }
         return parentElement
@@ -213,15 +215,15 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
         configClone.valueTypeLength = valueTypeLength
         configClone.scalingFactor = scalingFactor
         configClone.valueOffset = valueOffset
-        configClone.listening = listening
+        configClone.isListening = isListening
         configClone.samplingInterval = samplingInterval
         configClone.samplingTimeOffset = samplingTimeOffset
         configClone.samplingGroup = samplingGroup
         configClone.settings = settings
         configClone.loggingInterval = loggingInterval
         configClone.loggingTimeOffset = loggingTimeOffset
-        configClone.disabled = disabled
-        configClone.loggingEvent = loggingEvent
+        configClone.isDisabled = isDisabled
+        configClone.isLoggingEvent = isLoggingEvent
         configClone.loggingSettings = loggingSettings
         configClone.reader = reader
         return configClone
@@ -279,10 +281,10 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
         }
         configClone.scalingFactor = scalingFactor
         configClone.valueOffset = valueOffset
-        if (listening == null) {
-            configClone.listening = ChannelConfig.LISTENING_DEFAULT
+        if (isListening == null) {
+            configClone.isListening = ChannelConfig.LISTENING_DEFAULT
         } else {
-            configClone.listening = listening
+            configClone.isListening = isListening
         }
         if (samplingInterval == null) {
             configClone.samplingInterval = ChannelConfig.SAMPLING_INTERVAL_DEFAULT
@@ -309,10 +311,10 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
         } else {
             configClone.loggingInterval = loggingInterval
         }
-        if (loggingEvent == null) {
-            configClone.loggingEvent = ChannelConfig.LOGGING_EVENT_DEFAULT
+        if (isLoggingEvent == null) {
+            configClone.isLoggingEvent = ChannelConfig.LOGGING_EVENT_DEFAULT
         } else {
-            configClone.loggingEvent = loggingEvent
+            configClone.isLoggingEvent = isLoggingEvent
         }
         if (loggingSettings == null) {
             configClone.loggingSettings = ChannelConfig.LOGGING_SETTINGS_DEFAULT
@@ -329,33 +331,33 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
         } else {
             configClone.loggingTimeOffset = loggingTimeOffset
         }
-        if (disabled == null) {
-            configClone.disabled = clonedParentConfig.isDisabled()
+        if (isDisabled == null) {
+            configClone.isDisabled = clonedParentConfig.isDisabled ?: false
         } else {
             if (clonedParentConfig.isDisabled()!!) {
-                configClone.disabled = false
+                configClone.isDisabled = false
             } else {
-                configClone.disabled = disabled
+                configClone.isDisabled = isDisabled
             }
         }
         return configClone
     }
 
     val isSampling: Boolean
-        get() = !disabled!! && samplingInterval != null && samplingInterval!! > 0
+        get() = !isDisabled!! && samplingInterval != null && samplingInterval > 0
 
-    override fun addServerMapping(serverMapping: ServerMapping?) {
+    override fun addServerMapping(serverMapping: ServerMapping) {
         if (serverMappings == null) {
             serverMappings = ArrayList()
         }
-        serverMappings!!.add(serverMapping)
+        serverMappings.add(serverMapping)
     }
 
-    override fun deleteServerMappings(id: String?) {
+    override fun deleteServerMappings(id: String) {
         if (serverMappings != null) {
-            val newMappings: MutableList<ServerMapping?> = ArrayList()
-            for (serverMapping in serverMappings!!) {
-                if (serverMapping!!.id != id) {
+            val newMappings = ArrayList<ServerMapping>()
+            for (serverMapping in serverMappings) {
+                if (serverMapping.id != id) {
                     newMappings.add(serverMapping)
                 }
             }
@@ -420,11 +422,11 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
                     } else if (childName == "valueOffset") {
                         config!!.valueOffset = childNode.textContent.toDouble()
                     } else if (childName == "listening") {
-                        config!!.setListening(java.lang.Boolean.parseBoolean(childNode.textContent))
+                        config!!.isListening = childNode.textContent.toBoolean()
                     } else if (childName == "samplingInterval") {
-                        config!!.setSamplingInterval(timeStringToMillis(childNode.textContent))
+                        config!!.samplingInterval = timeStringToMillis(childNode.textContent)
                     } else if (childName == "samplingTimeOffset") {
-                        config!!.setSamplingTimeOffset(timeStringToMillis(childNode.textContent))
+                        config!!.samplingTimeOffset = timeStringToMillis(childNode.textContent)
                     } else if (childName == "samplingGroup") {
                         config!!.samplingGroup = childNode.textContent
                     } else if (childName == "settings") {
@@ -432,11 +434,11 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
                     } else if (childName == "loggingInterval") {
                         config!!.loggingInterval = timeStringToMillis(childNode.textContent)
                     } else if (childName == "loggingTimeOffset") {
-                        config!!.setLoggingTimeOffset(timeStringToMillis(childNode.textContent))
+                        config!!.loggingTimeOffset = timeStringToMillis(childNode.textContent)
                     } else if (childName == "loggingEvent") {
-                        config!!.loggingEvent = java.lang.Boolean.parseBoolean(childNode.textContent)
+                        config!!.isLoggingEvent = childNode.textContent.toBoolean()
                     } else if (childName == "disabled") {
-                        config!!.disabled = java.lang.Boolean.parseBoolean(childNode.textContent)
+                        config!!.isDisabled = childNode.textContent.toBoolean()
                     } else {
                         throw ParseException("found unknown tag:$childName")
                     }
@@ -480,9 +482,9 @@ class ChannelConfigImpl constructor(override var id: String, var deviceParent: D
 
         @kotlin.jvm.JvmStatic
         @Throws(ParseException::class)
-        fun timeStringToMillis(timeString: String?): Int? {
-            if (timeString == null || timeString.isEmpty()) {
-                return null
+        fun timeStringToMillis(timeString: String): Int {
+            if (timeString.isEmpty()) {
+                throw ParseException("Unable to parse empty string")
             }
             val timeMatcher = timePattern.matcher(timeString)
             if (!timeMatcher.matches()) {

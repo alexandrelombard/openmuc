@@ -25,7 +25,7 @@ import org.openmuc.framework.driver.spi.ConnectionException
 import org.openmuc.framework.driver.spi.DriverService
 import org.slf4j.LoggerFactory
 
-class ConnectTask(driver: DriverService?, device: Device?, dataManager: DataManager?) : DeviceTask() {
+class ConnectTask(driver: DriverService, device: Device, dataManager: DataManager) : DeviceTask() {
     init {
         this.driver = driver
         this.device = device
@@ -34,44 +34,44 @@ class ConnectTask(driver: DriverService?, device: Device?, dataManager: DataMana
 
     override fun run() {
         try {
-            device!!.connection = driver!!.connect(
+            device.connection = driver.connect(
                 device!!.deviceConfig!!.getDeviceAddress(),
                 device!!.deviceConfig!!.getSettings()
             )
             if (logger.isDebugEnabled) {
-                logger.debug("Driver {} connected.", driver!!.info.id)
+                logger.debug("Driver {} connected.", driver.info.id)
             }
         } catch (e: ConnectionException) {
             logger.warn(
                 "Unable to connect to device {} because {}.\nWill try again in {} ms.",
-                device!!.deviceConfig!!.getId(), e.message, device!!.deviceConfig!!.getConnectRetryInterval()
+                device.deviceConfig!!.getId(), e.message, device.deviceConfig!!.getConnectRetryInterval()
             )
             logger.debug("Trace", e)
-            synchronized(dataManager!!.connectionFailures) { dataManager!!.connectionFailures.add(device) }
-            dataManager!!.interrupt()
+            synchronized(dataManager.connectionFailures) { dataManager.connectionFailures.add(device) }
+            dataManager.interrupt()
             return
         } catch (e: ArgumentSyntaxException) {
             logger.warn(
                 "Unable to connect to device {} because the address or settings syntax is incorrect: {}.\nWill try again in {} ms.",
-                device!!.deviceConfig!!.getId(), e.message, device!!.deviceConfig!!.getConnectRetryInterval()
+                device.deviceConfig!!.getId(), e.message, device.deviceConfig!!.getConnectRetryInterval()
             )
-            synchronized(dataManager!!.connectionFailures) { dataManager!!.connectionFailures.add(device) }
-            dataManager!!.interrupt()
+            synchronized(dataManager.connectionFailures) { dataManager.connectionFailures.add(device) }
+            dataManager.interrupt()
             return
         } catch (e: Exception) {
             logger.warn("unexpected exception thrown by connect function of driver", e)
-            synchronized(dataManager!!.connectionFailures) { dataManager!!.connectionFailures.add(device) }
-            dataManager!!.interrupt()
+            synchronized(dataManager.connectionFailures) { dataManager.connectionFailures.add(device) }
+            dataManager.interrupt()
             return
         }
-        if (device!!.connection == null) {
+        if (device.connection == null) {
             logger.error("Drivers connect() function returned null")
-            synchronized(dataManager!!.connectionFailures) { dataManager!!.connectionFailures.add(device) }
-            dataManager!!.interrupt()
+            synchronized(dataManager.connectionFailures) { dataManager.connectionFailures.add(device) }
+            dataManager.interrupt()
             return
         }
-        synchronized(dataManager!!.connectedDevices) { dataManager!!.connectedDevices.add(device) }
-        dataManager!!.interrupt()
+        synchronized(dataManager.connectedDevices) { dataManager.connectedDevices.add(device) }
+        dataManager.interrupt()
     }
 
     override val type: DeviceTaskType

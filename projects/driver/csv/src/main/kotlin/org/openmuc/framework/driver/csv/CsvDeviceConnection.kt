@@ -69,7 +69,7 @@ class CsvDeviceConnection private constructor(
         ScanException::class,
         ConnectionException::class
     )
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo> {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         logger.info("Scan for channels called. Settings: $settings")
         val channels: MutableList<ChannelScanInfo> = ArrayList()
         var channelId: String
@@ -93,7 +93,7 @@ class CsvDeviceConnection private constructor(
             try {
                 val channel = getCsvChannel(container)
                 val valueAsString = channel!!.readValue(samplingTime)
-                if (container.channel.valueType == ValueType.STRING) {
+                if (container.channel?.valueType == ValueType.STRING) {
                     container.record = Record(StringValue(valueAsString), samplingTime, Flag.VALID)
                 } else {
                     // in all other cases try parsing as double
@@ -120,8 +120,8 @@ class CsvDeviceConnection private constructor(
     @Throws(EmptyChannelAddressException::class)
     private fun getCsvChannel(container: ChannelRecordContainer?): CsvChannel? {
         val channelAddress = container!!.channelAddress
-        if (channelAddress!!.isEmpty()) {
-            throw EmptyChannelAddressException("No ChannelAddress for channel " + container.channel.id)
+        if (channelAddress.isEmpty()) {
+            throw EmptyChannelAddressException("No ChannelAddress for channel " + container.channel?.id)
         }
         return channelMap[channelAddress]
     }

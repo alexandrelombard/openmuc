@@ -23,9 +23,9 @@ package org.openmuc.framework.core.datamanager
 import org.openmuc.framework.driver.spi.DriverService
 
 abstract class DeviceTask : Thread() {
-    var device: Device? = null
-    protected var driver: DriverService? = null
-    protected var dataManager: DataManager? = null
+    abstract var device: Device
+    abstract var driver: DriverService
+    abstract var dataManager: DataManager
     abstract val type: DeviceTaskType
     abstract override fun run()
 }

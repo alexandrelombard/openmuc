@@ -39,7 +39,7 @@ abstract class AggregatorChannel(protected var channelAddress: ChannelAddress, d
     // TODO dataAccessService wird ueber viele ebenen durchgereicht, wie kann ich das vermeiden?
     // Brauche den dataAccessService eigentlich nur hier
     init {
-        aggregatedChannel = channelAddress.container.channel
+        aggregatedChannel = channelAddress.container.channel!!
         dataAccessService.getChannel(channelAddress.sourceChannelId).let {
             if (it == null) {
                 throw AggregationException("sourceChannel is null")
@@ -134,7 +134,7 @@ abstract class AggregatorChannel(protected var channelAddress: ChannelAddress, d
         if (validRecords < necessaryRecords) {
             throw AggregationException(
                 "Insufficent number of logged records for channel "
-                        + channelAddress.container.channel.id + ". Valid logged records: " + validRecords
+                        + channelAddress.container.channel?.id + ". Valid logged records: " + validRecords
                         + " Expected: " + necessaryRecords + " (at least)" + " quality:" + channelAddress.quality
                         + " aggregationInterval:" + aggregationInterval + "ms sourceLoggingInterval:"
                         + sourceLoggingInterval + "ms"

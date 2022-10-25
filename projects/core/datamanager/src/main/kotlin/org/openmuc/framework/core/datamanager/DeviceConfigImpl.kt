@@ -28,15 +28,44 @@ import org.w3c.dom.Element
 import org.w3c.dom.Node
 import java.util.*
 
-class DeviceConfigImpl(private override var id: String, var driverParent: DriverConfigImpl?) : DeviceConfig {
-    private override var description: String? = null
-    private override var deviceAddress: String? = null
-    private override var settings: String? = null
-    private override var samplingTimeout: Int? = null
-    private override var connectRetryInterval: Int? = null
-    private var disabled: Boolean? = null
+class DeviceConfigImpl(id: String, var driverParent: DriverConfigImpl?) : DeviceConfig {
+    @set:Throws(IdCollisionException::class)
+    override var id: String
+        set(value) {
+            requireNotNull(id) { "The device ID may not be null" }
+            ChannelConfigImpl.checkIdSyntax(id)
+            if (driverParent!!.rootConfigParent!!.deviceConfigsById.containsKey(id)) {
+                throw IdCollisionException("Collision with device ID:$id")
+            }
+            driverParent!!.deviceConfigsById[id] = driverParent!!.deviceConfigsById.remove(this.id)
+            driverParent!!.rootConfigParent!!.deviceConfigsById[id] =
+                driverParent!!.rootConfigParent!!.deviceConfigsById.remove(this.id)
+            field = id
+        }
+
+
+
+    override var description: String? = null
+    override var deviceAddress: String? = null
+    override var settings: String? = null
+    override var samplingTimeout: Int = 0
+        set (value) {
+            require(!(value < 0)) { "A negative sampling timeout is not allowed" }
+            field = value
+        }
+    override var connectRetryInterval: Int = 0
+        set(value) {
+            require(!(value < 0)) { "A negative connect retry interval is not allowed" }
+            field = value
+        }
+    override var isDisabled: Boolean = false
     var device: Device? = null
     val channelConfigsById: HashMap<String?, ChannelConfigImpl?> = LinkedHashMap()
+
+    init {
+        this.id = id
+    }
+
     fun clone(clonedParentConfig: DriverConfigImpl?): DeviceConfigImpl {
         val configClone = DeviceConfigImpl(id, clonedParentConfig)
         configClone.description = description
@@ -44,84 +73,16 @@ class DeviceConfigImpl(private override var id: String, var driverParent: Driver
         configClone.settings = settings
         configClone.samplingTimeout = samplingTimeout
         configClone.connectRetryInterval = connectRetryInterval
-        configClone.disabled = disabled
+        configClone.isDisabled = isDisabled
         for (channelConfig in channelConfigsById.values) {
-            configClone.channelConfigsById[channelConfig!!.getId()] = channelConfig.clone(configClone)
+            configClone.channelConfigsById[channelConfig!!.id] = channelConfig.clone(configClone)
         }
         return configClone
     }
 
-    override fun getId(): String {
-        return id
-    }
-
     @Throws(IdCollisionException::class)
-    override fun setId(id: String?) {
-        requireNotNull(id) { "The device ID may not be null" }
-        ChannelConfigImpl.Companion.checkIdSyntax(id)
-        if (driverParent!!.rootConfigParent!!.deviceConfigsById.containsKey(id)) {
-            throw IdCollisionException("Collision with device ID:$id")
-        }
-        driverParent!!.deviceConfigsById[id] = driverParent!!.deviceConfigsById.remove(this.id)
-        driverParent!!.rootConfigParent!!.deviceConfigsById[id] =
-            driverParent!!.rootConfigParent!!.deviceConfigsById.remove(this.id)
-        this.id = id
-    }
-
-    override fun getDescription(): String? {
-        return description
-    }
-
-    override fun setDescription(description: String?) {
-        this.description = description
-    }
-
-    override fun getDeviceAddress(): String? {
-        return deviceAddress
-    }
-
-    override fun setDeviceAddress(address: String?) {
-        deviceAddress = address
-    }
-
-    override fun getSettings(): String? {
-        return settings
-    }
-
-    override fun setSettings(settings: String?) {
-        this.settings = settings
-    }
-
-    override fun getSamplingTimeout(): Int {
-        return samplingTimeout!!
-    }
-
-    override fun setSamplingTimeout(timeout: Int?) {
-        require(!(timeout != null && timeout < 0)) { "A negative sampling timeout is not allowed" }
-        samplingTimeout = timeout
-    }
-
-    override fun getConnectRetryInterval(): Int? {
-        return connectRetryInterval
-    }
-
-    override fun setConnectRetryInterval(interval: Int?) {
-        require(!(interval != null && interval < 0)) { "A negative connect retry interval is not allowed" }
-        connectRetryInterval = interval
-    }
-
-    override fun isDisabled(): Boolean? {
-        return disabled
-    }
-
-    override fun setDisabled(disabled: Boolean?) {
-        this.disabled = disabled
-    }
-
-    @Throws(IdCollisionException::class)
-    override fun addChannel(channelId: String?): ChannelConfig? {
-        requireNotNull(channelId) { "The channel ID may not be null" }
-        ChannelConfigImpl.Companion.checkIdSyntax(channelId)
+    override fun addChannel(channelId: String): ChannelConfig {
+        ChannelConfigImpl.checkIdSyntax(channelId)
         if (driverParent!!.rootConfigParent!!.channelConfigsById.containsKey(channelId)) {
             throw IdCollisionException("Collision with channel ID: $channelId")
         }
@@ -131,11 +92,11 @@ class DeviceConfigImpl(private override var id: String, var driverParent: Driver
         return newChannel
     }
 
-    override fun getChannel(channelId: String?): ChannelConfig? {
+    override fun getChannel(channelId: String): ChannelConfig? {
         return channelConfigsById[channelId]
     }
 
-    override val channels: Collection<ChannelConfig>?
+    override val channels: Collection<ChannelConfig>
         get() = Collections
             .unmodifiableCollection(channelConfigsById.values) as Collection<*> as Collection<ChannelConfig>
 
@@ -177,17 +138,17 @@ class DeviceConfigImpl(private override var id: String, var driverParent: Driver
         }
         if (samplingTimeout != null) {
             childElement = document.createElement("samplingTimeout")
-            childElement.textContent = ChannelConfigImpl.Companion.millisToTimeString(samplingTimeout!!)
+            childElement.textContent = ChannelConfigImpl.millisToTimeString(samplingTimeout!!)
             parentElement.appendChild(childElement)
         }
         if (connectRetryInterval != null) {
             childElement = document.createElement("connectRetryInterval")
-            childElement.textContent = ChannelConfigImpl.Companion.millisToTimeString(connectRetryInterval!!)
+            childElement.textContent = ChannelConfigImpl.millisToTimeString(connectRetryInterval!!)
             parentElement.appendChild(childElement)
         }
         if (disabled != null) {
             childElement = document.createElement("disabled")
-            if (disabled) {
+            if (isDisabled) {
                 childElement.textContent = "true"
             } else {
                 childElement.textContent = "false"
@@ -227,13 +188,13 @@ class DeviceConfigImpl(private override var id: String, var driverParent: Driver
         } else {
             configClone.connectRetryInterval = connectRetryInterval
         }
-        if (disabled == null || clonedParentConfig.disabled!!) {
-            configClone.disabled = clonedParentConfig.disabled
+        if (isDisabled == null || clonedParentConfig.disabled!!) {
+            configClone.isDisabled = clonedParentConfig.isDisabled
         } else {
-            configClone.disabled = disabled
+            configClone.isDisabled = isDisabled
         }
         for (channelConfig in channelConfigsById.values) {
-            configClone.channelConfigsById[channelConfig!!.getId()] = channelConfig.cloneWithDefaults(configClone)
+            configClone.channelConfigsById[channelConfig!!.id] = channelConfig.cloneWithDefaults(configClone)
         }
         return configClone
     }
@@ -241,7 +202,7 @@ class DeviceConfigImpl(private override var id: String, var driverParent: Driver
     companion object {
         @Throws(ParseException::class)
         fun addDeviceFromDomNode(deviceConfigNode: Node, parentConfig: DriverConfig?) {
-            val id: String = ChannelConfigImpl.Companion.getAttributeValue(deviceConfigNode, "id")
+            val id: String = ChannelConfigImpl.getAttributeValue(deviceConfigNode, "id")
                 ?: throw ParseException("device has no id attribute")
             val config: DeviceConfigImpl?
             config = try {
@@ -257,17 +218,17 @@ class DeviceConfigImpl(private override var id: String, var driverParent: Driver
                     if (childName == "#text") {
                         continue
                     } else if (childName == "channel") {
-                        ChannelConfigImpl.Companion.addChannelFromDomNode(childNode, config)
+                        ChannelConfigImpl.addChannelFromDomNode(childNode, config)
                     } else if (childName == "description") {
-                        config!!.setDescription(childNode.textContent)
+                        config!!.description = childNode.textContent
                     } else if (childName == "deviceAddress") {
-                        config!!.setDeviceAddress(childNode.textContent)
+                        config!!.deviceAddress = childNode.textContent
                     } else if (childName == "settings") {
-                        config!!.setSettings(childNode.textContent)
+                        config!!.settings = childNode.textContent
                     } else if (childName == "samplingTimeout") {
-                        config!!.setSamplingTimeout(ChannelConfigImpl.Companion.timeStringToMillis(childNode.textContent))
+                        config!!.setSamplingTimeout(ChannelConfigImpl.timeStringToMillis(childNode.textContent))
                     } else if (childName == "connectRetryInterval") {
-                        config!!.setConnectRetryInterval(ChannelConfigImpl.Companion.timeStringToMillis(childNode.textContent))
+                        config!!.setConnectRetryInterval(ChannelConfigImpl.timeStringToMillis(childNode.textContent))
                     } else if (childName == "disabled") {
                         config!!.disabled = java.lang.Boolean.parseBoolean(childNode.textContent)
                     } else {

@@ -22,14 +22,14 @@ package org.openmuc.framework.lib.amqp
 
 import org.openmuc.framework.lib.filePersistence.FilePersistence
 
-class AmqpBufferMessageIterator(private val buffer: String?, private val filePersistence: FilePersistence?) :
-    MutableIterator<AmqpMessageTuple> {
+class AmqpBufferMessageIterator(private val buffer: String, private val filePersistence: FilePersistence?) :
+    Iterator<AmqpMessageTuple> {
     override fun hasNext(): Boolean {
         return filePersistence!!.fileExistsFor(buffer)
     }
 
     override fun next(): AmqpMessageTuple {
-        var message: ByteArray?
+        var message: ByteArray
         synchronized(filePersistence!!) { message = filePersistence.getMessage(buffer) }
         return AmqpMessageTuple(buffer, message)
     }

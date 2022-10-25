@@ -56,9 +56,8 @@ class AmqpReader(connection: AmqpConnection) {
             logger.error("Declaring queue failed: {}", e.message)
             return null
         }
-        val response: GetResponse?
-        response = try {
-            connection.rabbitMqChannel.basicGet(queue, true)
+        val response = try {
+            connection.rabbitMqChannel!!.basicGet(queue, true)
         } catch (e: IOException) {
             logger.error("Could not receive message: {}", e.message)
             return null
@@ -98,7 +97,7 @@ class AmqpReader(connection: AmqpConnection) {
                     continue
                 }
                 try {
-                    connection.rabbitMqChannel.basicConsume(queue, true, deliverCallback) { consumerTag: String? -> }
+                    connection.rabbitMqChannel!!.basicConsume(queue, true, deliverCallback) { consumerTag: String? -> }
                 } catch (e: IOException) {
                     logger.error("Could not subscribe for messages: {}", e.message)
                 }

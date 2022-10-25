@@ -26,9 +26,9 @@ interface DeviceConfig {
     var description: String?
     var deviceAddress: String?
     var settings: String?
-    var samplingTimeout: Int?
-    var connectRetryInterval: Int?
-    var isDisabled: Boolean?
+    var samplingTimeout: Int
+    var connectRetryInterval: Int
+    var isDisabled: Boolean
 
     @Throws(IdCollisionException::class)
     fun addChannel(channelId: String): ChannelConfig?

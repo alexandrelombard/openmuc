@@ -60,12 +60,12 @@ class AmqpWriter(private val connection: AmqpConnection, private val pid: String
     private fun emptyFileBuffer() {
         val buffers = bufferHandler.buffers
         logger.debug("[{}] Clearing file buffer.", pid)
-        if (buffers!!.size == 0) {
+        if (buffers.isEmpty()) {
             logger.debug("[{}] File buffer already empty.", pid)
         }
         for (buffer in buffers) {
             val iterator = bufferHandler.getMessageIterator(buffer)
-            while (iterator!!.hasNext()) {
+            while (iterator.hasNext()) {
                 val messageTuple = iterator.next()
                 if (logger.isTraceEnabled) {
                     logger.trace("[{}] Resend from file: {}", pid, String(messageTuple.message))
@@ -99,16 +99,16 @@ class AmqpWriter(private val connection: AmqpConnection, private val pid: String
      * @param message
      * byte array containing the message to be published
      */
-    fun write(routingKey: String?, message: ByteArray?) {
+    fun write(routingKey: String, message: ByteArray) {
         if (!publish(routingKey, message)) {
             bufferHandler.add(routingKey, message)
         }
     }
 
-    private fun publish(routingKey: String?, message: ByteArray?): Boolean {
+    private fun publish(routingKey: String, message: ByteArray): Boolean {
         try {
             connection.declareQueue(routingKey)
-            connection.rabbitMqChannel.basicPublish(connection.exchange, routingKey, false, null, message)
+            connection.rabbitMqChannel!!.basicPublish(connection.exchange, routingKey, false, null, message)
         } catch (e: Exception) {
             logger.error("[{}] Could not publish message: {}", pid, e.message)
             return false
@@ -116,7 +116,7 @@ class AmqpWriter(private val connection: AmqpConnection, private val pid: String
         if (logger.isTraceEnabled) {
             logger.trace(
                 "[{}] published with routingKey {}, payload: {}", pid, routingKey, String(
-                    message!!
+                    message
                 )
             )
         }

@@ -30,7 +30,7 @@ class SimpleDemoApp {
 
     // With the dataAccessService you can access to your measured and control data of your devices.
     @Reference
-    private val dataAccessService: DataAccessService? = null
+    private lateinit var dataAccessService: DataAccessService
 
     // Channel for accessing data of a channel.
     private var chPowerElectricVehicle: Channel? = null

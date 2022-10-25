@@ -20,4 +20,4 @@
  */
 package org.openmuc.framework.lib.amqp
 
-class AmqpMessageTuple internal constructor(val routingKey: String?, val message: ByteArray?)
+class AmqpMessageTuple internal constructor(val routingKey: String, val message: ByteArray)

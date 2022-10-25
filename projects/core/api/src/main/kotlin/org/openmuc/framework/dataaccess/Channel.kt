@@ -196,7 +196,7 @@ interface Channel {
      * @param listener
      * the record listener that is notified of new records.
      */
-    fun addListener(listener: RecordListener?)
+    fun addListener(listener: RecordListener)
 
     /**
      * Removes a record listener.
@@ -204,7 +204,7 @@ interface Channel {
      * @param listener
      * the listener shall be removed.
      */
-    fun removeListener(listener: RecordListener?)
+    fun removeListener(listener: RecordListener)
 
     /**
      * Returns `true` if a connection to the channel's communication device exist.

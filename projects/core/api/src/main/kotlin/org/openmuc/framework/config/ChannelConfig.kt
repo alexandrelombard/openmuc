@@ -32,21 +32,21 @@ interface ChannelConfig {
     var valueTypeLength: Int?
     var scalingFactor: Double?
     var valueOffset: Double?
-    var isListening: Boolean?
-    var samplingInterval: Int?
-    var samplingTimeOffset: Int?
+    var isListening: Boolean
+    var samplingInterval: Int
+    var samplingTimeOffset: Int
     var samplingGroup: String?
     var settings: String?
-    var loggingInterval: Int?
+    var loggingInterval: Int
     var reader: String?
-    var loggingTimeOffset: Int?
-    var isDisabled: Boolean?
+    var loggingTimeOffset: Int
+    var isDisabled: Boolean
     fun delete()
     val device: DeviceConfig?
     val serverMappings: List<ServerMapping>
     fun addServerMapping(serverMapping: ServerMapping)
-    fun deleteServerMappings(id: String?)
-    var isLoggingEvent: Boolean?
+    fun deleteServerMappings(id: String)
+    var isLoggingEvent: Boolean
     var loggingSettings: String?
 
     companion object {

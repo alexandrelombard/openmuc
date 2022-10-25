@@ -101,7 +101,8 @@ class AmqpConnection(val settings: AmqpSettings) {
                 isConnected = false
             }
         })
-        rabbitMqChannel = connection!!.createChannel()
+        val rabbitMqChannel = connection!!.createChannel()
+        this.rabbitMqChannel = rabbitMqChannel
         exchange = settings.exchange
         rabbitMqChannel.exchangeDeclare(exchange, "topic", true)
         if (logger.isTraceEnabled) {
@@ -214,8 +215,10 @@ class AmqpConnection(val settings: AmqpSettings) {
             logger.error("Queue {} could not be declared.", queue)
             return
         }
-        rabbitMqChannel.exchangeDeclare(exchange, "topic", true)
-        rabbitMqChannel.queueDeclare(queue, true, false, false, null)
+        rabbitMqChannel?.let {
+            it.exchangeDeclare(exchange, "topic", true)
+            it.queueDeclare(queue, true, false, false, null)
+        }
     }
 
     fun setSslManager(instance: SslManagerInterface?) {

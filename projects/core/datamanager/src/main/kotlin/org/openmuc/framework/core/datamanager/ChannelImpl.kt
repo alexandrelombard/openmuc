@@ -33,13 +33,13 @@ import java.util.stream.Collectors
 
 class ChannelImpl(
     private val dataManager: DataManager,
-    @field:Volatile var config: ChannelConfigImpl?,
-    initState: ChannelState?,
-    initFlag: Flag?,
+    @field:Volatile var config: ChannelConfigImpl,
+    initState: ChannelState,
+    initFlag: Flag,
     currentTime: Long,
-    logChannels: MutableList<LogChannel?>
+    logChannels: MutableList<LogChannel>
 ) : Channel {
-    private val listeners: MutableSet<RecordListener?> = LinkedHashSet()
+    private val listeners: MutableSet<RecordListener> = LinkedHashSet()
     var samplingCollection: ChannelCollection? = null
     var loggingCollection: ChannelCollection? = null
 
@@ -48,90 +48,87 @@ class ChannelImpl(
 
     @Volatile
     override var latestRecord: Record? = null
-        private set
+        set(value) {
+            requireNotNull(value)
+            setNewRecord(value)
+        }
     private var timer: Timer? = null
     private var futureValues: List<FutureValue?>
 
     init {
         futureValues = ArrayList()
-        if (config!!.isDisabled()) {
-            config!!.state = ChannelState.DISABLED
+        if (config.isDisabled) {
+            config.state = ChannelState.DISABLED
             latestRecord = Record(Flag.DISABLED)
-        } else if (!config!!.isListening() && config!!.getSamplingInterval() < 0) {
-            config!!.state = initState
+        } else if (!config.isListening && config.samplingInterval < 0) {
+            config.state = initState
             latestRecord = Record(Flag.SAMPLING_AND_LISTENING_DISABLED)
         } else {
-            config!!.state = initState
-            latestRecord = Record(null, null, initFlag!!)
+            config.state = initState
+            latestRecord = Record(null, null, initFlag)
         }
-        if (config!!.getLoggingInterval() != ChannelConfig.LOGGING_INTERVAL_DEFAULT) {
+        if (config.loggingInterval != ChannelConfig.LOGGING_INTERVAL_DEFAULT) {
             dataManager.addToLoggingCollections(this, currentTime)
             logChannels.add(config)
-        } else if (config!!.getLoggingInterval() == ChannelConfig.LOGGING_INTERVAL_DEFAULT && config!!.isLoggingEvent()
-            && config!!.isListening()
+        } else if (config.loggingInterval == ChannelConfig.LOGGING_INTERVAL_DEFAULT && config.isLoggingEvent
+            && config.isListening
         ) {
             logChannels.add(config)
         }
     }
 
-    override val id: String?
-        get() = config!!.getId()
+    override val id: String
+        get() = config.id
     override val channelAddress: String?
-        get() = config!!.getChannelAddress()
+        get() = config.channelAddress
     override val description: String?
-        get() = config!!.getDescription()
+        get() = config.description
     override val settings: String?
-        get() = config!!.getSettings()
+        get() = config.settings
     override val loggingSettings: String?
-        get() = config!!.getLoggingSettings()
+        get() = config.loggingSettings
     override val unit: String?
-        get() = config!!.getUnit()
-    override val valueType: ValueType?
-        get() = config!!.getValueType()
+        get() = config.unit
+    override val valueType: ValueType
+        get() = config.valueType
     override val scalingFactor: Double
-        get() = if (config!!.getScalingFactor() == null) {
-            1.0
-        } else config!!.getScalingFactor()
+        get() = config.scalingFactor ?: 1.0
     override val samplingInterval: Int
-        get() = config!!.getSamplingInterval()
+        get() = config.samplingInterval
     override val samplingTimeOffset: Int
-        get() = config!!.getSamplingTimeOffset()
+        get() = config.samplingTimeOffset
     override val samplingTimeout: Int
-        get() = config!!.deviceParent!!.getSamplingTimeout()
+        get() = config.deviceParent!!.getSamplingTimeout()
     override val loggingInterval: Int
-        get() = config!!.getLoggingInterval()
+        get() = config.loggingInterval
     override val loggingTimeOffset: Int
-        get() = config!!.getLoggingTimeOffset()
-    override val driverName: String?
-        get() = config!!.deviceParent!!.driverParent!!.id
+        get() = config.loggingTimeOffset
+    override val driverName: String
+        get() = config.deviceParent!!.driverParent!!.id
     override val deviceAddress: String?
-        get() = config!!.deviceParent!!.getDeviceAddress()
+        get() = config.deviceParent!!.deviceAddress
     override val deviceName: String
-        get() = config!!.deviceParent!!.getId()
+        get() = config.deviceParent!!.id
     override val deviceDescription: String?
-        get() = config!!.deviceParent!!.getDescription()
+        get() = config.deviceParent!!.description
     override val channelState: ChannelState?
-        get() = config!!.state
+        get() = config.state
     override val deviceState: DeviceState?
-        get() = config!!.deviceParent!!.device.state
+        get() = config.deviceParent!!.device.state
 
-    override fun addListener(listener: RecordListener?) {
+    override fun addListener(listener: RecordListener) {
         synchronized(listeners) { listeners.add(listener) }
     }
 
-    override fun removeListener(listener: RecordListener?) {
+    override fun removeListener(listener: RecordListener) {
         synchronized(listeners) { listeners.remove(listener) }
-    }
-
-    override fun setLatestRecord(record: Record) {
-        setNewRecord(record)
     }
 
     @Throws(DataLoggerNotAvailableException::class, IOException::class)
     override fun getLoggedRecord(timestamp: Long): Record? {
         val reader = validReaderIdFromConfig
         val records = dataManager.getDataLogger(reader).getRecords(
-            config!!.getId(), timestamp, timestamp
+            config.id, timestamp, timestamp
         )
         return if (!records.isEmpty()) {
             records[0]
@@ -143,14 +140,14 @@ class ChannelImpl(
     @Throws(DataLoggerNotAvailableException::class, IOException::class)
     override fun getLoggedRecords(startTime: Long): List<Record?>? {
         val reader = validReaderIdFromConfig
-        return dataManager.getDataLogger(reader).getRecords(config!!.getId(), startTime, System.currentTimeMillis())
+        return dataManager.getDataLogger(reader).getRecords(config.id, startTime, System.currentTimeMillis())
     }
 
     @Throws(DataLoggerNotAvailableException::class, IOException::class)
     override fun getLoggedRecords(startTime: Long, endTime: Long): List<Record?>? {
         val reader = validReaderIdFromConfig
         val toReturn = dataManager.getDataLogger(reader).getRecords(
-            config!!.getId(), startTime, endTime
+            config.id, startTime, endTime
         )
 
         // values in the future values list are sorted.
@@ -171,15 +168,15 @@ class ChannelImpl(
     }
 
     private val validReaderIdFromConfig: String?
-        private get() = if (config!!.getReader()!!.isEmpty() || config!!.getReader() == null) {
+        private get() = if (config.getReader()!!.isEmpty() || config.getReader() == null) {
             firstLoggerFromLogSettings()
         } else {
-            config!!.getReader()
+            config.getReader()
         }
 
     private fun firstLoggerFromLogSettings(): String {
         val loggerSegments =
-            config!!.getLoggingSettings().split(";".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            config.getLoggingSettings().split(";".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         val definedLogger = Arrays.stream(loggerSegments)
             .map { seg: String -> seg.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()[0] }
             .collect(Collectors.toList())
@@ -191,7 +188,7 @@ class ChannelImpl(
         convertedRecord = if (record.flag === Flag.VALID) {
             convertValidRecord(record)
         } else {
-            Record(latestRecord!!.value, latestRecord!!.timestamp, record.flag)
+            Record(latestRecord.value, latestRecord.timestamp, record.flag)
         }
         latestRecord = convertedRecord
         notifyListeners()
@@ -200,8 +197,8 @@ class ChannelImpl(
 
     private fun convertValidRecord(record: Record): Record {
         var record = record
-        val scalingFactor = config!!.getScalingFactor()
-        val scalingOffset = config!!.getValueOffset()
+        val scalingFactor = config.scalingFactor
+        val scalingOffset = config.valueOffset
         if (scalingFactor != null) {
             try {
                 record = Record(
@@ -209,7 +206,7 @@ class ChannelImpl(
                     record.timestamp, record.flag
                 )
             } catch (e: TypeConversionException) {
-                val msg = ("Unable to apply scaling factor to channel " + config!!.getId()
+                val msg = ("Unable to apply scaling factor to channel " + config.id
                         + " because a TypeConversionError occurred.")
                 logger.error(msg, e)
             }
@@ -221,13 +218,13 @@ class ChannelImpl(
                     record.timestamp, record.flag
                 )
             } catch (e: TypeConversionException) {
-                val msg = ("Unable to apply scaling offset to channel " + config!!.getId()
+                val msg = ("Unable to apply scaling offset to channel " + config.id
                         + " because a TypeConversionError occurred.")
                 logger.error(msg, e)
             }
         }
         return try {
-            when (config!!.getValueType()) {
+            when (config.getValueType()) {
                 ValueType.BOOLEAN -> Record(
                     BooleanValue(
                         record.value!!.asBoolean()
@@ -274,7 +271,7 @@ class ChannelImpl(
 
                 ValueType.BYTE_ARRAY -> Record(
                     ByteArrayValue(
-                        record.value!!.asByteArray()!!
+                        record.value!!.asByteArray()
                     ), record.timestamp,
                     record.flag
                 )
@@ -301,7 +298,7 @@ class ChannelImpl(
         }
         synchronized(listeners) {
             for (listener in listeners) {
-                config!!.deviceParent!!.device!!.dataManager.executor!!.execute(
+                config.deviceParent!!.device!!.dataManager.executor!!.execute(
                     ListenerNotifier(
                         listener,
                         latestRecord
@@ -316,27 +313,27 @@ class ChannelImpl(
     }
 
     fun setFlag(flag: Flag) {
-        if (flag !== latestRecord!!.flag) {
-            latestRecord = Record(latestRecord!!.value, latestRecord!!.timestamp, flag)
+        if (flag !== latestRecord.flag) {
+            latestRecord = Record(latestRecord.value, latestRecord.timestamp, flag)
             notifyListeners()
         }
     }
 
     fun setNewDeviceState(state: ChannelState?, flag: Flag) {
-        if (config!!.isDisabled()) {
-            config!!.state = ChannelState.DISABLED
+        if (config.isDisabled()) {
+            config.state = ChannelState.DISABLED
             setFlag(Flag.DISABLED)
-        } else if (!config!!.isListening() && config!!.getSamplingInterval() < 0) {
-            config!!.state = state
+        } else if (!config.isListening && config.getSamplingInterval() < 0) {
+            config.state = state
             setFlag(Flag.SAMPLING_AND_LISTENING_DISABLED)
         } else {
-            config!!.state = state
+            config.state = state
             setFlag(flag)
         }
     }
 
     override fun write(value: Value?): Flag? {
-        if (config!!.deviceParent!!.driverParent!!.getId() == "virtual") {
+        if (config.deviceParent!!.driverParent!!.id == "virtual") {
             val record = Record(value, System.currentTimeMillis())
             setLatestRecord(record)
             val recordContainers: MutableList<ChannelRecordContainer> = ArrayList()
@@ -350,8 +347,8 @@ class ChannelImpl(
         val writeTaskFinishedSignal = CountDownLatch(1)
         val writeValueContainer = WriteValueContainerImpl(this)
         var adjustedValue = value
-        val valueOffset = config!!.getValueOffset()
-        val scalingFactor = config!!.getScalingFactor()
+        val valueOffset = config.valueOffset
+        val scalingFactor = config.scalingFactor
         if (valueOffset != null) {
             adjustedValue = DoubleValue(adjustedValue!!.asDouble() - valueOffset)
         }
@@ -361,7 +358,7 @@ class ChannelImpl(
         writeValueContainer.setValue(adjustedValue)
         val writeValueContainerList = Arrays.asList(writeValueContainer)
         val writeTask = WriteTask(
-            dataManager, config!!.deviceParent!!.device, writeValueContainerList,
+            dataManager, config.deviceParent!!.device, writeValueContainerList,
             writeTaskFinishedSignal
         )
         synchronized(dataManager.newWriteTasks) { dataManager.newWriteTasks.add(writeTask) }
@@ -386,7 +383,7 @@ class ChannelImpl(
         if (timer != null) {
             timer!!.cancel()
         }
-        timer = Timer("Timer ChannelImpl " + config!!.getId())
+        timer = Timer("Timer ChannelImpl " + config.id)
         val currentTimestamp = System.currentTimeMillis()
         for (value in futureValues) {
             if (currentTimestamp - value!!.writeTime >= 1000L) {
@@ -407,7 +404,7 @@ class ChannelImpl(
         val readValueContainer = ChannelRecordContainerImpl(this)
         val readValueContainerList = Arrays.asList(readValueContainer)
         val readTask = ReadTask(
-            dataManager, config!!.deviceParent!!.device, readValueContainerList,
+            dataManager, config.deviceParent!!.device, readValueContainerList,
             readTaskFinishedSignal
         )
         synchronized(dataManager.newReadTasks) { dataManager.newReadTasks.add(readTask) }
@@ -421,13 +418,13 @@ class ChannelImpl(
     }
 
     override val isConnected: Boolean
-        get() = config!!.state === ChannelState.CONNECTED || config!!.state === ChannelState.SAMPLING || config!!.state === ChannelState.LISTENING
+        get() = config.state === ChannelState.CONNECTED || config.state === ChannelState.SAMPLING || config.state === ChannelState.LISTENING
     override val writeContainer: WriteValueContainer
         get() = WriteValueContainerImpl(this)
     override val readContainer: ReadRecordContainer
         get() = ChannelRecordContainerImpl(this)
     val isLoggingEvent: Boolean
-        get() = config!!.isLoggingEvent() && config!!.isListening() && config!!.getLoggingInterval() == -1
+        get() = config.isLoggingEvent && config.isListening && config.loggingInterval == -1
 
     companion object {
         private val logger = LoggerFactory.getLogger(ChannelImpl::class.java)

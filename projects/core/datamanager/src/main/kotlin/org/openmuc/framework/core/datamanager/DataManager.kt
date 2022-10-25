@@ -23,8 +23,8 @@ package org.openmuc.framework.core.datamanager
 import org.apache.felix.service.command.CommandProcessor
 import org.openmuc.framework.config.*
 import org.openmuc.framework.data.Flag
-import org.openmuc.framework.data.FutureValue.value
-import org.openmuc.framework.data.Record.value
+import org.openmuc.framework.data.FutureValue
+import org.openmuc.framework.data.Record
 import org.openmuc.framework.dataaccess.*
 import org.openmuc.framework.datalogger.spi.DataLoggerService
 import org.openmuc.framework.datalogger.spi.LogChannel

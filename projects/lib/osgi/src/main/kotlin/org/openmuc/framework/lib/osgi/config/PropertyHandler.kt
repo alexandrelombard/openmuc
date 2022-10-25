@@ -30,7 +30,7 @@ import java.util.*
  * Manages properties, performs consistency checks and provides methods to access properties as int, string or boolean
  */
 class PropertyHandler(settings: GenericSettings, pid: String) {
-    val currentProperties: Map<String?, ServiceProperty?>?
+    val currentProperties: Map<String, ServiceProperty>
     private var configChanged: Boolean
 
     /**
@@ -50,7 +50,7 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
      * Name of class implementing ManagedService e.g. String pid = MyClass.class.getName()
      */
     init {
-        currentProperties = settings.getProperties()
+        currentProperties = settings.properties
         this.pid = pid
         configChanged = false
         isDefaultConfig = true
@@ -88,10 +88,9 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
         val newDictionary = newConfig.cleanedUpDeepCopyOfDictionary
         validateKeys(newDictionary)
         val oldProperties = copyOfProperties
-        val keys = newDictionary!!.keys()
-        while (keys.hasMoreElements()) {
-            val key = keys.nextElement()
-            val property = currentProperties!![key]
+        val keys = newDictionary.keys
+        keys.forEach { key ->
+            val property = currentProperties[key]
             val dictValue = newDictionary[key]
             applyNewValue(dictValue, key, property)
         }
@@ -123,7 +122,7 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
     }
 
     @Throws(ServicePropertyException::class)
-    private fun validateKeys(newDictionary: Dictionary<String?, *>?) {
+    private fun validateKeys(newDictionary: Map<String, *>) {
         checkForUnknownKeys(newDictionary)
         checkForMissingKeys(newDictionary)
     }
@@ -132,9 +131,9 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
      * validate new keys (given by updated(dictionary...) against original keys (given by settings class)
      */
     @Throws(ServicePropertyException::class)
-    private fun checkForMissingKeys(newDictionary: Dictionary<String?, *>?) {
-        for (originalKey in currentProperties!!.keys) {
-            if (Collections.list(newDictionary!!.keys()).stream().noneMatch { t: String? -> t == originalKey }) {
+    private fun checkForMissingKeys(newDictionary: Map<String, *>) {
+        for (originalKey in currentProperties.keys) {
+            if (newDictionary.keys.toList().stream().noneMatch { t: String -> t == originalKey }) {
                 throw ServicePropertyException(
                     "Missing Property: updated property dictionary doesn't contain key $originalKey"
                 )
@@ -146,11 +145,10 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
      * validate original keys (given by settings class) against new keys (given by updated(dictionary...)
      */
     @Throws(ServicePropertyException::class)
-    private fun checkForUnknownKeys(newDictionary: Dictionary<String?, *>?) {
-        val newKeys = newDictionary!!.keys()
-        while (newKeys.hasMoreElements()) {
-            val newKey = newKeys.nextElement()
-            if (!currentProperties!!.containsKey(newKey)) {
+    private fun checkForUnknownKeys(newDictionary: Map<String, *>) {
+        val newKeys = newDictionary.keys
+        newKeys.forEach {newKey ->
+            if (!currentProperties.containsKey(newKey)) {
                 throw ServicePropertyException(
                     "Unknown Property: '" + newKey
                             + "' New property key has been introduced, which is not part of settings class for " + pid
@@ -159,10 +157,10 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
         }
     }
 
-    private fun hasConfigChanged(oldProperties: HashMap<String?, String?>): Boolean {
+    private fun hasConfigChanged(oldProperties: HashMap<String, String>): Boolean {
         for ((oldKey, oldValue) in oldProperties) {
-            val property = currentProperties!![oldKey]
-            val newValue = property.getValue()
+            val property = currentProperties?.get(oldKey)
+            val newValue = property?.value
             if (oldValue != newValue) {
                 return true
             }
@@ -173,8 +171,8 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
     /**
      * Test if a key is contained in properties
      */
-    fun hasValueForKey(key: String?): Boolean {
-        return currentProperties!!.containsKey(key)
+    fun hasValueForKey(key: String): Boolean {
+        return currentProperties.containsKey(key)
     }
 
     /**
@@ -239,7 +237,7 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
     }
 
     private fun getOrThrow(key: String): ServiceProperty {
-        return Optional.ofNullable(currentProperties!![key])
+        return Optional.ofNullable(currentProperties[key])
             .orElseThrow { IllegalArgumentException("No value for key=$key") }
     }
 
@@ -247,11 +245,11 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
      * @return a HashMap with value from type String not ServiceProperty! Full ServiceProperty object not necessary
      * here.
      */
-    private val copyOfProperties: HashMap<String?, String?>
-        private get() {
-            val oldProperties = HashMap<String?, String?>()
-            for ((oldKey, value) in currentProperties!!) {
-                val oldValue = value.getValue()
+    private val copyOfProperties: HashMap<String, String>
+        get() {
+            val oldProperties = HashMap<String, String>()
+            for ((oldKey, value) in currentProperties) {
+                val oldValue = value.value
                 oldProperties[oldKey] = oldValue
             }
             return oldProperties
@@ -274,12 +272,12 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
      */
     override fun toString(): String {
         val sb = StringBuilder()
-        for ((key, value) in currentProperties!!) {
+        for ((key, value) in currentProperties) {
             val propValue: String?
-            propValue = if (key != null && key.contains("password")) {
+            propValue = if (key.contains("password")) {
                 "*****"
             } else {
-                value.getValue()
+                value.value
             }
             sb.append("\n$key=$propValue")
         }

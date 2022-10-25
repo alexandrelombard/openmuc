@@ -43,34 +43,34 @@ class AmqpBufferHandler(maxBufferSize: Long, maxFileCount: Int, maxFileSize: Lon
     }
 
     private val isFileBufferEnabled: Boolean
-        private get() = maxFileCount > 0 && maxBufferSizeBytes > 0
+        get() = maxFileCount > 0 && maxBufferSizeBytes > 0
 
-    fun add(routingKey: String?, message: ByteArray?) {
+    fun add(routingKey: String, message: ByteArray) {
         if (isBufferTooFull(message)) {
             handleFull(routingKey, message)
         } else {
             synchronized(buffer) {
                 buffer.add(AmqpMessageTuple(routingKey, message))
-                currentBufferSize += message!!.size.toLong()
+                currentBufferSize += message.size.toLong()
             }
             if (logger.isTraceEnabled) {
                 logger.trace(
                     "maxBufferSize = {} B, currentBufferSize = {} B, messageSize = {} B", maxBufferSizeBytes,
-                    currentBufferSize, message!!.size
+                    currentBufferSize, message.size
                 )
             }
         }
     }
 
-    private fun isBufferTooFull(message: ByteArray?): Boolean {
-        return currentBufferSize + message!!.size > maxBufferSizeBytes
+    private fun isBufferTooFull(message: ByteArray): Boolean {
+        return currentBufferSize + message.size > maxBufferSizeBytes
     }
 
-    private fun handleFull(routingKey: String?, message: ByteArray?) {
+    private fun handleFull(routingKey: String, message: ByteArray) {
         if (isFileBufferEnabled) {
             addToFilePersistence()
             add(routingKey, message)
-        } else if (message!!.size <= maxBufferSizeBytes) {
+        } else if (message.size <= maxBufferSizeBytes) {
             removeNextMessage()
             add(routingKey, message)
         }

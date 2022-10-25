@@ -148,15 +148,15 @@ class Aggregator : DriverService, Connection {
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
         val currentTimestamp = currentTimestamp()
         val endTimestamp = endTimestampFrom(currentTimestamp)
-        for (container in containers!!) {
+        for (container in containers) {
             val record = aggrgateRecordFor(currentTimestamp, endTimestamp, container)
-            container!!.setRecord(record)
+            container.record = record
         }
         return null
     }
@@ -164,24 +164,24 @@ class Aggregator : DriverService, Connection {
     private fun aggrgateRecordFor(
         currentTimestamp: Long,
         endTimestamp: Long,
-        container: ChannelRecordContainer?
+        container: ChannelRecordContainer
     ): Record {
         return try {
             val aggregatorChannel = AggregatorChannelFactory.createAggregatorChannel(
                 container,
-                dataAccessService
+                dataAccessService!!
             )
-            val aggregatedValue = aggregatorChannel!!.aggregate(currentTimestamp, endTimestamp)
+            val aggregatedValue = aggregatorChannel.aggregate(currentTimestamp, endTimestamp)
             Record(DoubleValue(aggregatedValue), currentTimestamp)
         } catch (e: AggregationException) {
             logger.debug(
-                "Unable to perform aggregation for channel {}. {}", container!!.channel!!.id,
+                "Unable to perform aggregation for channel {}. {}", container.channel!!.id,
                 e.message
             )
             newRecordWithErrorFlag(currentTimestamp)
         } catch (e: Exception) {
             logger.error(
-                "Unexpected Exception: Unable to perform aggregation for channel " + container!!.channel!!.id,
+                "Unexpected Exception: Unable to perform aggregation for channel " + container.channel!!.id,
                 e
             )
             newRecordWithErrorFlag(currentTimestamp)
@@ -189,7 +189,7 @@ class Aggregator : DriverService, Connection {
     }
 
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
 
         // no connection needed so far
         return this
@@ -201,7 +201,7 @@ class Aggregator : DriverService, Connection {
     }
 
     @Reference
-    protected fun setDataAccessService(dataAccessService: DataAccessService?) {
+    protected fun setDataAccessService(dataAccessService: DataAccessService) {
         this.dataAccessService = dataAccessService
     }
 
@@ -210,12 +210,12 @@ class Aggregator : DriverService, Connection {
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
         throw UnsupportedOperationException()
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
         throw UnsupportedOperationException()
     }
 
@@ -225,7 +225,7 @@ class Aggregator : DriverService, Connection {
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         throw UnsupportedOperationException()
     }
 
@@ -240,7 +240,7 @@ class Aggregator : DriverService, Connection {
         ScanException::class,
         ConnectionException::class
     )
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         throw UnsupportedOperationException()
     }
 
