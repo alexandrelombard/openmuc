@@ -218,7 +218,7 @@ class Device(
             logChannels.add(newChannelConfig)
         }
         if (newChannelConfig.isSampling) {
-            dataManager.addToSamplingCollections(newChannelConfig.channel, currentTime)
+            dataManager.addToSamplingCollections(newChannelConfig.channel!!, currentTime)
         } else if (oldChannelConfig.isSampling) {
             dataManager.removeFromSamplingCollections(newChannelConfigChannel)
         }
@@ -248,7 +248,7 @@ class Device(
                     dataManager, newChannelConfig, ChannelState.SAMPLING,
                     Flag.NO_VALUE_RECEIVED_YET, currentTime, logChannels
                 )
-                dataManager.addToSamplingCollections(newChannelConfig.channel, currentTime)
+                dataManager.addToSamplingCollections(newChannelConfig.channel!!, currentTime)
             } else {
                 newChannelConfig.channel = ChannelImpl(
                     dataManager, newChannelConfig, channelState, flag,
@@ -326,7 +326,7 @@ class Device(
                             dataManager, newChannelConfig, ChannelState.SAMPLING,
                             Flag.NO_VALUE_RECEIVED_YET, currentTime, logChannels
                         )
-                        dataManager.addToSamplingCollections(newChannelConfig.channel, currentTime)
+                        dataManager.addToSamplingCollections(newChannelConfig.channel!!, currentTime)
                     } else {
                         newChannelConfig.channel = ChannelImpl(
                             dataManager, newChannelConfig, channelState, flag,
@@ -548,7 +548,7 @@ class Device(
 
     private fun disconnect() {
         val disconnectTask = DisconnectTask(
-            deviceConfig.driverParent!!.activeDriver, deviceConfig.device,
+            deviceConfig.driverParent!!.activeDriver!!, deviceConfig.device!!,
             dataManager
         )
         taskList.add(disconnectTask)
@@ -647,7 +647,7 @@ class Device(
                     channelConfig.state = ChannelState.LISTENING
                     channelConfig.channel!!.setFlag(Flag.NO_VALUE_RECEIVED_YET)
                 } else if (channelConfig.samplingInterval != ChannelConfig.SAMPLING_INTERVAL_DEFAULT) {
-                    dataManager.addToSamplingCollections(channelConfig.channel, currentTime)
+                    dataManager.addToSamplingCollections(channelConfig.channel!!, currentTime)
                     channelConfig.state = ChannelState.SAMPLING
                     channelConfig.channel!!.setFlag(Flag.NO_VALUE_RECEIVED_YET)
                 } else {

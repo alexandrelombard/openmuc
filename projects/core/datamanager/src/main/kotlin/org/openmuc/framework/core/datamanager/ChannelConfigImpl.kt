@@ -371,8 +371,7 @@ class ChannelConfigImpl constructor(id: String, var deviceParent: DeviceConfigIm
         fun addChannelFromDomNode(channelConfigNode: Node, parentConfig: DeviceConfig?) {
             val id = getAttributeValue(channelConfigNode, "id")
                 ?: throw ParseException("channel has no id attribute")
-            val config: ChannelConfigImpl?
-            config = try {
+            val config: ChannelConfigImpl? = try {
                 parentConfig!!.addChannel(id) as ChannelConfigImpl?
             } catch (e: Exception) {
                 throw ParseException(e)
