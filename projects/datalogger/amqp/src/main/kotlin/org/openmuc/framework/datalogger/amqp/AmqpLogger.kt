@@ -59,16 +59,16 @@ class AmqpLogger : DataLoggerService, ManagedService {
     override val id: String
         get() = "amqplogger"
 
-    override fun setChannelsToLog(logChannels: List<LogChannel?>?) {
+    override fun setChannelsToLog(channels: List<LogChannel>) {
         channelsToLog.clear()
-        for (logChannel in logChannels!!) {
-            val channelId = logChannel!!.id
+        for (logChannel in channels) {
+            val channelId = logChannel.id
             channelsToLog[channelId] = logChannel
         }
     }
 
     @Synchronized
-    override fun log(containers: List<LoggingRecord?>?, timestamp: Long) {
+    override fun log(containers: List<LoggingRecord>, timestamp: Long) {
         if (!isLoggerReady) {
             logger.warn("Skipped logging values, still loading")
             return
@@ -104,7 +104,7 @@ class AmqpLogger : DataLoggerService, ManagedService {
         val channelId = loggingRecord!!.channelId
         val message: ByteArray?
         message =
-            if (parsers.containsKey(propertyHandler.getString(Settings.Companion.PARSER))) {
+            if (parsers.containsKey(propertyHandler.getString(Settings.PARSER))) {
                 parseMessage(loggingRecord)
             } else {
                 val gson = Gson()
@@ -118,7 +118,7 @@ class AmqpLogger : DataLoggerService, ManagedService {
 
     private fun parseMessage(loggingRecord: LoggingRecord?): ByteArray? {
         return try {
-            parsers[propertyHandler.getString(Settings.Companion.PARSER)]!!
+            parsers[propertyHandler.getString(Settings.PARSER)]!!
                 .serialize(loggingRecord)
         } catch (e: SerializationException) {
             logger.error(e.message)
@@ -130,7 +130,7 @@ class AmqpLogger : DataLoggerService, ManagedService {
         val logChannelMeta = channelsToLog[channelId]
         val logSettings = logChannelMeta!!.loggingSettings
         return if (logSettings == null || logSettings.isEmpty()) {
-            propertyHandler.getString(Settings.Companion.FRAMEWORK) + channelId
+            propertyHandler.getString(Settings.FRAMEWORK) + channelId
         } else {
             parseDefinedQueue(logSettings)
         }
@@ -151,24 +151,24 @@ class AmqpLogger : DataLoggerService, ManagedService {
             .orElseThrow { InvalidKeyException() }
     }
 
-    override fun logEvent(loggingRecords: List<LoggingRecord?>?, timestamp: Long) {
-        log(loggingRecords, timestamp)
+    override fun logEvent(containers: List<LoggingRecord>, timestamp: Long) {
+        log(containers, timestamp)
     }
 
     override fun logSettingsRequired(): Boolean {
         return true
     }
 
-    override fun getRecords(channelId: String?, startTime: Long, endTime: Long): List<Record?>? {
+    override fun getRecords(channelId: String, startTime: Long, endTime: Long): List<Record> {
         throw UnsupportedOperationException()
     }
 
-    override fun getLatestLogRecord(channelId: String?): Record? {
+    override fun getLatestLogRecord(channelId: String): Record? {
         throw UnsupportedOperationException()
     }
 
     @Throws(ConfigurationException::class)
-    override fun updated(propertyDict: Dictionary<String?, *>?) {
+    override fun updated(propertyDict: Dictionary<String, *>) {
         val dict = DictionaryPreprocessor(propertyDict)
         if (!dict.wasIntermediateOsgiInitCall()) {
             tryProcessConfig(dict)
@@ -201,9 +201,10 @@ class AmqpLogger : DataLoggerService, ManagedService {
             logger.info("Start connection to amqp backend...")
             val amqpSettings = createAmqpSettings()
             try {
-                connection = AmqpConnection(amqpSettings)
-                writer = AmqpWriter(connection, id)
-                connection!!.setSslManager(sslManager)
+                connection = AmqpConnection(amqpSettings).also {
+                    writer = AmqpWriter(it, id)
+                    it.setSslManager(sslManager)
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 logger.error(e.message)
@@ -213,14 +214,14 @@ class AmqpLogger : DataLoggerService, ManagedService {
     }
 
     private val isLoggerReady: Boolean
-        private get() {
-            val sslNeeded = propertyHandler.getBoolean(Settings.Companion.SSL)
+        get() {
+            val sslNeeded = propertyHandler.getBoolean(Settings.SSL)
             return if (sslNeeded) {
                 isLoggerReadyForSsl
             } else configLoaded
         }
     private val isLoggerReadyForSsl: Boolean
-        private get() = if (sslManager == null) {
+        get() = if (sslManager == null) {
             false
         } else configLoaded && sslManager!!.isLoaded
 
@@ -228,18 +229,18 @@ class AmqpLogger : DataLoggerService, ManagedService {
         // @formatter:off
         // @formatter:on
         return AmqpSettings(
-            propertyHandler.getString(Settings.Companion.HOST),
-            propertyHandler.getInt(Settings.Companion.PORT),
-            propertyHandler.getString(Settings.Companion.VIRTUAL_HOST),
-            propertyHandler.getString(Settings.Companion.USERNAME),
-            propertyHandler.getString(Settings.Companion.PASSWORD),
-            propertyHandler.getBoolean(Settings.Companion.SSL),
-            propertyHandler.getString(Settings.Companion.EXCHANGE),
-            propertyHandler.getString(Settings.Companion.PERSISTENCE_DIR),
-            propertyHandler.getInt(Settings.Companion.MAX_FILE_COUNT),
-            propertyHandler.getInt(Settings.Companion.MAX_FILE_SIZE).toLong(),
-            propertyHandler.getInt(Settings.Companion.MAX_BUFFER_SIZE).toLong(),
-            propertyHandler.getInt(Settings.Companion.CONNECTION_ALIVE_INTERVAL)
+            propertyHandler.getString(Settings.HOST) ?: "localhost",
+            propertyHandler.getInt(Settings.PORT),
+            propertyHandler.getString(Settings.VIRTUAL_HOST) ?: "localhost",
+            propertyHandler.getString(Settings.USERNAME) ?: "",
+            propertyHandler.getString(Settings.PASSWORD) ?: "",
+            propertyHandler.getBoolean(Settings.SSL),
+            propertyHandler.getString(Settings.EXCHANGE) ?: "",
+            propertyHandler.getString(Settings.PERSISTENCE_DIR) ?: "",
+            propertyHandler.getInt(Settings.MAX_FILE_COUNT),
+            propertyHandler.getInt(Settings.MAX_FILE_SIZE).toLong(),
+            propertyHandler.getInt(Settings.MAX_BUFFER_SIZE).toLong(),
+            propertyHandler.getInt(Settings.CONNECTION_ALIVE_INTERVAL)
         )
     }
 

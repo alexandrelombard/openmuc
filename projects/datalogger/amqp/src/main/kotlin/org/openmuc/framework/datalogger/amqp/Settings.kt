@@ -70,13 +70,13 @@ class Settings : GenericSettings() {
         properties[FRAMEWORK] = ServiceProperty(
             FRAMEWORK,
             "framework identifier",
-            null,
+            "",
             false
         )
         properties[EXCHANGE] = ServiceProperty(
             EXCHANGE,
             "used amqp exchange",
-            null,
+            "",
             false
         )
         properties[PERSISTENCE_DIR] = ServiceProperty(
