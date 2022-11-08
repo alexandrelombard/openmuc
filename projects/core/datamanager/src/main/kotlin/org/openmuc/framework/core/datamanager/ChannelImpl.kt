@@ -300,7 +300,7 @@ class ChannelImpl(
                 config.deviceParent!!.device!!.dataManager.executor!!.execute(
                     ListenerNotifier(
                         listener,
-                        latestRecord
+                        latestRecord!!
                     )
                 )
             }
@@ -368,14 +368,14 @@ class ChannelImpl(
             Thread.currentThread().interrupt()
         }
         val timestamp = System.currentTimeMillis()
-        latestRecord = Record(value, timestamp, writeValueContainer.flag)
+        latestRecord = Record(value, timestamp, writeValueContainer.flag!!)
         notifyListeners()
-        return writeValueContainer.flag
+        return writeValueContainer.flag!!
     }
 
-    override fun writeFuture(values: List<FutureValue>) {
+    override fun writeFuture(values: MutableList<FutureValue>) {
         futureValues = values
-        Collections.sort(values) { o1, o2 -> o1.writeTime.compareTo(o2.writeTime) }
+        values.sortWith { o1, o2 -> o1.writeTime.compareTo(o2.writeTime) }
         if (timer != null) {
             timer!!.cancel()
         }
@@ -400,7 +400,7 @@ class ChannelImpl(
         val readValueContainer = ChannelRecordContainerImpl(this)
         val readValueContainerList = listOf(readValueContainer)
         val readTask = ReadTask(
-            dataManager, config.deviceParent!!.device, readValueContainerList,
+            dataManager, config.deviceParent!!.device!!, readValueContainerList,
             readTaskFinishedSignal
         )
         synchronized(dataManager.newReadTasks) { dataManager.newReadTasks.add(readTask) }

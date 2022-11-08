@@ -23,7 +23,7 @@ package org.openmuc.framework.core.datamanager
 import java.util.*
 
 class ChannelCollection(var interval: Int, var timeOffset: Int, var samplingGroup: String?, var device: Device?) {
-    var channels: MutableList<ChannelImpl?>? = LinkedList()
+    var channels: MutableList<ChannelImpl> = LinkedList()
     var action: Action? = null
     fun calculateNextActionTime(timestamp: Long): Long {
         return interval - (timestamp % (24 * 60 * 60 * 1000) - timeOffset) % interval + timestamp

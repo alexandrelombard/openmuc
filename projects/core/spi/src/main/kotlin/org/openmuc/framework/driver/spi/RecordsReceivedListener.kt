@@ -21,6 +21,6 @@
 package org.openmuc.framework.driver.spi
 
 interface RecordsReceivedListener {
-    fun newRecords(recordContainers: List<ChannelRecordContainer?>?)
-    fun connectionInterrupted(driverId: String?, connection: Connection?)
+    fun newRecords(recordContainers: List<ChannelRecordContainer>)
+    fun connectionInterrupted(driverId: String, connection: Connection)
 }

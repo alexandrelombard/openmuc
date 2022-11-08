@@ -223,21 +223,21 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                     handleStillFilledChannels(collection, currentAction)
                 }
             }
-            if (currentAction.connectionRetryDevices != null && currentAction.connectionRetryDevices!!.isNotEmpty()) {
-                for (device in currentAction.connectionRetryDevices!!) {
+            if (currentAction.connectionRetryDevices.isNotEmpty()) {
+                for (device in currentAction.connectionRetryDevices) {
                     device.connectRetrySignal()
                 }
             }
-            if (currentAction.samplingCollections != null && currentAction.samplingCollections!!.isNotEmpty()) {
-                for (samplingCollection in currentAction.samplingCollections!!) {
+            if (currentAction.samplingCollections.isNotEmpty()) {
+                for (samplingCollection in currentAction.samplingCollections) {
                     val selectedChannels: MutableList<ChannelRecordContainerImpl> = ArrayList(
-                        samplingCollection.channels!!.size
+                        samplingCollection.channels.size
                     )
-                    for (channel in samplingCollection.channels!!) {
-                        selectedChannels.add(channel!!.createChannelRecordContainer())
+                    for (channel in samplingCollection.channels) {
+                        selectedChannels.add(channel.createChannelRecordContainer())
                     }
                     val samplingTask = SamplingTask(
-                        this, samplingCollection.device, selectedChannels,
+                        this, samplingCollection.device!!, selectedChannels,
                         samplingCollection.samplingGroup
                     )
                     val timeout: Int = samplingCollection.device!!.deviceConfig.samplingTimeout
@@ -280,19 +280,19 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         )
         currentAction.timeouts?.let { triggerTimeouts(it) }
         if (currentAction.loggingCollections != null) {
-            for (loggingCollection in currentAction.loggingCollections!!) {
+            for (loggingCollection in currentAction.loggingCollections) {
                 val startTimestamp = loggingCollection.calculateNextActionTime(currentTime)
                 addLoggingCollectionToActions(loggingCollection, startTimestamp)
             }
         }
         if (currentAction.samplingCollections != null) {
-            for (samplingCollection in currentAction.samplingCollections!!) {
+            for (samplingCollection in currentAction.samplingCollections) {
                 val startTimestamp = samplingCollection.calculateNextActionTime(currentTime)
                 addSamplingCollectionToActions(samplingCollection, startTimestamp)
             }
         }
         if (currentAction.connectionRetryDevices != null) {
-            for (device in currentAction.connectionRetryDevices!!) {
+            for (device in currentAction.connectionRetryDevices) {
                 val startTimestamp: Long = currentTime + device.deviceConfig.connectRetryInterval
                 addReconnectDeviceToActions(device, startTimestamp)
             }
@@ -323,7 +323,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             fittingAction.samplingCollections = LinkedList()
             actions.add(fittingAction)
         }
-        fittingAction.samplingCollections!!.add(channelCollection)
+        fittingAction.samplingCollections.add(channelCollection)
         channelCollection.action = fittingAction
     }
 
@@ -351,7 +351,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             fittingAction.loggingCollections = LinkedList()
             actions.add(fittingAction)
         }
-        fittingAction.loggingCollections!!.add(channelCollection)
+        fittingAction.loggingCollections.add(channelCollection)
         channelCollection.action = fittingAction
     }
 
@@ -380,7 +380,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             fittingAction.connectionRetryDevices = LinkedList()
             actions.add(fittingAction)
         }
-        fittingAction.connectionRetryDevices!!.add(device)
+        fittingAction.connectionRetryDevices.add(device)
     }
 
     private fun addSamplingWorkerTimeoutToActions(readWorker: SamplingTask, timeout: Long) {
@@ -407,7 +407,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             fittingAction.timeouts = LinkedList()
             actions.add(fittingAction)
         }
-        fittingAction.timeouts!!.add(readWorker)
+        fittingAction.timeouts.add(readWorker)
     }
 
     private fun handleInterruptEvent() {
@@ -435,7 +435,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                             .driverName == "virtual"
                     }
                     .forEach { containerImpl: ChannelRecordContainerImpl ->
-                        containerImpl.channel.setNewRecord(containerImpl.record)
+                        containerImpl.channel.setNewRecord(containerImpl.record!!)
                         if (containerImpl.channel.isLoggingEvent) {
                             channelRecordContainerList.add(containerImpl)
                         }
@@ -547,9 +547,10 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
     }
 
     private fun <T> addTasksAndClear(newTasksList: Queue<T>) where T : DeviceTask?, T : ConnectedTask? {
-        var nextTask: T
-        while (newTasksList.poll().also { nextTask = it } != null) {
-            nextTask!!.device.addTask(nextTask)
+        var nextTask: T = newTasksList.poll()
+        while (nextTask != null) {
+            nextTask.device.addTask(nextTask)
+            nextTask = newTasksList.poll()
         }
     }
 
@@ -588,7 +589,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                 if (oldDeviceConfig == null) {
                     // Device is new
                     newDeviceConfig.device = Device(this, newDeviceConfig, currentTime, logChannels)
-                    if (newDeviceConfig.device.state === DeviceState.CONNECTING) {
+                    if (newDeviceConfig.device?.state === DeviceState.CONNECTING) {
                         newDeviceConfig.device!!.connectRetrySignal()
                     }
                 }
@@ -599,7 +600,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             if (newChannelConfig == null) {
                 // oldChannelConfig does not exist in the new configuration
                 if (oldChannelConfig.state === ChannelState.SAMPLING) {
-                    removeFromSamplingCollections(oldChannelConfig.channel)
+                    removeFromSamplingCollections(oldChannelConfig.channel!!)
                 }
                 oldChannelConfig.state = ChannelState.DELETED
                 oldChannelConfig.channel!!.setFlag(Flag.CHANNEL_DELETED)
@@ -667,12 +668,12 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             .collect(Collectors.toList())
     }
 
-    fun addToSamplingCollections(channel: ChannelImpl?, time: Long) {
+    fun addToSamplingCollections(channel: ChannelImpl, time: Long) {
         var fittingSamplingCollection: ChannelCollection? = null
         for (action in actions) {
             if (action.samplingCollections != null) {
-                for (samplingCollection in action.samplingCollections!!) {
-                    if (samplingCollection.interval == channel.samplingInterval && samplingCollection.timeOffset == channel.samplingTimeOffset && samplingCollection.samplingGroup == channel!!.config.samplingGroup && samplingCollection.device == channel.config.deviceParent!!.device) {
+                for (samplingCollection in action.samplingCollections) {
+                    if (samplingCollection.interval == channel.samplingInterval && samplingCollection.timeOffset == channel.samplingTimeOffset && samplingCollection.samplingGroup == channel.config.samplingGroup && samplingCollection.device == channel.config.deviceParent!!.device) {
                         fittingSamplingCollection = samplingCollection
                         break
                     }
@@ -682,7 +683,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         if (fittingSamplingCollection == null) {
             fittingSamplingCollection = ChannelCollection(
                 channel.samplingInterval,
-                channel.samplingTimeOffset, channel!!.config.samplingGroup,
+                channel.samplingTimeOffset, channel.config.samplingGroup,
                 channel.config.deviceParent!!.device
             )
             addSamplingCollectionToActions(
@@ -690,28 +691,26 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                 fittingSamplingCollection.calculateNextActionTime(time)
             )
         }
-        if (channel!!.samplingCollection != null) {
+        if (channel.samplingCollection != null) {
             if (channel.samplingCollection != fittingSamplingCollection) {
                 removeFromSamplingCollections(channel)
             } else {
                 return
             }
         }
-        fittingSamplingCollection.channels!!.add(channel)
+        fittingSamplingCollection.channels.add(channel)
         channel.samplingCollection = fittingSamplingCollection
     }
 
-    fun addToLoggingCollections(channel: ChannelImpl?, time: Long) {
+    fun addToLoggingCollections(channel: ChannelImpl, time: Long) {
         var fittingLoggingCollection: ChannelCollection? = null
         for (action in actions) {
-            if (action.loggingCollections != null) {
-                for (loggingCollection in action.loggingCollections!!) {
-                    if (loggingCollection.interval == channel.loggingInterval
-                        && loggingCollection.timeOffset == channel.loggingTimeOffset
-                    ) {
-                        fittingLoggingCollection = loggingCollection
-                        break
-                    }
+            for (loggingCollection in action.loggingCollections) {
+                if (loggingCollection.interval == channel.loggingInterval
+                    && loggingCollection.timeOffset == channel.loggingTimeOffset
+                ) {
+                    fittingLoggingCollection = loggingCollection
+                    break
                 }
             }
         }
@@ -732,29 +731,29 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                 return
             }
         }
-        fittingLoggingCollection.channels!!.add(channel)
+        fittingLoggingCollection.channels.add(channel)
         channel.loggingCollection = fittingLoggingCollection
     }
 
     fun removeFromLoggingCollections(channel: ChannelImpl) {
-        channel.loggingCollection!!.channels!!.remove(channel)
-        if (channel.loggingCollection!!.channels!!.isEmpty()) {
-            channel.loggingCollection!!.action!!.loggingCollections!!.remove(channel.loggingCollection)
+        channel.loggingCollection!!.channels.remove(channel)
+        if (channel.loggingCollection!!.channels.isEmpty()) {
+            channel.loggingCollection!!.action!!.loggingCollections.remove(channel.loggingCollection)
         }
         channel.loggingCollection = null
     }
 
     fun removeFromSamplingCollections(channel: ChannelImpl) {
-        channel.samplingCollection!!.channels!!.remove(channel)
-        if (channel.samplingCollection!!.channels!!.isEmpty()) {
-            channel.samplingCollection!!.action!!.samplingCollections!!.remove(channel.samplingCollection)
+        channel.samplingCollection!!.channels.remove(channel)
+        if (channel.samplingCollection!!.channels.isEmpty()) {
+            channel.samplingCollection!!.action!!.samplingCollections.remove(channel.samplingCollection)
         }
         channel.samplingCollection = null
     }
 
     fun removeFromConnectionRetry(device: Device) {
         for (action in actions) {
-            if (action.connectionRetryDevices != null && action.connectionRetryDevices!!.remove(device)) {
+            if (action.connectionRetryDevices != null && action.connectionRetryDevices.remove(device)) {
                 break
             }
         }
@@ -899,15 +898,15 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
 
     override fun getLogicalDevices(type: String): List<LogicalDevice> {
         // TODO Auto-generated method stub
-        return null
+        return listOf()
     }
 
     override fun getLogicalDevices(
-        type: String?,
+        type: String,
         logicalDeviceChangeListener: LogicalDeviceChangeListener?
-    ): List<LogicalDevice>? {
+    ): List<LogicalDevice> {
         // TODO Auto-generated method stub
-        return null
+        return listOf()
     }
 
     override fun newRecords(recordContainers: List<ChannelRecordContainer>) {
@@ -1057,17 +1056,18 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
         val config = rootConfig!!.getDevice(deviceId) as DeviceConfigImpl?
             ?: throw ScanException("No device with ID \"$deviceId\" found.")
         val activeDriver = activeDrivers[config.driverParent!!.id] ?: throw DriverNotAvailableException()
-        waitTilDeviceIsConnected(config.device)
+        val device = config.device!!
+        waitTilDeviceIsConnected(device)
         return try {
-            config.device!!.connection!!.scanForChannels(settings)
+            device.connection!!.scanForChannels(settings)
         } catch (e: ConnectionException) {
-            config.device!!.disconnectedSignal()
+            device.disconnectedSignal()
             throw ScanException(e.message, e)
         }
     }
 
     @Throws(ScanException::class)
-    private fun waitTilDeviceIsConnected(device: Device?) {
+    private fun waitTilDeviceIsConnected(device: Device) {
         var i = 0
         while (i < 10 && device.state === DeviceState.CONNECTING) {
             try {
@@ -1077,7 +1077,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
             }
             i++
         }
-        if (device!!.connection == null) {
+        if (device.connection == null) {
             throw ScanException("Connection of the device is not yet initialized.")
         }
     }
@@ -1102,7 +1102,7 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
                 valueContainerImpl.flag = Flag.CANNOT_WRITE_NULL_VALUE
                 continue
             }
-            val device = valueContainerImpl.channel.config.deviceParent?.device
+            val device = valueContainerImpl.channel.config.deviceParent?.device!!
             var writeValueContainers = containersByDevice[device]
             if (writeValueContainers == null) {
                 writeValueContainers = LinkedList()
@@ -1129,14 +1129,14 @@ class DataManager : Thread(), DataAccessService, ConfigService, RecordsReceivedL
     }
 
     override fun read(values: List<ReadRecordContainer>) {
-        val containersByDevice: MutableMap<Device?, MutableList<ChannelRecordContainerImpl>> = HashMap()
+        val containersByDevice: MutableMap<Device, MutableList<ChannelRecordContainerImpl>> = hashMapOf()
         for (container in values) {
             require(container is ChannelRecordContainerImpl) { "Only use ReadRecordContainer created by Channel.getReadContainer()" }
             val channel = container.channel as ChannelImpl?
             var containersOfDevice = containersByDevice[channel!!.config.deviceParent!!.device]
             if (containersOfDevice == null) {
                 containersOfDevice = LinkedList()
-                containersByDevice[channel.config.deviceParent!!.device] = containersOfDevice
+                containersByDevice[channel.config.deviceParent!!.device!!] = containersOfDevice
             }
             containersOfDevice.add(container)
         }

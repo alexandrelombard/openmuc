@@ -268,7 +268,7 @@ interface Channel {
      * @param values
      * a list of future write values.
      */
-    fun writeFuture(values: List<FutureValue>)
+    fun writeFuture(values: MutableList<FutureValue>)
 
     /**
      * Returns a `WriteValueContainer` that corresponds to this channel. This container can be passed to the
