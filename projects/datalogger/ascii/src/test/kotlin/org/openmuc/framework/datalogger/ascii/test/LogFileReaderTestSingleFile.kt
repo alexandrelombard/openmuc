@@ -50,12 +50,7 @@ class LogFileReaderTestSingleFile {
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
         val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val expectedRecords: Long = 7
-        val result: Boolean
-        result = if (records.size.toLong() == expectedRecords) {
-            true
-        } else {
-            false
-        }
+        val result = records.size.toLong() == expectedRecords
         print(Thread.currentThread().stackTrace[1].methodName)
         println(" records = " + records.size + " (" + expectedRecords + " expected)")
         Assertions.assertTrue(result)
@@ -69,12 +64,7 @@ class LogFileReaderTestSingleFile {
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
         val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val expectedRecords: Long = 0
-        val result: Boolean
-        result = if (records.size.toLong() == expectedRecords) {
-            true
-        } else {
-            false
-        }
+        val result = records.size.toLong() == expectedRecords
         print(Thread.currentThread().stackTrace[1].methodName)
         println(" records = " + records.size + " (" + expectedRecords + " expected)")
         Assertions.assertTrue(result)
@@ -88,12 +78,7 @@ class LogFileReaderTestSingleFile {
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
         val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val expectedRecords: Long = 361 //
-        val result: Boolean
-        result = if (records.size.toLong() == expectedRecords) {
-            true
-        } else {
-            false
-        }
+        val result = records.size.toLong() == expectedRecords
         print(Thread.currentThread().stackTrace[1].methodName)
         println(" records = " + records.size + " (" + expectedRecords + " expected)")
         Assertions.assertTrue(result)
@@ -105,14 +90,14 @@ class LogFileReaderTestSingleFile {
         val t1 = TestUtils.stringToDate(dateFormat, fileDate0 + " 00:00:00").timeInMillis
         val t2 = TestUtils.stringToDate(dateFormat, fileDate0 + " 00:59:59").timeInMillis
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
+        val records: List<Record> = fr.getValues(t1, t2)[channelTestImpl.id] ?: listOf()
         val expectedRecords: Long = 0
         print(Thread.currentThread().stackTrace[1].methodName)
         var result = true
         var wrong = 0
         var ok = 0
         for (record in records) {
-            if (record!!.flag == Flag.NO_VALUE_RECEIVED_YET) {
+            if (record.flag == Flag.NO_VALUE_RECEIVED_YET) {
                 ++ok
             } else {
                 ++wrong
@@ -134,12 +119,7 @@ class LogFileReaderTestSingleFile {
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
         val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val expectedRecords: Long = 0
-        val result: Boolean
-        result = if (records.size.toLong() == expectedRecords) {
-            true
-        } else {
-            false
-        }
+        val result = records.size.toLong() == expectedRecords
         print(Thread.currentThread().stackTrace[1].methodName)
         println(" records = " + records.size + " (" + expectedRecords + " expected)")
         Assertions.assertTrue(result)
@@ -152,11 +132,7 @@ class LogFileReaderTestSingleFile {
         val result: Boolean
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
         val record = fr.getValue(t1)[channelTestImpl.id]
-        result = if (record != null) {
-            true
-        } else {
-            false
-        }
+        result = record != null
         print(Thread.currentThread().stackTrace[1].methodName)
         println(" record = " + result + "record = ")
         Assertions.assertTrue(result)
@@ -170,11 +146,7 @@ class LogFileReaderTestSingleFile {
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
         val record = fr.getValue(t1)[channelTestImpl.id]
         println("record: $record")
-        result = if (record == null) {
-            true
-        } else {
-            false
-        }
+        result = record == null
         print(Thread.currentThread().stackTrace[1].methodName)
         println(" no records = $result")
         Assertions.assertTrue(result)
@@ -210,6 +182,7 @@ class LogFileReaderTestSingleFile {
         var Channel0Name = "power"
         var channelIds = arrayOf(Channel0Name)
         var dateFormat = "yyyyMMdd HH:mm:ss"
+        @JvmStatic
         @BeforeAll
         fun setup() {
             println("### Setup() LogFileReaderTestSingleFile")
@@ -249,6 +222,7 @@ class LogFileReaderTestSingleFile {
             // }
         }
 
+        @JvmStatic
         @AfterAll
         fun tearDown() {
             println("tearing down")

@@ -202,6 +202,7 @@ class LogFileWriterTest {
         private val valueLengthByteArray = testByteArray.size
         private val logChannelList = HashMap<String, LogChannel>()
         private val calendar = TestUtils.stringToDate(dateFormat, fileDate1 + time)
+        @JvmStatic
         @BeforeAll
         fun setup() {
             println("### Setup() LogFileWriterTest")
@@ -293,6 +294,7 @@ class LogFileWriterTest {
             }
         }
 
+        @JvmStatic
         @AfterAll
         fun tearDown() {
             println("tearing down")

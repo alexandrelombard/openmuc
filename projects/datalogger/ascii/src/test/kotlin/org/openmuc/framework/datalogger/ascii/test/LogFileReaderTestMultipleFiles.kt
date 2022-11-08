@@ -56,12 +56,7 @@ class LogFileReaderTestMultipleFiles {
         val hour = 3600
         val expectedRecords = ((hour * 24 + hour * 2) / (loggingInterval / 1000)).toLong()
         print(Thread.currentThread().stackTrace[1].methodName)
-        val result: Boolean
-        result = if (records.size.toLong() == expectedRecords) {
-            true
-        } else {
-            false
-        }
+        val result = records.size.toLong() == expectedRecords
         println(" records = " + records.size + " (" + expectedRecords + " expected); ")
         Assertions.assertTrue(result)
     }
@@ -86,11 +81,11 @@ class LogFileReaderTestMultipleFiles {
     fun tc_011_test_getAllDataFiles() {
         val dir = TestUtils.TESTFOLDERPATH
         val files = getAllDataFiles(dir)
-        val expected: MutableList<String> = LinkedList()
+        val expected = LinkedList<String>()
         expected.add("20770709_60000.dat")
         expected.add("20770708_60000.dat")
         expected.add("20770707_60000.dat")
-        val actual: MutableList<String> = LinkedList()
+        val actual = LinkedList<String>()
         for (file in files) {
             actual.add(file.name)
         }
@@ -121,6 +116,7 @@ class LogFileReaderTestMultipleFiles {
 
         // private static String[] channelIds = new String[] { Channel0Name };
         private const val dateFormat = "yyyyMMdd HH:mm:ss"
+        @JvmStatic
         @BeforeAll
         fun setup() {
             println("### Setup() LogFileReaderTestMultipleFiles")
@@ -173,6 +169,7 @@ class LogFileReaderTestMultipleFiles {
             // }
         }
 
+        @JvmStatic
         @AfterAll
         fun tearDown() {
             println("tearing down")
