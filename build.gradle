@@ -10,8 +10,8 @@ buildscript {
 
 plugins {
     id 'biz.aQute.bnd.builder' version '5.1.2'
-    id 'org.asciidoctor.jvm.pdf' version '3.3.2' apply false
-    id 'org.asciidoctor.jvm.convert' version '3.3.2' apply false
+//    id 'org.asciidoctor.jvm.pdf' version '3.3.2' apply false
+//    id 'org.asciidoctor.jvm.convert' version '3.3.2' apply false
     id 'java-library'
     id 'jacoco'
     id 'org.sonarqube' version '3.0'

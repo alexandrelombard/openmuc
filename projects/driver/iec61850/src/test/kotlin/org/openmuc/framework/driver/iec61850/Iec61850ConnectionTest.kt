@@ -245,8 +245,8 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
         override val channel: Channel?
             get() = null
 
-        override fun copy(): ChannelRecordContainer? {
-            return null
+        override fun copy(): ChannelRecordContainer {
+            throw UnsupportedOperationException()
         }
     }
 
