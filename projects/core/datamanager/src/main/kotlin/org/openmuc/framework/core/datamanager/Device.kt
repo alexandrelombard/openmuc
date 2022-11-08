@@ -210,7 +210,7 @@ class Device(
         )
         val newChannelConfigChannel = newChannelConfig.channel!!
         if (!newChannelConfig.isDisabled && newChannelConfig.loggingInterval > 0) {
-            dataManager.addToLoggingCollections(newChannelConfig.channel, currentTime)
+            dataManager.addToLoggingCollections(newChannelConfig.channel!!, currentTime)
             logChannels.add(newChannelConfig)
         } else if (!oldChannelConfig.isDisabled && oldChannelConfig.loggingInterval > 0) {
             dataManager.removeFromLoggingCollections(newChannelConfigChannel)
@@ -292,7 +292,7 @@ class Device(
                 channelConfigImpl.channel!!.setNewDeviceState(channelState, flag)
                 if (!channelConfigImpl.isDisabled) {
                     if (channelConfigImpl.loggingInterval > 0 && !channelConfigImpl.isLoggingEvent) {
-                        dataManager.addToLoggingCollections(channelConfigImpl.channel, currentTime)
+                        dataManager.addToLoggingCollections(channelConfigImpl.channel!!, currentTime)
                         logChannels.add(channelConfigImpl)
                     } else if (channelConfigImpl.loggingInterval == ChannelConfig.LOGGING_INTERVAL_DEFAULT && channelConfigImpl.isLoggingEvent && channelConfigImpl.isListening) {
                         logChannels.add(channelConfigImpl)
@@ -347,7 +347,7 @@ class Device(
                     if (newChannelConfig.loggingInterval > 0
                         && !newChannelConfig.isLoggingEvent
                     ) {
-                        dataManager.addToLoggingCollections(newChannelConfig.channel, currentTime)
+                        dataManager.addToLoggingCollections(newChannelConfig.channel!!, currentTime)
                         logChannels.add(newChannelConfig)
                     } else if (newChannelConfig
                             .loggingInterval == ChannelConfig.LOGGING_INTERVAL_DEFAULT && newChannelConfig.isLoggingEvent
