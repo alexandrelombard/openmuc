@@ -131,6 +131,7 @@ class LogFileReaderTestBrokenFile {
         private const val loggingInterval = 1000 // ms
         var loggingTimeOffset = 0 // ms
         private const val Channel0Name = "power"
+        @JvmStatic
         @AfterAll
         fun tearDown() {
             println("tearing down")

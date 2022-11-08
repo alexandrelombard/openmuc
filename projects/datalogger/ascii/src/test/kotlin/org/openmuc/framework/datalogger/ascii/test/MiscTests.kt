@@ -125,6 +125,7 @@ class MiscTests {
             0x5E
         )
         const val STRING_BYTE_ARRAY = "0x00010AAABBF7FFCAD55E"
+        @JvmStatic
         @AfterAll
         fun tearDown() {
             println("tearing down")

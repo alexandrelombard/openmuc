@@ -131,6 +131,7 @@ ${ex.stackTrace}"""
         private const val dummy = "dummy"
         private val logChannelList = HashMap<String, LogChannel>()
         private var calendar: Calendar = GregorianCalendar()
+        @JvmStatic
         @BeforeAll
         fun setup() {
             val sub = (calendar.timeInMillis % 10L).toInt()
