@@ -124,7 +124,7 @@ class LogFileReaderTestBrokenFile {
     @Test
     fun tc203_no_file_in_directory() {
         val files = getAllDataFiles(TestUtils.TESTFOLDERPATH)
-        Assertions.assertNull(files)
+        Assertions.assertTrue(files.isEmpty())
     }
 
     companion object {

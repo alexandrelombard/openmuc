@@ -107,14 +107,14 @@ class LogFileWriter(private val directoryPath: String?, private val isFillUpFile
             val channelId = logRecordContainer[i].channelId
             val logChannel = logChannelList[channelId]
             sbValue.setLength(0)
-            val recordValue = record.value
+            val recordValue = record?.value
             var recordBackup: Record? = null
             if (isError32) {
                 recordBackup = logRecordContainer[i].record
                 logRecordContainer[i] = LoggingRecord(channelId, Record(Flag.DATA_LOGGING_NOT_ACTIVE))
             }
             record = logRecordContainer[i].record
-            if (record.flag === Flag.VALID) {
+            if (record?.flag === Flag.VALID) {
                 if (recordValue == null) {
                     // write error flag
                     LoggerUtils.buildError(sbValue, Flag.CANNOT_WRITE_NULL_VALUE)
@@ -196,7 +196,7 @@ class LogFileWriter(private val directoryPath: String?, private val isFillUpFile
                 }
             } else {
                 // write error flag
-                LoggerUtils.buildError(sbValue, record.flag)
+                LoggerUtils.buildError(sbValue, record?.flag ?: Flag.UNKNOWN_ERROR)
                 size = checkMinimalValueSize(getDataTypeSize(logChannel, i))
             }
             if (isError32) {

@@ -48,7 +48,7 @@ class LogFileReaderTestSingleFile {
         val t1 = TestUtils.stringToDate(dateFormat, fileDate0 + " 01:50:00").timeInMillis
         val t2 = TestUtils.stringToDate(dateFormat, fileDate0 + " 01:51:00").timeInMillis
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.getId()]!!
+        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val expectedRecords: Long = 7
         val result: Boolean
         result = if (records.size.toLong() == expectedRecords) {
@@ -67,7 +67,7 @@ class LogFileReaderTestSingleFile {
         val t1 = TestUtils.stringToDate(dateFormat, fileDate0 + " 00:00:00").timeInMillis
         val t2 = TestUtils.stringToDate(dateFormat, fileDate0 + " 00:00:10").timeInMillis
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.getId()]!!
+        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val expectedRecords: Long = 0
         val result: Boolean
         result = if (records.size.toLong() == expectedRecords) {
@@ -86,7 +86,7 @@ class LogFileReaderTestSingleFile {
         val t1 = TestUtils.stringToDate(dateFormat, fileDate0 + " 01:00:00").timeInMillis
         val t2 = TestUtils.stringToDate(dateFormat, fileDate0 + " 02:00:00").timeInMillis
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.getId()]!!
+        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val expectedRecords: Long = 361 //
         val result: Boolean
         result = if (records.size.toLong() == expectedRecords) {
@@ -105,7 +105,7 @@ class LogFileReaderTestSingleFile {
         val t1 = TestUtils.stringToDate(dateFormat, fileDate0 + " 00:00:00").timeInMillis
         val t2 = TestUtils.stringToDate(dateFormat, fileDate0 + " 00:59:59").timeInMillis
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.getId()]!!
+        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val expectedRecords: Long = 0
         print(Thread.currentThread().stackTrace[1].methodName)
         var result = true
@@ -132,7 +132,7 @@ class LogFileReaderTestSingleFile {
         val t1 = TestUtils.stringToDate(dateFormat, fileDate0 + " 03:00:01").timeInMillis
         val t2 = TestUtils.stringToDate(dateFormat, fileDate0 + " 03:59:59").timeInMillis
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.getId()]!!
+        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val expectedRecords: Long = 0
         val result: Boolean
         result = if (records.size.toLong() == expectedRecords) {
@@ -151,7 +151,7 @@ class LogFileReaderTestSingleFile {
         val t1 = TestUtils.stringToDate(dateFormat, fileDate0 + " 01:11:10").timeInMillis
         val result: Boolean
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val record = fr.getValue(t1)[channelTestImpl.getId()]
+        val record = fr.getValue(t1)[channelTestImpl.id]
         result = if (record != null) {
             true
         } else {
@@ -168,7 +168,7 @@ class LogFileReaderTestSingleFile {
         val t1 = TestUtils.stringToDate(dateFormat, fileDate0 + " 00:59:00").timeInMillis
         val result: Boolean
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val record = fr.getValue(t1)[channelTestImpl.getId()]
+        val record = fr.getValue(t1)[channelTestImpl.id]
         println("record: $record")
         result = if (record == null) {
             true
@@ -187,7 +187,7 @@ class LogFileReaderTestSingleFile {
         val t1 = TestUtils.stringToDate(dateFormat, fileDate0 + " 02:59:59").timeInMillis
         // get value looks from 02:59:59 to 3:00:00. before 3:00:00 a value exists
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val record = fr.getValue(t1)[channelTestImpl.getId()]
+        val record = fr.getValue(t1)[channelTestImpl.id]
         result = if (record != null) {
             true
         } else {
@@ -225,7 +225,7 @@ class LogFileReaderTestSingleFile {
             channelIds = arrayOf("power")
 
             // Logs 1 channel in second interval from 1 to 3 o'clock
-            val logChannelList = HashMap<String?, LogChannel?>()
+            val logChannelList = HashMap<String, LogChannel>()
             val ch1 = LogChannelTestImpl(
                 Channel0Name, "", "dummy description", "kW", ValueType.DOUBLE,
                 0.0, 0.0, false, 1000, 0, "", loggingInterval, loggingTimeOffset, false, false

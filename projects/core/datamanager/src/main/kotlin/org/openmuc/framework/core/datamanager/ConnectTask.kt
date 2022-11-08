@@ -26,7 +26,7 @@ import org.openmuc.framework.driver.spi.DriverService
 import org.slf4j.LoggerFactory
 
 class ConnectTask(
-    override var driver: DriverService,
+    var driver: DriverService,
     override var device: Device,
     override var dataManager: DataManager
 ) : DeviceTask() {

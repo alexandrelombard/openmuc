@@ -44,12 +44,7 @@ class LogFileWriterTest {
         val filename2 = TestUtils.TESTFOLDERPATH + fileDate2 + "_" + loggingInterval + ext
         val file1 = File(filename1)
         val file2 = File(filename2)
-        val assertT: Boolean
-        assertT = if (file1.exists() && file2.exists()) {
-            true
-        } else {
-            false
-        }
+        val assertT = file1.exists() && file2.exists()
         println(Thread.currentThread().stackTrace[1].methodName)
         println(" " + file1.absolutePath)
         println(" " + file2.absolutePath)
@@ -146,7 +141,7 @@ class LogFileWriterTest {
     fun tc301_check_file_fill_up_at_logging() {
         println("### Begin test tc301_check_file_fill_up_at_logging")
         val valuesToWrite = 5
-        calendar!!.add(Calendar.MILLISECOND, loggingInterval * valuesToWrite - 10)
+        calendar.add(Calendar.MILLISECOND, loggingInterval * valuesToWrite - 10)
         val group = getGroup(calendar.timeInMillis, 3, true, 0x11.toByte(), "nope")
         lfw.log(group, loggingInterval, loggingTimeOffset, calendar, logChannelList)
         setLastLoggedLineTimeStamp(loggingInterval, loggingTimeOffset, calendar.timeInMillis)
@@ -205,7 +200,7 @@ class LogFileWriterTest {
         private val testByteArray = byteArrayOf(1, 2, 3, 4, -5, -9, 0)
         private const val valueLength = 100
         private val valueLengthByteArray = testByteArray.size
-        private val logChannelList = HashMap<String?, LogChannel?>()
+        private val logChannelList = HashMap<String, LogChannel>()
         private val calendar = TestUtils.stringToDate(dateFormat, fileDate1 + time)
         @BeforeAll
         fun setup() {
@@ -271,7 +266,7 @@ class LogFileWriterTest {
             logChannelList[ch07] = ch7
             logChannelList[ch08] = ch8
             logChannelList[ch09] = ch9
-            val timeStamp = calendar!!.timeInMillis
+            val timeStamp = calendar.timeInMillis
             var boolValue: Boolean
             var byteValue: Byte = 0
             var testString: String

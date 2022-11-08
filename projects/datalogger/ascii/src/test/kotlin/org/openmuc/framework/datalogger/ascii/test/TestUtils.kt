@@ -20,7 +20,6 @@
  */
 package org.openmuc.framework.datalogger.ascii.test
 
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.datalogger.ascii.utils.LoggerUtils.getFilename
 import java.io.File
 import java.io.FileNotFoundException
@@ -31,7 +30,7 @@ import java.util.*
 object TestUtils {
     const val TESTFOLDER = "test"
     val TESTFOLDERPATH = System.getProperty("user.dir") + "/" + TESTFOLDER + "/"
-    fun stringToDate(format: String?, strDate: String?): Calendar {
+    fun stringToDate(format: String, strDate: String): Calendar {
         val sdf = SimpleDateFormat(format, Locale.GERMAN)
         var date: Date? = null
         try {

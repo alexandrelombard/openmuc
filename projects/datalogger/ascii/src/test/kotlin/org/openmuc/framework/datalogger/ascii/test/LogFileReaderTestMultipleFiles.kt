@@ -52,7 +52,7 @@ class LogFileReaderTestMultipleFiles {
         val t2 = TestUtils.stringToDate(dateFormat, fileDate2 + " 00:59:" + (60 - loggingInterval / 1000))
             .timeInMillis
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.getId()]!!
+        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val hour = 3600
         val expectedRecords = ((hour * 24 + hour * 2) / (loggingInterval / 1000)).toLong()
         print(Thread.currentThread().stackTrace[1].methodName)
@@ -75,8 +75,8 @@ class LogFileReaderTestMultipleFiles {
             Assertions.fail<Any>("File does not exist at path " + file1.absolutePath)
         }
         val expected = 1440
-        val values: Map<String?, List<Record?>>? = fr.getValues(file1.path)
-        for ((_, records) in values!!) {
+        val values = fr.getValues(file1.path)
+        for ((_, records) in values) {
             val actual = records.size
             Assertions.assertEquals(expected, actual)
         }
@@ -91,7 +91,7 @@ class LogFileReaderTestMultipleFiles {
         expected.add("20770708_60000.dat")
         expected.add("20770707_60000.dat")
         val actual: MutableList<String> = LinkedList()
-        for (file in files!!) {
+        for (file in files) {
             actual.add(file.name)
         }
         Assertions.assertTrue(expected.containsAll(actual))
@@ -101,10 +101,10 @@ class LogFileReaderTestMultipleFiles {
     @Test
     fun tc_012_test_getLatestFile() {
         val dir = TestUtils.TESTFOLDERPATH
-        val files: List<File?>? = getAllDataFiles(dir)
+        val files = getAllDataFiles(dir)
         val expected = "20770709_60000.dat"
-        val file = getLatestFile(files!!)
-        val actual = file!!.name
+        val file = getLatestFile(files)
+        val actual = file?.name
         Assertions.assertEquals(expected, actual)
     }
 
@@ -148,7 +148,7 @@ class LogFileReaderTestMultipleFiles {
                 println("Delete File $filename2")
                 file2.delete()
             }
-            val logChannelList = HashMap<String?, LogChannel?>()
+            val logChannelList = HashMap<String, LogChannel>()
             val ch0 = LogChannelTestImpl(
                 "power", "", "dummy description", "kW", ValueType.DOUBLE, 0.0,
                 0.0, false, 1000, 0, "", loggingInterval, loggingTimeOffset, false, false
@@ -157,10 +157,10 @@ class LogFileReaderTestMultipleFiles {
             val calendar = TestUtils.stringToDate(dateFormat, fileDate0 + " 23:00:00")
             val hour = 3600
             var i = 0
-            while ((i < hour * 24 + hour * 2) * (1000.0 / loggingInterval)) {
+            while (i < (hour * 24 + hour * 2 * 1000.0 / loggingInterval)) {
                 val container1 = LoggingRecord(
                     Channel0Name,
-                    Record(DoubleValue(1.0), calendar!!.timeInMillis)
+                    Record(DoubleValue(1.0), calendar.timeInMillis)
                 )
                 val group = LogIntervalContainerGroup()
                 group.add(container1)

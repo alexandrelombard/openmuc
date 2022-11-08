@@ -105,9 +105,9 @@ ${ex.stackTrace}"""
 
     @Test
     fun tc_505_test_findLatestValue() {
-        val recordsMap: MutableMap<String?, List<Record?>?> = HashMap()
+        val recordsMap: MutableMap<String, MutableList<Record>> = HashMap()
         for (j in 0..4) {
-            val records: MutableList<Record?> = LinkedList()
+            val records: MutableList<Record> = LinkedList()
             for (i in 0..19) {
                 val timestamp = i.toLong()
                 val value = DoubleValue((i + j).toDouble())
@@ -129,7 +129,7 @@ ${ex.stackTrace}"""
         private const val loggingTimeOffset = 0 // ms;
         private const val ch01 = "Double"
         private const val dummy = "dummy"
-        private val logChannelList = HashMap<String?, LogChannel?>()
+        private val logChannelList = HashMap<String, LogChannel>()
         private var calendar: Calendar = GregorianCalendar()
         @BeforeAll
         fun setup() {
