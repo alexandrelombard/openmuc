@@ -32,7 +32,7 @@ class SqlLoggerComponent {
     private var registrationHandler: RegistrationHandler? = null
     private var loggerService: SqlLoggerService? = null
     @Activate
-    fun activate(bundleContext: BundleContext?) {
+    fun activate(bundleContext: BundleContext) {
         registrationHandler = RegistrationHandler(bundleContext)
         loggerService = SqlLoggerService()
         val pid = SqlLoggerService::class.java.name

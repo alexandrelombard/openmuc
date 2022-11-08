@@ -21,7 +21,6 @@
 package org.openmuc.framework.datalogger.sql
 
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.datalogger.spi.DataLoggerService
 import org.openmuc.framework.datalogger.spi.LogChannel
 import org.openmuc.framework.datalogger.spi.LoggingRecord
@@ -36,7 +35,7 @@ import java.util.*
 class SqlLoggerService : DataLoggerService, ManagedService {
     private val settings: Settings
     private val propertyHandler: PropertyHandler
-    private val eventBuffer: MutableList<LoggingRecord?>
+    private val eventBuffer: MutableList<LoggingRecord>
     private var writer: SqlWriter? = null
     private var reader: SqlReader? = null
     private var dbAccess: DbAccess? = null

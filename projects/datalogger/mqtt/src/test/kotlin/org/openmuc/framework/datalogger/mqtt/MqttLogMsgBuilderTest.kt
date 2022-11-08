@@ -220,6 +220,7 @@ class MqttLogMsgBuilderTest {
         private const val TIMESTAMP = 1599122299230L
         private const val TOPIC_1 = "topic1"
         private const val TOPIC_2 = "topic2"
+        @JvmStatic
         @BeforeAll
         fun setup() {
             initChannelMocks()

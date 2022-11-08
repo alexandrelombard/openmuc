@@ -21,7 +21,6 @@
 package org.openmuc.framework.datalogger.sql
 
 import org.h2.tools.Server
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.datalogger.sql.utils.PropertyHandlerProvider
 import org.openmuc.framework.datalogger.sql.utils.Settings
 import org.openmuc.framework.datalogger.sql.utils.SqlValues
@@ -55,9 +54,9 @@ open class DbConnector {
     }
 
     protected open val urlFromProperties: String
-        protected get() {
-            val propertyHandler: PropertyHandler = PropertyHandlerProvider.Companion.getInstance().getPropertyHandler()
-            return propertyHandler.getString(Settings.Companion.URL)
+        get() {
+            val propertyHandler = PropertyHandlerProvider.propertyHandler
+            return propertyHandler!!.getString(Settings.URL)!!
         }
 
     protected open fun initConnector() {
@@ -172,17 +171,17 @@ open class DbConnector {
      * @return a properties object with the attributes the datasource needs
      */
     private fun setSqlProperties(): Properties {
-        val propertyHandler: PropertyHandler = PropertyHandlerProvider.Companion.getInstance().getPropertyHandler()
+        val propertyHandler = PropertyHandlerProvider.propertyHandler
         val properties = Properties()
         properties.setProperty("url", url)
-        properties.setProperty("password", propertyHandler.getString(Settings.Companion.PASSWORD))
-        properties.setProperty("user", propertyHandler.getString(Settings.Companion.USER))
+        properties.setProperty("password", propertyHandler.getString(Settings.PASSWORD))
+        properties.setProperty("user", propertyHandler.getString(Settings.USER))
         if (!url.contains("h2")) {
             if (url.contains(SqlValues.POSTGRESQL)) {
-                properties.setProperty("ssl", propertyHandler.getString(Settings.Companion.SSL))
+                properties.setProperty("ssl", propertyHandler.getString(Settings.SSL))
             }
-            properties.setProperty("tcpKeepAlive", propertyHandler.getString(Settings.Companion.TCP_KEEP_ALIVE))
-            properties.setProperty("socketTimeout", propertyHandler.getString(Settings.Companion.SOCKET_TIMEOUT))
+            properties.setProperty("tcpKeepAlive", propertyHandler.getString(Settings.TCP_KEEP_ALIVE))
+            properties.setProperty("socketTimeout", propertyHandler.getString(Settings.SOCKET_TIMEOUT))
         }
         return properties
     }
@@ -269,9 +268,9 @@ open class DbConnector {
             } else {
                 cmd[0] = "sh"
             }
-            val propertyHandler: PropertyHandler = PropertyHandlerProvider.Companion.getInstance().getPropertyHandler()
+            val propertyHandler: PropertyHandler = PropertyHandlerProvider.propertyHandler
             cmd[1] = "-c"
-            cmd[2] = ("PGPASSWORD=" + propertyHandler.getString(Settings.Companion.PSQL_PASS)
+            cmd[2] = ("PGPASSWORD=" + propertyHandler.getString(Settings.PSQL_PASS)
                     + " psql -c 'ALTER EXTENSION timescaledb UPDATE;'  -U postgres -h localhost -d " + dbName)
             val process = Runtime.getRuntime().exec(cmd)
             val stdOutReader = BufferedReader(InputStreamReader(process.inputStream))

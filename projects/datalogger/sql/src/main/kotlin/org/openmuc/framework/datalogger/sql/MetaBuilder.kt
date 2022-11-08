@@ -29,15 +29,15 @@ import org.openmuc.framework.lib.osgi.config.*
 import org.slf4j.LoggerFactory
 import java.sql.*
 
-class MetaBuilder(private val channels: List<LogChannel?>?, private val dbAccess: DbAccess?) {
+class MetaBuilder(private val channels: List<LogChannel>, private val dbAccess: DbAccess) {
     private val logger = LoggerFactory.getLogger(MetaBuilder::class.java)
     private var resultComparison: StringBuilder? = null
     private var sbMetaInsert: StringBuilder? = null
     private val url: String
 
     init {
-        val propertyHandler: PropertyHandler = PropertyHandlerProvider.Companion.getInstance().getPropertyHandler()
-        url = propertyHandler.getString(Settings.Companion.URL)
+        val propertyHandler: PropertyHandler = PropertyHandlerProvider.propertyHandler
+        url = propertyHandler.getString(Settings.URL)
     }
 
     fun writeMetaTable() {
@@ -45,13 +45,13 @@ class MetaBuilder(private val channels: List<LogChannel?>?, private val dbAccess
         writeMetaStructure(metaStructure)
         val metaInserts = createInsertsForMetaTable()
         if (!metaInserts.toString().isEmpty()) {
-            dbAccess!!.executeSQL(StringBuilder("TRUNCATE TABLE openmuc_meta ;"))
+            dbAccess.executeSQL(StringBuilder("TRUNCATE TABLE openmuc_meta ;"))
             dbAccess.executeSQL(metaInserts)
         }
     }
 
     private fun writeMetaStructure(metaString: StringBuilder) {
-        dbAccess!!.executeSQL(metaString)
+        dbAccess.executeSQL(metaString)
         if (url.contains(SqlValues.POSTGRESQL) && !dbAccess.timeScaleIsActive()) {
             val sbIndex = StringBuilder("CREATE INDEX IF NOT EXISTS metaIndex ON openmuc_meta (time);")
             dbAccess.executeSQL(sbIndex)
@@ -79,8 +79,8 @@ class MetaBuilder(private val channels: List<LogChannel?>?, private val dbAccess
         var unitLength = 15
         var samplingGroupLength = 30
         var descripionLength = 30
-        for (channel in channels!!) {
-            channelIdLength = updateLengthIfHigher(channel!!.id, channelIdLength)
+        for (channel in channels) {
+            channelIdLength = updateLengthIfHigher(channel.id, channelIdLength)
             channelAdressLength = updateLengthIfHigher(channel.channelAddress, channelAdressLength)
             samplingGroupLength = updateLengthIfHigher(channel.samplingGroup, samplingGroupLength)
             unitLength = updateLengthIfHigher(channel.unit, unitLength)
@@ -137,7 +137,7 @@ class MetaBuilder(private val channels: List<LogChannel?>?, private val dbAccess
      * metadata has changed since the last entry
      */
     private fun createInsertsForMetaTable(): StringBuilder {
-        if (channels!!.isEmpty()) {
+        if (channels.isEmpty()) {
             logger.warn("There are no channels for meta table")
         }
         resultComparison = StringBuilder()
@@ -173,11 +173,11 @@ class MetaBuilder(private val channels: List<LogChannel?>?, private val dbAccess
             )
             // ToDO: needed?
             // WHERE time IN (SELECT * FROM (SELECT time FROM openmuc_meta ORDER BY time DESC LIMIT 1) as time)
-            return dbAccess!!.executeQuery(sbMetaSelect)
+            return dbAccess.executeQuery(sbMetaSelect)
         }
 
     private fun parseChannelToMetaInsert(logChannel: LogChannel?): String {
-        val varcharLength = dbAccess!!.getColumnLength(SqlValues.COLUMNS, "openmuc_meta")
+        val varcharLength = dbAccess.getColumnLength(SqlValues.COLUMNS, "openmuc_meta")
         val sqlTimestamp = Timestamp(System.currentTimeMillis())
         val channelAsString = StringBuilder()
         val channelAddress = logChannel!!.channelAddress
@@ -391,6 +391,6 @@ class MetaBuilder(private val channels: List<LogChannel?>?, private val dbAccess
             sbNewVarcharLength.append("ALTER TABLE $table ALTER COLUMN $columnName TYPE VARCHAR (")
         }
         sbNewVarcharLength.append(column.length).append(");")
-        dbAccess!!.executeSQL(sbNewVarcharLength)
+        dbAccess.executeSQL(sbNewVarcharLength)
     }
 }

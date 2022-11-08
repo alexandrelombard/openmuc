@@ -31,7 +31,7 @@ class SqlReader(private val dbAccess: DbAccess) {
         valuetype: ValueType?,
         startTime: Long,
         endTime: Long
-    ): List<Record?>? {
+    ): List<Record> {
         val startTimestamp = Timestamp(startTime)
         val endTimestamp = Timestamp(endTime)
         val sbTable = StringBuilder()

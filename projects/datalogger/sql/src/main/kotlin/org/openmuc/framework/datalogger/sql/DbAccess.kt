@@ -21,7 +21,6 @@
 package org.openmuc.framework.datalogger.sql
 
 import org.openmuc.framework.data.*
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.datalogger.sql.utils.PropertyHandlerProvider
 import org.openmuc.framework.datalogger.sql.utils.Settings
 import org.openmuc.framework.datalogger.sql.utils.SqlValues
@@ -39,8 +38,8 @@ open class DbAccess {
 
     constructor() {
         dbConnector = DbConnector()
-        val propertyHandler: PropertyHandler = PropertyHandlerProvider.Companion.getInstance().getPropertyHandler()
-        url = propertyHandler.getString(Settings.Companion.URL)
+        val propertyHandler = PropertyHandlerProvider.propertyHandler!!
+        url = propertyHandler.getString(Settings.URL)!!
         if (url.contains("h2") && url.contains("tcp")) {
             dbConnector.startH2Server()
         }
@@ -61,7 +60,7 @@ open class DbAccess {
         val sql = sb.toString()
         Thread.currentThread().contextClassLoader = this.javaClass.classLoader
         if (!dbConnector.isConnected) {
-            dbConnector.getConnectionToDb()
+            dbConnector.connectionToDb
         }
         synchronized(dbConnector) { synchronizeStatement(sql) }
     }
@@ -117,7 +116,7 @@ open class DbAccess {
                 .append(" where table_name = '" + table + "' AND column_name = '" + column!!.lowercase(Locale.getDefault()) + "';")
             try {
                 if (!dbConnector.isConnected) {
-                    dbConnector.getConnectionToDb()
+                    dbConnector.connectionToDb
                 }
                 val rsLength = executeQuery(sbVarcharLength)
                 rsLength.next()
@@ -141,7 +140,7 @@ open class DbAccess {
         // retrieve numeric values from database and add them to the records list
         val records: MutableList<Record> = ArrayList()
         if (!dbConnector.isConnected) {
-            dbConnector.getConnectionToDb()
+            dbConnector.connectionToDb
         }
         try {
             executeQuery(sb).use { resultSet ->

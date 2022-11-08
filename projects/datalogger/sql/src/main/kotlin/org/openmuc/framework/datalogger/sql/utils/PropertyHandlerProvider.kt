@@ -22,18 +22,6 @@ package org.openmuc.framework.datalogger.sql.utils
 
 import org.openmuc.framework.lib.osgi.config.PropertyHandler
 
-class PropertyHandlerProvider private constructor() {
+object PropertyHandlerProvider {
     var propertyHandler: PropertyHandler? = null
-
-    companion object {
-        @JvmStatic
-        var instance: PropertyHandlerProvider? = null
-            get() {
-                if (field == null) {
-                    field = PropertyHandlerProvider()
-                }
-                return field
-            }
-            private set
-    }
 }

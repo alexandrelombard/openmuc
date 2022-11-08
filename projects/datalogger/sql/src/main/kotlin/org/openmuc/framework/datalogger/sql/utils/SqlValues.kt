@@ -53,8 +53,8 @@ object SqlValues {
         }
     }
 
-    fun appendValue(value: Value?, sb: StringBuilder) {
-        when (value!!.javaClass.simpleName) {
+    fun appendValue(value: Value, sb: StringBuilder) {
+        when (value.javaClass.simpleName) {
             "BooleanValue" -> sb.append(value.asBoolean())
             "ByteValue" -> sb.append(value.asByte().toInt())
             "ByteArrayValue" -> byteArrayToHexString(sb, value.asByteArray())
