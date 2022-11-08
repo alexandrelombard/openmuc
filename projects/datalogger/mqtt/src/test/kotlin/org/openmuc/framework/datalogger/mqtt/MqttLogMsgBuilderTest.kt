@@ -44,15 +44,15 @@ class MqttLogMsgBuilderTest {
     fun test_logSingleChannel_multipleFalse() {
 
         // 1. prepare channels to log - equal to logger.setChannelsToLog(...) call
-        val channelsToLog = HashMap<String?, MqttLogChannel>()
-        channelsToLog[logChannelMockA!!.id] = MqttLogChannel(logChannelMockA)
+        val channelsToLog = HashMap<String, MqttLogChannel>()
+        channelsToLog[logChannelMockA.id] = MqttLogChannel(logChannelMockA)
 
         // 2. apply settings to logger
         val isLogMultiple = false
 
         // 3. prepare records which should be logged
-        val records: MutableList<LoggingRecord?> = ArrayList()
-        records.add(LoggingRecord(logChannelMockA!!.id, record3!!))
+        val records: MutableList<LoggingRecord> = ArrayList()
+        records.add(LoggingRecord(logChannelMockA.id, record3!!))
 
         // 4. equal to calling logger.log(..) method
         val builder = MqttLogMsgBuilder(channelsToLog, parser)
@@ -61,7 +61,7 @@ class MqttLogMsgBuilderTest {
         val controlString = TOPIC_1 + ": {\"timestamp\":" + TIMESTAMP + ",\"flag\":\"VALID\",\"value\":3.0}"
         Assertions.assertEquals(
             controlString, TOPIC_1 + ": " + String(
-                messages[0].message!!
+                messages[0].message
             )
         )
     }
@@ -70,15 +70,15 @@ class MqttLogMsgBuilderTest {
     fun test_logSingleChannel_multipleTrue() {
 
         // 1. prepare channels to log - equal to logger.setChannelsToLog(...) call
-        val channelsToLog = HashMap<String?, MqttLogChannel>()
-        channelsToLog[logChannelMockA!!.id] = MqttLogChannel(logChannelMockA)
+        val channelsToLog = HashMap<String, MqttLogChannel>()
+        channelsToLog[logChannelMockA.id] = MqttLogChannel(logChannelMockA)
 
         // 2. apply settings to logger
         val isLogMultiple = true
 
         // 3. prepare records which should be logged
-        val records: MutableList<LoggingRecord?> = ArrayList()
-        records.add(LoggingRecord(logChannelMockA!!.id, record3!!))
+        val records: MutableList<LoggingRecord> = ArrayList()
+        records.add(LoggingRecord(logChannelMockA.id, record3!!))
 
         // 4. equal to calling logger.log(..) method
         val builder = MqttLogMsgBuilder(channelsToLog, parser)
@@ -90,7 +90,7 @@ class MqttLogMsgBuilderTest {
             """.trimIndent()
         Assertions.assertEquals(
             controlString, TOPIC_1 + ": " + String(
-                messages[0].message!!
+                messages[0].message
             )
         )
     }
@@ -99,17 +99,17 @@ class MqttLogMsgBuilderTest {
     fun test_logTwoChannels_sameTopic_multipleFalse() {
 
         // 1. prepare channels to log - equal to logger.setChannelsToLog(...) call
-        val channelsToLog = HashMap<String?, MqttLogChannel>()
-        channelsToLog[logChannelMockA!!.id] = MqttLogChannel(logChannelMockA)
-        channelsToLog[logChannelMockB!!.id] = MqttLogChannel(logChannelMockB)
+        val channelsToLog = HashMap<String, MqttLogChannel>()
+        channelsToLog[logChannelMockA.id] = MqttLogChannel(logChannelMockA)
+        channelsToLog[logChannelMockB.id] = MqttLogChannel(logChannelMockB)
 
         // 2. apply settings to logger
         val isLogMultiple = false
 
         // 3. prepare records which should be logged
-        val records: MutableList<LoggingRecord?> = ArrayList()
-        records.add(LoggingRecord(logChannelMockA!!.id, record3!!))
-        records.add(LoggingRecord(logChannelMockB!!.id, record5!!))
+        val records: MutableList<LoggingRecord> = ArrayList()
+        records.add(LoggingRecord(logChannelMockA.id, record3!!))
+        records.add(LoggingRecord(logChannelMockB.id, record5!!))
 
         // 4. equal to calling logger.log(..) method
         val builder = MqttLogMsgBuilder(channelsToLog, parser)
@@ -124,12 +124,12 @@ class MqttLogMsgBuilderTest {
         val referenceString2 = TOPIC_1 + ": {\"timestamp\":" + TIMESTAMP + ",\"flag\":\"VALID\",\"value\":5.0}"
         Assertions.assertEquals(
             referenceString1, TOPIC_1 + ": " + String(
-                messages[0].message!!
+                messages[0].message
             )
         )
         Assertions.assertEquals(
             referenceString2, TOPIC_1 + ": " + String(
-                messages[1].message!!
+                messages[1].message
             )
         )
     }
@@ -138,19 +138,19 @@ class MqttLogMsgBuilderTest {
     fun test_logTwoChannels_sameTopic_multipleTrue() {
 
         // 1. prepare channels to log - equal to logger.setChannelsToLog(...) call
-        val channelsToLog = HashMap<String?, MqttLogChannel>()
-        channelsToLog[logChannelMockA!!.id] =
+        val channelsToLog = HashMap<String, MqttLogChannel>()
+        channelsToLog[logChannelMockA.id] =
             MqttLogChannel(logChannelMockA)
-        channelsToLog[logChannelMockB!!.id] =
+        channelsToLog[logChannelMockB.id] =
             MqttLogChannel(logChannelMockB)
 
         // 2. apply settings to logger
         val isLogMultiple = true
 
         // 3. prepare records which should be logged
-        val records: MutableList<LoggingRecord?> = ArrayList()
-        records.add(LoggingRecord(logChannelMockA!!.id, record3!!))
-        records.add(LoggingRecord(logChannelMockB!!.id, record5!!))
+        val records: MutableList<LoggingRecord> = ArrayList()
+        records.add(LoggingRecord(logChannelMockA.id, record3!!))
+        records.add(LoggingRecord(logChannelMockB.id, record5!!))
 
         // 4. equal to calling logger.log(..) method
         val builder = MqttLogMsgBuilder(channelsToLog, parser)
@@ -168,7 +168,7 @@ class MqttLogMsgBuilderTest {
         sbRef.append("\n")
         val referenceString = sbRef.toString()
         val sbTest = StringBuilder()
-        sbTest.append(TOPIC_1 + ": ").append(String(messages[0].message!!))
+        sbTest.append(TOPIC_1 + ": ").append(String(messages[0].message))
         val testString = sbTest.toString()
         Assertions.assertEquals(referenceString, testString)
     }
@@ -177,19 +177,19 @@ class MqttLogMsgBuilderTest {
     fun test_logTwoChannels_differentTopic_multipleTrue() {
 
         // 1. prepare channels to log - equal to logger.setChannelsToLog(...) call
-        val channelsToLog = HashMap<String?, MqttLogChannel>()
-        channelsToLog[logChannelMockA!!.id] =
+        val channelsToLog = HashMap<String, MqttLogChannel>()
+        channelsToLog[logChannelMockA.id] =
             MqttLogChannel(logChannelMockA)
-        channelsToLog[logChannelMockC!!.id] =
+        channelsToLog[logChannelMockC.id] =
             MqttLogChannel(logChannelMockC)
 
         // 2. apply settings to logger
         val isLogMultiple = true
 
         // 3. prepare records which should be logged
-        val records: MutableList<LoggingRecord?> = ArrayList()
-        records.add(LoggingRecord(logChannelMockA!!.id, record3!!))
-        records.add(LoggingRecord(logChannelMockC!!.id, record7!!))
+        val records: MutableList<LoggingRecord> = ArrayList()
+        records.add(LoggingRecord(logChannelMockA.id, record3!!))
+        records.add(LoggingRecord(logChannelMockC.id, record7!!))
 
         // 4. equal to calling logger.log(..) method
         val builder = MqttLogMsgBuilder(channelsToLog, parser)
@@ -203,7 +203,7 @@ class MqttLogMsgBuilderTest {
             var i = 1
             for (msg in messages) {
                 println("msgNr " + i++)
-                println(msg.topic + " " + String(msg.message!!))
+                println(msg.topic + " " + String(msg.message))
             }
         }
     }

@@ -35,10 +35,10 @@ import java.util.*
 
 @Component
 class SlotsDb : DataLoggerService {
-    private val loggingIntervalsById = HashMap<String?, Int?>()
+    private val loggingIntervalsById = HashMap<String, Int?>()
     private var fileObjectProxy: FileObjectProxy? = null
     @Activate
-    protected fun activate(context: ComponentContext?) {
+    protected fun activate(context: ComponentContext) {
         var rootFolder = DB_ROOT_FOLDER
         if (rootFolder == null) {
             rootFolder = DEFAULT_DB_ROOT_FOLDER
@@ -47,7 +47,7 @@ class SlotsDb : DataLoggerService {
     }
 
     @Deactivate
-    protected fun deactivate(context: ComponentContext?) {
+    protected fun deactivate(context: ComponentContext) {
         // TODO
     }
 

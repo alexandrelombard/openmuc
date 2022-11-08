@@ -22,4 +22,4 @@ package org.openmuc.framework.datalogger.spi
 
 import org.openmuc.framework.data.Record
 
-class LoggingRecord(val channelId: String, val record: Record)
+class LoggingRecord(val channelId: String, val record: Record?)

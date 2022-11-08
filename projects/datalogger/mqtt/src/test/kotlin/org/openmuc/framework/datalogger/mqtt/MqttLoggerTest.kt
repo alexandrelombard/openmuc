@@ -45,11 +45,11 @@ class MqttLoggerTest {
         val logChannelMock2 = Mockito.mock(LogChannel::class.java)
         Mockito.`when`(logChannelMock2.id).thenReturn("Channel2")
         Mockito.`when`(logChannelMock2.loggingSettings).thenReturn("topic2")
-        val channels: MutableList<LogChannel?> = ArrayList()
+        val channels: MutableList<LogChannel> = ArrayList()
         channels.add(logChannelMock1)
         channels.add(logChannelMock2)
         logger.setChannelsToLog(channels)
-        val dict: Dictionary<String?, String> = Hashtable()
+        val dict: Dictionary<String, String> = Hashtable()
         dict.put(MqttLoggerSettings.PORT, "1883")
         dict.put(MqttLoggerSettings.HOST, "localhost")
         dict.put(MqttLoggerSettings.SSL, "false")
@@ -61,7 +61,7 @@ class MqttLoggerTest {
         dict.put(MqttLoggerSettings.MAX_FILE_SIZE, "2000")
         dict.put(MqttLoggerSettings.MAX_BUFFER_SIZE, "100")
         logger.updated(dict)
-        val records: MutableList<LoggingRecord?> = ArrayList()
+        val records: MutableList<LoggingRecord> = ArrayList()
         records.add(LoggingRecord("Channel1", null))
         records.add(LoggingRecord("Channel2", null))
         logger.log(records, System.currentTimeMillis())
@@ -114,9 +114,10 @@ class MqttLoggerTest {
             val settings = MqttLoggerSettings()
             val propertyHandler = PropertyHandler(settings, pid)
             val Mqttsettings = MqttSettings(
-                propertyHandler.getString(MqttLoggerSettings.HOST),
-                propertyHandler.getInt(MqttLoggerSettings.PORT), propertyHandler.getString(MqttLoggerSettings.USERNAME),
-                propertyHandler.getString(MqttLoggerSettings.PASSWORD),
+                propertyHandler.getString(MqttLoggerSettings.HOST) ?: "localhost",
+                propertyHandler.getInt(MqttLoggerSettings.PORT),
+                propertyHandler.getString(MqttLoggerSettings.USERNAME),
+                propertyHandler.getString(MqttLoggerSettings.PASSWORD) ?: "",
                 propertyHandler.getBoolean(MqttLoggerSettings.SSL),
                 propertyHandler.getInt(MqttLoggerSettings.MAX_BUFFER_SIZE).toLong(),
                 propertyHandler.getInt(MqttLoggerSettings.MAX_FILE_SIZE).toLong(),

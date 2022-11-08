@@ -60,7 +60,7 @@ class FileObject {
      */
     private var length: Long = 0
 
-    constructor(filename: String?) {
+    constructor(filename: String) {
         canWrite = false
         canRead = false
         dataFile = File(filename)

@@ -29,7 +29,7 @@ import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.*
 
-class FileObjectProxy(rootNodePath: String?) {
+class FileObjectProxy(rootNodePath: String) {
     private val rootNode: File
     private var openFilesHM: HashMap<String, FileObjectList>
     private val encodedLabels: HashMap<String, String>
@@ -71,35 +71,35 @@ class FileObjectProxy(rootNodePath: String?) {
         openFilesHM = HashMap()
         encodedLabels = HashMap()
         loadDays()
-        if (SlotsDb.Companion.FLUSH_PERIOD != null) {
-            flush_period = SlotsDb.Companion.FLUSH_PERIOD.toInt()
+        if (SlotsDb.FLUSH_PERIOD != null) {
+            flush_period = SlotsDb.FLUSH_PERIOD.toInt()
             logger.info("Flushing Data every: " + flush_period + "s. to disk.")
             createScheduledFlusher()
         } else {
             logger.info("No Flush Period set. Writing Data directly to disk.")
         }
-        if (SlotsDb.Companion.DATA_LIFETIME_IN_DAYS != null) {
-            limit_days = SlotsDb.Companion.DATA_LIFETIME_IN_DAYS.toInt()
+        if (SlotsDb.DATA_LIFETIME_IN_DAYS != null) {
+            limit_days = SlotsDb.DATA_LIFETIME_IN_DAYS.toInt()
             logger.info("Maximum lifetime of stored Values: $limit_days Days.")
             createScheduledDeleteJob()
         } else {
             logger.info("Maximum lifetime of stored Values: UNLIMITED Days.")
         }
-        if (SlotsDb.Companion.MAX_DATABASE_SIZE != null) {
-            limit_size = SlotsDb.Companion.MAX_DATABASE_SIZE.toInt()
-            if (limit_size < SlotsDb.Companion.MINIMUM_DATABASE_SIZE) {
-                limit_size = SlotsDb.Companion.MINIMUM_DATABASE_SIZE
+        if (SlotsDb.MAX_DATABASE_SIZE != null) {
+            limit_size = SlotsDb.MAX_DATABASE_SIZE.toInt()
+            if (limit_size < SlotsDb.MINIMUM_DATABASE_SIZE) {
+                limit_size = SlotsDb.MINIMUM_DATABASE_SIZE
             }
             logger.info("Size Limit: $limit_size MB.")
             createScheduledSizeWatcher()
         } else {
             logger.info("Size Limit: UNLIMITED MB.")
         }
-        if (SlotsDb.Companion.MAX_OPEN_FOLDERS != null) {
-            max_open_files = SlotsDb.Companion.MAX_OPEN_FOLDERS.toInt()
+        if (SlotsDb.MAX_OPEN_FOLDERS != null) {
+            max_open_files = SlotsDb.MAX_OPEN_FOLDERS.toInt()
             logger.info("Maximum open Files for Database changed to: $max_open_files")
         } else {
-            max_open_files = SlotsDb.Companion.MAX_OPEN_FOLDERS_DEFAULT
+            max_open_files = SlotsDb.MAX_OPEN_FOLDERS_DEFAULT
             logger.info("Maximum open Files for Database is set to: $max_open_files (default).")
         }
     }
@@ -151,8 +151,8 @@ class FileObjectProxy(rootNodePath: String?) {
     private fun createScheduledDeleteJob() {
         timer.schedule(
             DeleteJob(),
-            SlotsDb.Companion.INITIAL_DELAY.toLong(),
-            SlotsDb.Companion.DATA_EXPIRATION_CHECK_INTERVAL.toLong()
+            SlotsDb.INITIAL_DELAY.toLong(),
+            SlotsDb.DATA_EXPIRATION_CHECK_INTERVAL.toLong()
         )
     }
 
@@ -198,8 +198,8 @@ class FileObjectProxy(rootNodePath: String?) {
     private fun createScheduledSizeWatcher() {
         timer.schedule(
             SizeWatcher(),
-            SlotsDb.Companion.INITIAL_DELAY.toLong(),
-            SlotsDb.Companion.DATA_EXPIRATION_CHECK_INTERVAL.toLong()
+            SlotsDb.INITIAL_DELAY.toLong(),
+            SlotsDb.DATA_EXPIRATION_CHECK_INTERVAL.toLong()
         )
     }
 
@@ -306,7 +306,7 @@ class FileObjectProxy(rootNodePath: String?) {
              * will be stored and List reloaded for next Value to store.
              */if (first.size() == 0) {
                 toStoreIn = FileObject(
-                    rootNode.path + "/" + strDate + "/" + id + "/" + timestamp + SlotsDb.Companion.FILE_EXTENSION
+                    rootNode.path + "/" + strDate + "/" + id + "/" + timestamp + SlotsDb.FILE_EXTENSION
                 )
                 toStoreIn.createFileAndHeader(timestamp, storingPeriod)
                 toStoreIn.append(value, timestamp, state)
@@ -349,7 +349,7 @@ class FileObjectProxy(rootNodePath: String?) {
              */
             if (toStoreIn.timestampForLatestValue < timestamp) {
                 toStoreIn = FileObject(
-                    rootNode.path + "/" + strDate + "/" + id + "/" + timestamp + SlotsDb.Companion.FILE_EXTENSION
+                    rootNode.path + "/" + strDate + "/" + id + "/" + timestamp + SlotsDb.FILE_EXTENSION
                 )
                 toStoreIn.createFileAndHeader(timestamp, storingPeriod)
                 toStoreIn.append(value, timestamp, state)
@@ -434,7 +434,7 @@ class FileObjectProxy(rootNodePath: String?) {
                         if (listOf(*folder.list()).contains(label)) {
                             strSubfolder = rootNode.path + "/" + folder.name + "/" + label
                             days.add(FileObjectList(strSubfolder))
-                            logger.trace(strSubfolder + " contains " + SlotsDb.Companion.FILE_EXTENSION + " files to read from.")
+                            logger.trace(strSubfolder + " contains " + SlotsDb.FILE_EXTENSION + " files to read from.")
                         }
                     }
                 }
@@ -462,14 +462,14 @@ class FileObjectProxy(rootNodePath: String?) {
             val folder = File(rootNode.path + "/" + strStartDate + "/" + label)
             val fol: FileObjectList
             if (folder.list() != null) {
-                if (folder.list().size > 0) { // Are there Files in the
+                if (folder.list().isNotEmpty()) { // Are there Files in the
                     // folder, that should be read?
                     fol = FileObjectList(rootNode.path + "/" + strStartDate + "/" + label)
                     toRead.addAll(fol.getFileObjectsFromTo(start, end))
                 }
             }
         }
-        logger.trace("Found " + toRead.size + " " + SlotsDb.Companion.FILE_EXTENSION + " files to read from.")
+        logger.trace("Found " + toRead.size + " " + SlotsDb.FILE_EXTENSION + " files to read from.")
 
         /*
          * Read all FileObjects: first (2nd,3rd,4th....n-1) last first and last will be read separately, to not exceed
@@ -495,7 +495,7 @@ class FileObjectProxy(rootNodePath: String?) {
                 toReturn.removeAll(setOf<Any?>(null))
             }
         }
-        logger.trace("Selected " + SlotsDb.Companion.FILE_EXTENSION + " files contain " + toReturn.size + " Values.")
+        logger.trace("Selected " + SlotsDb.FILE_EXTENSION + " files contain " + toReturn.size + " Values.")
         return toReturn
     }
 
@@ -533,7 +533,7 @@ class FileObjectProxy(rootNodePath: String?) {
         if (Arrays.asList(*latestFolder.list()).contains(label)) {
             strSubfolder = rootNode.path + "/" + latestFolder.name + "/" + label
             fileObjects = FileObjectList(strSubfolder)
-            logger.trace(strSubfolder + " contains " + SlotsDb.Companion.FILE_EXTENSION + " files to read from.")
+            logger.trace(strSubfolder + " contains " + SlotsDb.FILE_EXTENSION + " files to read from.")
         }
 
         /*

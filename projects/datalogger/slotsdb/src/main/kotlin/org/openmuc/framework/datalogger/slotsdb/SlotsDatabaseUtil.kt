@@ -47,7 +47,7 @@ object SlotsDatabaseUtil {
     }
 
     @Throws(IOException::class)
-    fun printWholeFile(filename: String?) {
+    fun printWholeFile(filename: String) {
         printWholeFile(File(filename))
     }
 }
