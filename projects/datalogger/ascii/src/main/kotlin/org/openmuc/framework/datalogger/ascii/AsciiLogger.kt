@@ -21,7 +21,6 @@
 package org.openmuc.framework.datalogger.ascii
 
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.datalogger.ascii.utils.Const
 import org.openmuc.framework.datalogger.ascii.utils.LoggerUtils
 import org.openmuc.framework.datalogger.spi.DataLoggerService
@@ -37,8 +36,8 @@ import java.util.*
 
 @Component
 class AsciiLogger : DataLoggerService {
-    private val loggerDirectory: String?
-    private val logChannelList = HashMap<String?, LogChannel?>()
+    private val loggerDirectory: String
+    private val logChannelList = HashMap<String, LogChannel>()
     private var isFillUpFiles = true
 
     constructor() {
@@ -50,7 +49,7 @@ class AsciiLogger : DataLoggerService {
         createDirectory(loggerDirectory)
     }
 
-    constructor(loggerDirectory: String?) {
+    constructor(loggerDirectory: String) {
         this.loggerDirectory = loggerDirectory
         createDirectory(loggerDirectory)
     }
@@ -66,7 +65,7 @@ class AsciiLogger : DataLoggerService {
         logger.info("Deactivating Ascii Logger")
     }
 
-    private fun createDirectory(loggerDirectory: String?) {
+    private fun createDirectory(loggerDirectory: String) {
         logger.trace("using directory: {}", loggerDirectory)
         val asciidata = File(loggerDirectory)
         if (!asciidata.exists() && !asciidata.mkdirs()) {
@@ -81,23 +80,23 @@ class AsciiLogger : DataLoggerService {
     /**
      * Will called if OpenMUC starts the logger
      */
-    override fun setChannelsToLog(logChannels: List<LogChannel?>?) {
+    override fun setChannelsToLog(channels: List<LogChannel>) {
         val calendar: Calendar = GregorianCalendar(Locale.getDefault())
         logChannelList.clear()
         logger.trace("channels to log:")
-        for (logChannel in logChannels!!) {
+        for (logChannel in channels) {
             if (logger.isTraceEnabled) {
-                logger.trace("channel.getId() " + logChannel!!.id)
+                logger.trace("channel.getId() " + logChannel.id)
                 logger.trace("channel.getLoggingInterval() " + logChannel.loggingInterval)
             }
-            logChannelList[logChannel!!.id] = logChannel
+            logChannelList[logChannel.id] = logChannel
         }
         if (isFillUpFiles) {
             val areHeaderIdentical = LoggerUtils.areHeadersIdentical(
-                loggerDirectory, logChannels,
+                loggerDirectory, channels,
                 calendar
             )
-            for ((key, isHeaderIdentical) in areHeaderIdentical!!) {
+            for ((key, isHeaderIdentical) in areHeaderIdentical) {
                 if (isHeaderIdentical) {
                     // Fill file up with error flag 32 (DATA_LOGGING_NOT_ACTIVE)
                     if (logger.isTraceEnabled) {
@@ -118,15 +117,15 @@ class AsciiLogger : DataLoggerService {
     }
 
     @Synchronized
-    override fun log(loggingRecords: List<LoggingRecord?>?, timestamp: Long) {
+    override fun log(containers: List<LoggingRecord>, timestamp: Long) {
         val logIntervalGroups = HashMap<List<Int>, LogIntervalContainerGroup>()
 
         // add each container to a group with the same logging interval
-        for (container in loggingRecords!!) {
+        for (container in containers) {
             var logInterval = -1
             var logTimeOffset = 0
             var logTimeArray = Arrays.asList(logInterval, logTimeOffset)
-            val channelId = container!!.channelId
+            val channelId = container.channelId
             if (logChannelList.containsKey(channelId)) {
                 logInterval = logChannelList[channelId]!!.loggingInterval!!
                 logTimeOffset = logChannelList[channelId]!!.loggingTimeOffset!!
@@ -152,7 +151,7 @@ class AsciiLogger : DataLoggerService {
         val calendar: Calendar = GregorianCalendar(Locale.getDefault())
         while (it.hasNext()) {
             logTimeArray = it.next().key
-            val group = logIntervalGroups[logTimeArray]
+            val group = logIntervalGroups[logTimeArray]!!
             val fileOutHandler = LogFileWriter(loggerDirectory, isFillUpFiles)
             calendar.timeInMillis = timestamp
             fileOutHandler.log(group, logTimeArray[0], logTimeArray[1], calendar, logChannelList)
@@ -161,12 +160,12 @@ class AsciiLogger : DataLoggerService {
     }
 
     @Throws(IOException::class)
-    override fun getRecords(channelId: String?, startTime: Long, endTime: Long): List<Record?>? {
+    override fun getRecords(channelId: String, startTime: Long, endTime: Long): List<Record> {
         val logChannel = logChannelList[channelId]
-        var reader: LogFileReader? = null
+        val reader: LogFileReader?
         return if (logChannel != null) {
             reader = LogFileReader(loggerDirectory, logChannel)
-            reader.getValues(startTime, endTime)[channelId]
+            reader.getValues(startTime, endTime)[channelId] ?: listOf()
         } // TODO: hier einfuegen, dass nach Logdateien gesucht werden soll, die vorhanden
         else {
             throw IOException("ChannelID ($channelId) not available. It's not a logging Channel.")
@@ -182,9 +181,9 @@ class AsciiLogger : DataLoggerService {
      * @return latest Record
      */
     @Throws(IOException::class)
-    override fun getLatestLogRecord(channelId: String?): Record? {
+    override fun getLatestLogRecord(channelId: String): Record? {
         val logChannel = logChannelList[channelId]
-        var reader: LogFileReader? = null
+        var reader: LogFileReader?
         if (logChannel == null) {
             throw IOException("ChannelID ($channelId) not available. It's not a logging Channel.")
         }
@@ -194,7 +193,7 @@ class AsciiLogger : DataLoggerService {
         val startTime = endTime - MS_PER_DAY
         var recordsMap = reader.getValues(startTime, endTime)
         var latestRecordsMap = LoggerUtils.findLatestValue(recordsMap)
-        var record = latestRecordsMap!![channelId]
+        var record = latestRecordsMap[channelId]
         if (record != null) {
             return record
         }
@@ -225,7 +224,7 @@ class AsciiLogger : DataLoggerService {
         }
     }
 
-    override fun logEvent(containers: List<LoggingRecord?>?, timestamp: Long) {
+    override fun logEvent(containers: List<LoggingRecord>, timestamp: Long) {
         logger.warn("Event logging is not implemented, yet.")
     }
 

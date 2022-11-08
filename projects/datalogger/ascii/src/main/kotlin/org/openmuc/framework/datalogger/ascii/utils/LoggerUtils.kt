@@ -22,7 +22,6 @@ package org.openmuc.framework.datalogger.ascii.utils
 
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.datalogger.ascii.LogFileHeader
 import org.openmuc.framework.datalogger.spi.LogChannel
@@ -161,11 +160,11 @@ object LoggerUtils {
      * @param calendar
      * Calendar for the time of the file name
      */
-    fun renameAllFilesToOld(directoryPath: String?, calendar: Calendar?) {
+    fun renameAllFilesToOld(directoryPath: String, calendar: Calendar) {
         val date = String.format(Const.DATE_FORMAT, calendar)
         val dir = File(directoryPath)
         val files = dir.listFiles()
-        if (files != null && files.size > 0) {
+        if (files != null && files.isNotEmpty()) {
             for (file in files) {
                 val currentName = file.name
                 if (currentName.startsWith(date) && currentName.endsWith(Const.EXTENSION)) {
@@ -314,11 +313,11 @@ object LoggerUtils {
      * the name to search in line
      * @return the column numbers mapped with the name.
      */
-    fun getColumnNumbersByNames(line: String?, names: Array<String?>): Map<String?, Int>? {
+    fun getColumnNumbersByNames(line: String?, names: Array<String>): Map<String, Int> {
         if (line!!.startsWith(Const.COMMENT_SIGN)) {
-            return null
+            return mapOf()
         }
-        val channelColumnsMap: MutableMap<String?, Int> = HashMap()
+        val channelColumnsMap: MutableMap<String, Int> = HashMap()
         val columns = line.split(Const.SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }
             .toTypedArray()
         for (i in columns.indices) {
@@ -567,8 +566,7 @@ object LoggerUtils {
 
     @Throws(IOException::class)
     fun getPrintWriter(file: File, append: Boolean): PrintWriter {
-        var writer: PrintWriter? = null
-        writer = try {
+        val writer: PrintWriter = try {
             PrintWriter(OutputStreamWriter(FileOutputStream(file, append), Const.CHAR_SET))
         } catch (e: IOException) {
             logger.error("Cannot open file: " + file.absolutePath)
@@ -710,14 +708,14 @@ object LoggerUtils {
      * @return Map of channelId and latest Record for that channel, empty map if non-existent
      */
     @JvmStatic
-    fun findLatestValue(recordsMap: Map<String?, MutableList<Record?>?>?): Map<String?, Record> {
-        val recordMap: MutableMap<String?, Record> = HashMap()
-        for ((key, records) in recordsMap!!) {
+    fun findLatestValue(recordsMap: Map<String, MutableList<Record>>): Map<String, Record> {
+        val recordMap: MutableMap<String, Record> = HashMap()
+        for ((key, records) in recordsMap) {
             // find the latest record
             var latestTimestamp: Long = 0
             var latestRecord: Record? = null
-            for (record in records!!) {
-                if (record!!.timestamp!! > latestTimestamp) {
+            for (record in records) {
+                if (record.timestamp!! > latestTimestamp) {
                     latestRecord = record
                     latestTimestamp = record.timestamp!!
                 }
@@ -736,13 +734,13 @@ object LoggerUtils {
      * @return list of all data files in the folder
      */
     @JvmStatic
-    fun getAllDataFiles(directoryPath: String?): List<File>? {
+    fun getAllDataFiles(directoryPath: String): List<File> {
         val dir = File(directoryPath)
         val allFiles = dir.listFiles()
         val files: MutableList<File> = LinkedList()
-        if (allFiles == null || allFiles.size == 0) {
+        if (allFiles == null || allFiles.isEmpty()) {
             logger.error("No file found in $directoryPath")
-            return null
+            return listOf()
         }
         for (file in allFiles) {
             val fileName = file.name
@@ -779,13 +777,13 @@ object LoggerUtils {
      * @return file with the latest date
      */
     @JvmStatic
-    fun getLatestFile(files: List<File?>): File? {
+    fun getLatestFile(files: List<File>): File? {
         var latestTimestamp: Long = 0
         var latestFile: File? = null
         for (file in files) {
             var timestamp: Long = 0
             timestamp = try {
-                val fileName = file!!.name
+                val fileName = file.name
                 getDateOfFile(fileName).time
             } catch (ex: ParseException) {
                 logger.error("Data file could not be parsed... continuing with next")

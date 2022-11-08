@@ -20,7 +20,6 @@
  */
 package org.openmuc.framework.datalogger.ascii.utils
 
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.datalogger.ascii.exceptions.WrongScalingException
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols

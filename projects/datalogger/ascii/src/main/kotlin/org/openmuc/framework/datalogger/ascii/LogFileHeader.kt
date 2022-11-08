@@ -46,23 +46,23 @@ object LogFileHeader {
      * @return the header as a string
      */
     fun getIESDataFormatHeaderString(
-        group: LogIntervalContainerGroup?, filename: String,
-        loggingInterval: Int, logChannelList: Map<String?, LogChannel?>
+        group: LogIntervalContainerGroup, filename: String,
+        loggingInterval: Int, logChannelList: Map<String, LogChannel>
     ): String {
         val sb = StringBuilder()
         setHeaderTop(sb, loggingInterval, filename)
 
         // write channel specific header informations
         var colNumber = 4
-        for (loggingRecord in group.getList()) {
-            val channelId = loggingRecord!!.channelId
+        for (loggingRecord in group.list) {
+            val channelId = loggingRecord.channelId
             val logChannel = logChannelList[channelId]
             appendChannelSpecificComment(sb, logChannel, colNumber)
             ++colNumber
         }
-        val containers = group.getList()
+        val containers = group.list
         appendColumnHeaderTimestamp(sb)
-        val iterator: Iterator<LoggingRecord?> = containers!!.iterator()
+        val iterator: Iterator<LoggingRecord?> = containers.iterator()
         while (iterator.hasNext()) {
             sb.append(iterator.next()!!.channelId)
             if (iterator.hasNext()) {

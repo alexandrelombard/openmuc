@@ -23,13 +23,9 @@ package org.openmuc.framework.datalogger.ascii
 import org.openmuc.framework.datalogger.spi.LoggingRecord
 
 class LogIntervalContainerGroup {
-    var list: MutableList<LoggingRecord?>
+    var list: MutableList<LoggingRecord> = ArrayList()
 
-    init {
-        list = ArrayList()
-    }
-
-    fun add(container: LoggingRecord?) {
+    fun add(container: LoggingRecord) {
         list.add(container)
     }
 }

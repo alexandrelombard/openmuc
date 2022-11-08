@@ -43,7 +43,7 @@ class LogFileReaderTestBrokenFile {
         val t1 = TestUtils.stringToDate(dateFormat, "$fileDate 12:00:00").timeInMillis
         val t2 = TestUtils.stringToDate(dateFormat, "$fileDate 12:00:10").timeInMillis
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.getId()]!!
+        val records: List<Record> = fr.getValues(t1, t2)[channelTestImpl.id]!!
         val expectedRecords: Long = 0
         print(Thread.currentThread().stackTrace[1].methodName)
         println(" records = " + records.size + " (" + expectedRecords + " expected)")

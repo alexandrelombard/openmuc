@@ -22,7 +22,6 @@ package org.openmuc.framework.datalogger.ascii
 
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.datalogger.ascii.exceptions.WrongCharacterException
 import org.openmuc.framework.datalogger.ascii.exceptions.WrongScalingException
@@ -55,11 +54,11 @@ class LogFileWriter(private val directoryPath: String?, private val isFillUpFile
      * logging channel list
      */
     fun log(
-        group: LogIntervalContainerGroup?, loggingInterval: Int, logTimeOffset: Int, calendar: Calendar,
-        logChannelList: Map<String?, LogChannel?>
+        group: LogIntervalContainerGroup, loggingInterval: Int, logTimeOffset: Int, calendar: Calendar,
+        logChannelList: Map<String, LogChannel>
     ) {
         val out = getStream(group, loggingInterval, logTimeOffset, calendar, logChannelList) ?: return
-        val logRecordContainer = group.getList()
+        val logRecordContainer = group.list
 
         // TODO match column with container id, so that they don't get mixed up
         if (isFillUpFiles) {
@@ -73,10 +72,10 @@ class LogFileWriter(private val directoryPath: String?, private val isFillUpFile
 
     private fun fillUpFile(
         loggingInterval: Int, logTimeOffset: Int, calendar: Calendar,
-        logChannelList: Map<String?, LogChannel?>, loggingRecords: MutableList<LoggingRecord?>?, out: PrintStream
+        logChannelList: Map<String, LogChannel>, loggingRecords: MutableList<LoggingRecord>, out: PrintStream
     ) {
-        val lastLoglineTimestamp: Long =
-            AsciiLogger.Companion.getLastLoggedLineTimeStamp(loggingInterval, logTimeOffset)
+        val lastLoglineTimestamp: Long? =
+            AsciiLogger.getLastLoggedLineTimeStamp(loggingInterval, logTimeOffset)
         if (lastLoglineTimestamp != null && lastLoglineTimestamp > 0) {
             val diff = calendar.timeInMillis - lastLoglineTimestamp
             if (diff >= loggingInterval) {
@@ -96,118 +95,112 @@ class LogFileWriter(private val directoryPath: String?, private val isFillUpFile
     }
 
     private fun getLoggingLine(
-        logRecordContainer: MutableList<LoggingRecord?>?, logChannelList: Map<String?, LogChannel?>,
+        logRecordContainer: MutableList<LoggingRecord>, logChannelList: Map<String, LogChannel>,
         calendar: Calendar, isError32: Boolean
     ): String {
         sb.setLength(0)
         LoggerUtils.setLoggerTimestamps(sb, calendar)
-        for (i in logRecordContainer!!.indices) {
+        for (i in logRecordContainer.indices) {
             var size = Const.VALUE_SIZE_MINIMAL
             var left = true
-            var record = logRecordContainer[i]!!.record
-            val channelId = logRecordContainer[i]!!.channelId
+            var record = logRecordContainer[i].record
+            val channelId = logRecordContainer[i].channelId
             val logChannel = logChannelList[channelId]
             sbValue.setLength(0)
-            if (record != null) {
-                val recordValue = record.value
-                var recordBackup: Record? = null
-                if (isError32) {
-                    recordBackup = logRecordContainer[i]!!.record
-                    logRecordContainer[i] = LoggingRecord(channelId, Record(Flag.DATA_LOGGING_NOT_ACTIVE))
-                }
-                record = logRecordContainer[i]!!.record
-                if (record.flag === Flag.VALID) {
-                    if (recordValue == null) {
-                        // write error flag
-                        LoggerUtils.buildError(sbValue, Flag.CANNOT_WRITE_NULL_VALUE)
-                        size = getDataTypeSize(logChannel, i)
-                    } else {
-                        val valueType = logChannel!!.valueType
-                        when (valueType) {
-                            ValueType.BOOLEAN -> sbValue.append(
-                                recordValue.asShort().toInt()
-                            ).toString()
-
-                            ValueType.LONG -> {
-                                sbValue.append(recordValue.asLong()).toString()
-                                size = Const.VALUE_SIZE_LONG
-                            }
-
-                            ValueType.INTEGER -> {
-                                sbValue.append(recordValue.asInt()).toString()
-                                size = Const.VALUE_SIZE_INTEGER
-                            }
-
-                            ValueType.SHORT -> {
-                                sbValue.append(recordValue.asShort().toInt()).toString()
-                                size = Const.VALUE_SIZE_SHORT
-                            }
-
-                            ValueType.DOUBLE, ValueType.FLOAT -> {
-                                size = Const.VALUE_SIZE_DOUBLE
-                                try {
-                                    IESDataFormatUtils.convertDoubleToStringWithMaxLength(
-                                        sbValue, recordValue.asDouble(),
-                                        size
-                                    )
-                                } catch (e: WrongScalingException) {
-                                    LoggerUtils.buildError(sbValue, Flag.UNKNOWN_ERROR)
-                                    logger.error(e.message + " ChannelId: " + channelId)
-                                }
-                            }
-
-                            ValueType.BYTE_ARRAY -> {
-                                left = false
-                                size = checkMinimalValueSize(getDataTypeSize(logChannel, i))
-                                val byteArray = recordValue.asByteArray()
-                                if (byteArray!!.size > size) {
-                                    LoggerUtils.buildError(sbValue, Flag.UNKNOWN_ERROR)
-                                    logger.error(
-                                        "The byte array is too big, length is ", byteArray.size,
-                                        " but max. length allowed is ", size, ", ChannelId: ", channelId
-                                    )
-                                } else {
-                                    sbValue.append(Const.HEXADECIMAL)
-                                    LoggerUtils.byteArrayToHexString(sbValue, byteArray)
-                                }
-                            }
-
-                            ValueType.STRING -> {
-                                left = false
-                                size = checkMinimalValueSize(getDataTypeSize(logChannel, i))
-                                sbValue.append(recordValue.asString())
-                                val valueLength = sbValue.length
-                                try {
-                                    checkStringValue(sbValue)
-                                } catch (e: WrongCharacterException) {
-                                    LoggerUtils.buildError(sbValue, Flag.UNKNOWN_ERROR)
-                                    logger.error(e.message)
-                                }
-                                if (valueLength > size) {
-                                    LoggerUtils.buildError(sbValue, Flag.UNKNOWN_ERROR)
-                                    logger.error(
-                                        "The string is too big, length is ", valueLength,
-                                        " but max. length allowed is ", size, ", ChannelId: ", channelId
-                                    )
-                                }
-                            }
-
-                            ValueType.BYTE -> sbValue.append(String.format("0x%02x", recordValue.asByte()))
-                            else -> throw RuntimeException("unsupported valueType")
-                        }
-                    }
-                } else {
+            val recordValue = record.value
+            var recordBackup: Record? = null
+            if (isError32) {
+                recordBackup = logRecordContainer[i].record
+                logRecordContainer[i] = LoggingRecord(channelId, Record(Flag.DATA_LOGGING_NOT_ACTIVE))
+            }
+            record = logRecordContainer[i].record
+            if (record.flag === Flag.VALID) {
+                if (recordValue == null) {
                     // write error flag
-                    LoggerUtils.buildError(sbValue, record.flag)
-                    size = checkMinimalValueSize(getDataTypeSize(logChannel, i))
-                }
-                if (isError32) {
-                    logRecordContainer[i] = LoggingRecord(channelId, recordBackup!!)
+                    LoggerUtils.buildError(sbValue, Flag.CANNOT_WRITE_NULL_VALUE)
+                    size = getDataTypeSize(logChannel, i)
+                } else {
+                    val valueType = logChannel!!.valueType
+                    when (valueType) {
+                        ValueType.BOOLEAN -> sbValue.append(
+                            recordValue.asShort().toInt()
+                        ).toString()
+
+                        ValueType.LONG -> {
+                            sbValue.append(recordValue.asLong()).toString()
+                            size = Const.VALUE_SIZE_LONG
+                        }
+
+                        ValueType.INTEGER -> {
+                            sbValue.append(recordValue.asInt()).toString()
+                            size = Const.VALUE_SIZE_INTEGER
+                        }
+
+                        ValueType.SHORT -> {
+                            sbValue.append(recordValue.asShort().toInt()).toString()
+                            size = Const.VALUE_SIZE_SHORT
+                        }
+
+                        ValueType.DOUBLE, ValueType.FLOAT -> {
+                            size = Const.VALUE_SIZE_DOUBLE
+                            try {
+                                IESDataFormatUtils.convertDoubleToStringWithMaxLength(
+                                    sbValue, recordValue.asDouble(),
+                                    size
+                                )
+                            } catch (e: WrongScalingException) {
+                                LoggerUtils.buildError(sbValue, Flag.UNKNOWN_ERROR)
+                                logger.error(e.message + " ChannelId: " + channelId)
+                            }
+                        }
+
+                        ValueType.BYTE_ARRAY -> {
+                            left = false
+                            size = checkMinimalValueSize(getDataTypeSize(logChannel, i))
+                            val byteArray = recordValue.asByteArray()
+                            if (byteArray.size > size) {
+                                LoggerUtils.buildError(sbValue, Flag.UNKNOWN_ERROR)
+                                logger.error(
+                                    "The byte array is too big, length is ", byteArray.size,
+                                    " but max. length allowed is ", size, ", ChannelId: ", channelId
+                                )
+                            } else {
+                                sbValue.append(Const.HEXADECIMAL)
+                                LoggerUtils.byteArrayToHexString(sbValue, byteArray)
+                            }
+                        }
+
+                        ValueType.STRING -> {
+                            left = false
+                            size = checkMinimalValueSize(getDataTypeSize(logChannel, i))
+                            sbValue.append(recordValue.asString())
+                            val valueLength = sbValue.length
+                            try {
+                                checkStringValue(sbValue)
+                            } catch (e: WrongCharacterException) {
+                                LoggerUtils.buildError(sbValue, Flag.UNKNOWN_ERROR)
+                                logger.error(e.message)
+                            }
+                            if (valueLength > size) {
+                                LoggerUtils.buildError(sbValue, Flag.UNKNOWN_ERROR)
+                                logger.error(
+                                    "The string is too big, length is ", valueLength,
+                                    " but max. length allowed is ", size, ", ChannelId: ", channelId
+                                )
+                            }
+                        }
+
+                        ValueType.BYTE -> sbValue.append(String.format("0x%02x", recordValue.asByte()))
+                        else -> throw RuntimeException("unsupported valueType")
+                    }
                 }
             } else {
-                // got no data
-                LoggerUtils.buildError(sbValue, Flag.UNKNOWN_ERROR)
+                // write error flag
+                LoggerUtils.buildError(sbValue, record.flag)
                 size = checkMinimalValueSize(getDataTypeSize(logChannel, i))
+            }
+            if (isError32) {
+                logRecordContainer[i] = LoggingRecord(channelId, recordBackup!!)
             }
             if (left) {
                 LoggerUtils.addSpaces(sbValue.length, size, sb)
@@ -241,7 +234,7 @@ class LogFileWriter(private val directoryPath: String?, private val isFillUpFile
             throw WrongCharacterException(
                 "Wrong character: String contains separator character: " + Const.SEPARATOR
             )
-        } else if (!value.matches("^[\\x00-\\x7F]*")) {
+        } else if (!value.matches("^[\\x00-\\x7F]*".toRegex())) {
             throw WrongCharacterException("Wrong character: Non ASCII character in String.")
         }
     }
@@ -264,8 +257,8 @@ class LogFileWriter(private val directoryPath: String?, private val isFillUpFile
      * @return the PrintStream for logging.
      */
     private fun getStream(
-        group: LogIntervalContainerGroup?, loggingInterval: Int, logTimeOffset: Int,
-        calendar: Calendar, logChannelList: Map<String?, LogChannel?>
+        group: LogIntervalContainerGroup, loggingInterval: Int, logTimeOffset: Int,
+        calendar: Calendar, logChannelList: Map<String, LogChannel>
     ): PrintStream? {
         val filename = LoggerUtils.buildFilename(loggingInterval, logTimeOffset, calendar)
         val file = File(directoryPath + filename)

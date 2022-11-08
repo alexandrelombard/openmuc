@@ -29,8 +29,8 @@ import org.slf4j.LoggerFactory
 import java.io.*
 import java.text.SimpleDateFormat
 
-class LogFileReader(private val path: String?, logChannel: LogChannel) {
-    private val ids: Array<String?>
+class LogFileReader(private val path: String, logChannel: LogChannel) {
+    private val ids: Array<String>
     private val loggingInterval: Int
     private val logTimeOffset: Int
     private var unixTimestampColumn = 0
@@ -62,24 +62,23 @@ class LogFileReader(private val path: String?, logChannel: LogChannel) {
      * end time stamp
      * @return All records of the given time span
      */
-    fun getValues(startTimestamp: Long, endTimestamp: Long): Map<String?, MutableList<Record?>> {
+    fun getValues(startTimestamp: Long, endTimestamp: Long): Map<String, MutableList<Record>> {
         this.startTimestamp = startTimestamp
         this.endTimestamp = endTimestamp
         val filenames = LoggerUtils.getFilenames(
             loggingInterval, logTimeOffset, this.startTimestamp,
             this.endTimestamp
         )
-        val recordsMap: MutableMap<String?, MutableList<Record?>> = HashMap()
+        val recordsMap: MutableMap<String, MutableList<Record>> = HashMap()
         for (id in ids) {
             recordsMap[id] = ArrayList()
         }
-        for (i in filenames!!.indices) {
+        for (i in filenames.indices) {
             var nextFile = false
             if (logger.isTraceEnabled) {
                 logger.trace("using " + filenames[i])
             }
-            var filepath: String
-            filepath = if (path!!.endsWith(File.separator)) {
+            var filepath: String = if (path.endsWith(File.separator)) {
                 path + filenames[i]
             } else {
                 path + File.separatorChar + filenames[i]
@@ -99,12 +98,12 @@ class LogFileReader(private val path: String?, logChannel: LogChannel) {
      * to be read from
      * @return All records in the given file as a Map of String channelId and List of records for this channel
      */
-    fun getValues(filePath: String): Map<String?, MutableList<Record?>>? {
+    fun getValues(filePath: String): Map<String, MutableList<Record>> {
         startTimestamp = 0
         endTimestamp = 9223372036854775807L // max long
-        var recordsMap: MutableMap<String?, MutableList<Record?>>? = HashMap()
+        var recordsMap: MutableMap<String, MutableList<Record>> = HashMap()
         for (id in ids) {
-            recordsMap!![id] = ArrayList()
+            recordsMap[id] = ArrayList()
         }
         recordsMap = processFile(recordsMap, filePath, true)
         return recordsMap
@@ -156,9 +155,9 @@ class LogFileReader(private val path: String?, logChannel: LogChannel) {
      * @return records on success, otherwise null
      */
     private fun processFile(
-        recordsMap: MutableMap<String?, MutableList<Record?>>?, filepath: String,
+        recordsMap: MutableMap<String, MutableList<Record>>, filepath: String,
         nextFile: Boolean
-    ): MutableMap<String?, MutableList<Record?>>? {
+    ): MutableMap<String, MutableList<Record>> {
         var recordsMap = recordsMap
         var line: String? = null
         var currentPosition: Long = 0
@@ -166,9 +165,9 @@ class LogFileReader(private val path: String?, logChannel: LogChannel) {
         var firstTimestamp: Long = 0
         var firstValueLine: String? = null
         var currentTimestamp: Long = 0
-        val raf = LoggerUtils.getRandomAccessFile(File(filepath), "r") ?: return null
+        val raf = LoggerUtils.getRandomAccessFile(File(filepath), "r") ?: return hashMapOf()
         try {
-            var channelsColumnsMap: Map<String?, Int?>? = null
+            var channelsColumnsMap: Map<String, Int>? = null
             while (channelsColumnsMap == null) {
                 line = raf.readLine()
                 channelsColumnsMap = LoggerUtils.getColumnNumbersByNames(line, ids)
@@ -194,16 +193,16 @@ class LogFileReader(private val path: String?, logChannel: LogChannel) {
                 raf.seek(filepos)
                 currentTimestamp = startTimestamp
                 while (raf.readLine().also { line = it } != null && currentTimestamp <= endTimestamp) {
-                    processLine(line, channelsColumnsMap, recordsMap)
+                    processLine(line ?: "", channelsColumnsMap, recordsMap)
                     currentTimestamp += loggingInterval.toLong()
                 }
                 raf.close()
             } else {
-                recordsMap = null // because the column of the channel was not identified
+                recordsMap = hashMapOf() // because the column of the channel was not identified
             }
         } catch (e: IOException) {
             logger.error(e.message)
-            recordsMap = null
+            recordsMap = hashMapOf()
         }
         return recordsMap
     }
@@ -217,10 +216,10 @@ class LogFileReader(private val path: String?, logChannel: LogChannel) {
      * list of records
      */
     private fun processLine(
-        line: String?, channelsColumnsMap: Map<String?, Int?>,
-        recordsMap: MutableMap<String?, MutableList<Record?>>?
+        line: String, channelsColumnsMap: Map<String, Int>,
+        recordsMap: MutableMap<String, MutableList<Record>>
     ) {
-        if (!line!!.startsWith(Const.COMMENT_SIGN)) {
+        if (!line.startsWith(Const.COMMENT_SIGN)) {
             readRecordsFromLine(line, channelsColumnsMap, recordsMap)
         }
     }
@@ -233,18 +232,18 @@ class LogFileReader(private val path: String?, logChannel: LogChannel) {
      * @return Records read from line
      */
     private fun readRecordsFromLine(
-        line: String?, channelsColumnsMap: Map<String?, Int?>,
-        recordsMap: MutableMap<String?, MutableList<Record?>>?
+        line: String, channelsColumnsMap: Map<String, Int>,
+        recordsMap: MutableMap<String, MutableList<Record>>
     ) {
-        val columnValue = line!!.split(Const.SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }
+        val columnValue = line.split(Const.SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }
             .toTypedArray()
         try {
             val timestampS = columnValue[unixTimestampColumn].toDouble()
             val timestampMS = (timestampS * 1000).toLong()
             if (isTimestampPartOfRequestedInterval(timestampMS)) {
                 for ((key, value) in channelsColumnsMap) {
-                    val record = convertLogfileEntryToRecord(columnValue[value!!].trim { it <= ' ' }, timestampMS)
-                    var list = recordsMap!![key]
+                    val record = convertLogfileEntryToRecord(columnValue[value].trim { it <= ' ' }, timestampMS)
+                    var list = recordsMap[key]
                     if (list == null) {
                         recordsMap[key] = ArrayList()
                         list = recordsMap[key]
@@ -278,7 +277,7 @@ class LogFileReader(private val path: String?, logChannel: LogChannel) {
         if (firstTimestampFromFile == -1L) {
             firstTimestampFromFile = lineTimestamp
         }
-        if (lineTimestamp >= startTimestamp && lineTimestamp <= endTimestamp) {
+        if (lineTimestamp in startTimestamp..endTimestamp) {
             result = true
         }
         return result
@@ -316,7 +315,7 @@ class LogFileReader(private val path: String?, logChannel: LogChannel) {
      * time stamp
      * @return the converted logfile entry.
      */
-    private fun convertLogfileEntryToRecord(strValue: String, timestamp: Long): Record? {
+    private fun convertLogfileEntryToRecord(strValue: String, timestamp: Long): Record {
         var record: Record? = null
         record = if (isNumber(strValue)) {
             Record(

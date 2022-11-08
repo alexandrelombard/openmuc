@@ -24,7 +24,7 @@ import org.openmuc.framework.data.ValueType
 
 interface LogChannel {
     val loggingSettings: String?
-    val id: String?
+    val id: String
     val description: String?
     val channelAddress: String?
     val unit: String?

@@ -36,7 +36,7 @@ class ChannelConfigImplTest {
     @Throws(
         Exception::class
     )
-    fun testTimeStringToMillis(timeStr: String?, expTimeInMillis: Int?) {
+    fun testTimeStringToMillis(timeStr: String, expTimeInMillis: Int) {
         val millis = timeStringToMillis(timeStr)
         Assert.assertEquals(expTimeInMillis, millis)
     }
@@ -53,7 +53,7 @@ class ChannelConfigImplTest {
     @Throws(
         Exception::class
     )
-    fun testTimeStringToMillisFail(timeStr: String?) {
+    fun testTimeStringToMillisFail(timeStr: String) {
         timeStringToMillis(timeStr)
     }
 
@@ -73,7 +73,7 @@ class ChannelConfigImplTest {
     @Throws(
         Exception::class
     )
-    fun testTimeToString(expectedTimeStr: String?, millis: Int) {
+    fun testTimeToString(expectedTimeStr: String, millis: Int) {
         val resTime = millisToTimeString(millis)
         Assert.assertEquals(expectedTimeStr, resTime)
     }
