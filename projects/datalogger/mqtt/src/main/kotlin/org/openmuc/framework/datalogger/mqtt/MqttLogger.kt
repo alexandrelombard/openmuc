@@ -40,8 +40,10 @@ import java.util.*
 import java.util.stream.Collectors
 
 class MqttLogger : DataLoggerService, ManagedService {
-    private val channelsToLog = HashMap<String?, MqttLogChannel>()
-    private val availableParsers = HashMap<String?, ParserService>()
+    override val id: String = "mqttlogger"
+
+    private val channelsToLog = HashMap<String, MqttLogChannel>()
+    private val availableParsers = HashMap<String, ParserService>()
     private val propertyHandler: PropertyHandler
     private var parser: String? = null
     private var isLogMultiple = false
@@ -58,31 +60,31 @@ class MqttLogger : DataLoggerService, ManagedService {
         mqttWriter = MqttWriter(connection, this.id)
     }
 
-    override fun setChannelsToLog(logChannels: List<LogChannel?>?) {
+    override fun setChannelsToLog(channels: List<LogChannel>) {
         // FIXME Datamanger should only pass logChannels which should be logged by MQTT Logger
         // right now all channels are passed to the data logger and dataloger has to
         // decide/parse which channels it hast to log
         channelsToLog.clear()
-        for (logChannel in logChannels!!) {
-            if (logChannel!!.loggingSettings!!.contains(Companion.id)) {
+        for (logChannel in channels) {
+            if (logChannel.loggingSettings!!.contains(id)) {
                 val mqttLogChannel = MqttLogChannel(logChannel)
                 channelsToLog[logChannel.id] = mqttLogChannel
             }
         }
-        printChannelsConsideredByMqttLogger(logChannels)
+        printChannelsConsideredByMqttLogger(channels)
     }
 
     /**
      * mainly for debugging purposes
      */
-    private fun printChannelsConsideredByMqttLogger(logChannels: List<LogChannel?>?) {
+    private fun printChannelsConsideredByMqttLogger(logChannels: List<LogChannel>) {
         val mqttLogChannelsSb = StringBuilder()
         mqttLogChannelsSb.append("channels configured for mqttlogging:\n")
         channelsToLog.keys.stream().forEach { channelId: String? -> mqttLogChannelsSb.append(channelId).append("\n") }
         val nonMqttLogChannelsSb = StringBuilder()
         nonMqttLogChannelsSb.append("channels not configured for mqttlogger:\n")
-        for (logChannel in logChannels!!) {
-            if (!logChannel!!.loggingSettings!!.contains(Companion.id)) {
+        for (logChannel in logChannels) {
+            if (!logChannel.loggingSettings!!.contains(id)) {
                 nonMqttLogChannelsSb.append(logChannel.id).append("\n")
             }
         }
@@ -90,7 +92,7 @@ class MqttLogger : DataLoggerService, ManagedService {
         logger.debug(nonMqttLogChannelsSb.toString())
     }
 
-    override fun logEvent(containers: List<LoggingRecord?>?, timestamp: Long) {
+    override fun logEvent(containers: List<LoggingRecord>, timestamp: Long) {
         log(containers, timestamp)
     }
 
@@ -98,7 +100,7 @@ class MqttLogger : DataLoggerService, ManagedService {
         return true
     }
 
-    override fun log(loggingRecordList: List<LoggingRecord?>?, timestamp: Long) {
+    override fun log(containers: List<LoggingRecord>, timestamp: Long) {
         if (!isLoggerReady) {
             logger.warn("Skipped logging values, still loading")
             return
@@ -110,7 +112,7 @@ class MqttLogger : DataLoggerService, ManagedService {
         // FIXME refactor OpenMUC core - actually the datamanager should only call logger.log()
         // with channels configured for this logger. If this is the case the containsKey check could be ignored
         // The filter serves as WORKAROUND to process only channels which were configured for mqtt logger
-        val logRecordsForMqttLogger = loggingRecordList!!.stream()
+        val logRecordsForMqttLogger = containers.stream()
             .filter { record: LoggingRecord? ->
                 channelsToLog.containsKey(
                     record!!.channelId
@@ -127,20 +129,20 @@ class MqttLogger : DataLoggerService, ManagedService {
         // and creates ready to use messages for the mqttWriter
         val logMsgBuilder = MqttLogMsgBuilder(channelsToLog, availableParsers[parser])
         val logMessages = logMsgBuilder.buildLogMsg(logRecordsForMqttLogger, isLogMultiple)
-        for (msg in logMessages!!) {
+        for (msg in logMessages) {
             logTraceMqttMessage(msg)
-            mqttWriter.write(msg!!.topic, msg.message)
+            mqttWriter.write(msg.topic, msg.message)
         }
     }
 
     private fun logTraceMqttMessage(msg: MqttLogMsg?) {
         if (logger.isTraceEnabled) {
-            logger.trace("{}\n{}: {}", msg!!.channelId, msg.topic, String(msg.message!!))
+            logger.trace("{}\n{}: {}", msg!!.channelId, msg.topic, String(msg.message))
         }
     }
 
     private val isParserAvailable: Boolean
-        private get() {
+        get() {
             if (availableParsers.containsKey(parser)) {
                 return true
             }
@@ -148,15 +150,15 @@ class MqttLogger : DataLoggerService, ManagedService {
             return false
         }
     private val isLoggerReady: Boolean
-        private get() = mqttWriter.connection.isReady && configLoaded && isParserAvailable
+        get() = mqttWriter.connection.isReady && configLoaded && isParserAvailable
 
     @Throws(IOException::class)
-    override fun getRecords(channelId: String?, startTime: Long, endTime: Long): List<Record?>? {
+    override fun getRecords(channelId: String, startTime: Long, endTime: Long): List<Record> {
         throw UnsupportedOperationException()
     }
 
     @Throws(IOException::class)
-    override fun getLatestLogRecord(channelId: String?): Record? {
+    override fun getLatestLogRecord(channelId: String): Record {
         throw UnsupportedOperationException()
     }
 
@@ -166,7 +168,7 @@ class MqttLogger : DataLoggerService, ManagedService {
     private fun connect() {
         val settings = createMqttSettings()
         val connection = MqttConnection(settings)
-        connection.setSslManager(sslManager)
+        connection.setSslManager(sslManager!!)
         mqttWriter = MqttWriter(connection, this.id)
         if (settings.isSsl) {
             if (isLoggerReady) {
@@ -184,32 +186,32 @@ class MqttLogger : DataLoggerService, ManagedService {
     private fun createMqttSettings(): MqttSettings {
         // @formatter:off
         val settings = MqttSettings(
-            propertyHandler.getString(MqttLoggerSettings.Companion.HOST),
-            propertyHandler.getInt(MqttLoggerSettings.Companion.PORT),
-            propertyHandler.getString(MqttLoggerSettings.Companion.USERNAME),
-            propertyHandler.getString(MqttLoggerSettings.Companion.PASSWORD),
-            propertyHandler.getBoolean(MqttLoggerSettings.Companion.SSL),
-            propertyHandler.getInt(MqttLoggerSettings.Companion.MAX_BUFFER_SIZE).toLong(),
-            propertyHandler.getInt(MqttLoggerSettings.Companion.MAX_FILE_SIZE).toLong(),
-            propertyHandler.getInt(MqttLoggerSettings.Companion.MAX_FILE_COUNT),
-            propertyHandler.getInt(MqttLoggerSettings.Companion.CONNECTION_RETRY_INTERVAL),
-            propertyHandler.getInt(MqttLoggerSettings.Companion.CONNECTION_ALIVE_INTERVAL),
-            propertyHandler.getString(MqttLoggerSettings.Companion.PERSISTENCE_DIRECTORY),
-            propertyHandler.getString(MqttLoggerSettings.Companion.LAST_WILL_TOPIC),
-            propertyHandler.getString(MqttLoggerSettings.Companion.LAST_WILL_PAYLOAD).toByteArray(),
-            propertyHandler.getBoolean(MqttLoggerSettings.Companion.LAST_WILL_ALWAYS),
-            propertyHandler.getString(MqttLoggerSettings.Companion.FIRST_WILL_TOPIC),
-            propertyHandler.getString(MqttLoggerSettings.Companion.FIRST_WILL_PAYLOAD).toByteArray(),
-            propertyHandler.getInt(MqttLoggerSettings.Companion.RECOVERY_CHUNK_SIZE),
-            propertyHandler.getInt(MqttLoggerSettings.Companion.RECOVERY_DELAY),
-            propertyHandler.getBoolean(MqttLoggerSettings.Companion.WEB_SOCKET)
+            propertyHandler.getString(MqttLoggerSettings.HOST) ?: "localhost",
+            propertyHandler.getInt(MqttLoggerSettings.PORT),
+            propertyHandler.getString(MqttLoggerSettings.USERNAME) ?: "",
+            propertyHandler.getString(MqttLoggerSettings.PASSWORD) ?: "",
+            propertyHandler.getBoolean(MqttLoggerSettings.SSL),
+            propertyHandler.getInt(MqttLoggerSettings.MAX_BUFFER_SIZE).toLong(),
+            propertyHandler.getInt(MqttLoggerSettings.MAX_FILE_SIZE).toLong(),
+            propertyHandler.getInt(MqttLoggerSettings.MAX_FILE_COUNT),
+            propertyHandler.getInt(MqttLoggerSettings.CONNECTION_RETRY_INTERVAL),
+            propertyHandler.getInt(MqttLoggerSettings.CONNECTION_ALIVE_INTERVAL),
+            propertyHandler.getString(MqttLoggerSettings.PERSISTENCE_DIRECTORY),
+            propertyHandler.getString(MqttLoggerSettings.LAST_WILL_TOPIC) ?: "",
+            (propertyHandler.getString(MqttLoggerSettings.LAST_WILL_PAYLOAD) ?: "").toByteArray(),
+            propertyHandler.getBoolean(MqttLoggerSettings.LAST_WILL_ALWAYS),
+            propertyHandler.getString(MqttLoggerSettings.FIRST_WILL_TOPIC) ?: "",
+            (propertyHandler.getString(MqttLoggerSettings.FIRST_WILL_PAYLOAD) ?: "").toByteArray(),
+            propertyHandler.getInt(MqttLoggerSettings.RECOVERY_CHUNK_SIZE),
+            propertyHandler.getInt(MqttLoggerSettings.RECOVERY_DELAY),
+            propertyHandler.getBoolean(MqttLoggerSettings.WEB_SOCKET)
         )
         // @formatter:on
         logger.info("MqttSettings for MqttConnection \n", settings.toString())
         return settings
     }
 
-    override fun updated(propertyDict: Dictionary<String?, *>?) {
+    override fun updated(propertyDict: Dictionary<String, *>) {
         val dict = DictionaryPreprocessor(propertyDict)
         if (!dict.wasIntermediateOsgiInitCall()) {
             tryProcessConfig(dict)
@@ -239,8 +241,8 @@ class MqttLogger : DataLoggerService, ManagedService {
     private fun applyConfigChanges() {
         configLoaded = true
         logger.info("Configuration changed - new configuration {}", propertyHandler.toString())
-        parser = propertyHandler.getString(MqttLoggerSettings.Companion.PARSER)
-        isLogMultiple = propertyHandler.getBoolean(MqttLoggerSettings.Companion.MULTIPLE)
+        parser = propertyHandler.getString(MqttLoggerSettings.PARSER)
+        isLogMultiple = propertyHandler.getBoolean(MqttLoggerSettings.MULTIPLE)
         shutdown()
         connect()
     }
@@ -248,16 +250,16 @@ class MqttLogger : DataLoggerService, ManagedService {
     fun shutdown() {
         // Saves RAM buffer to file and terminates running reconnects
         mqttWriter.shutdown()
-        if (!mqttWriter.isConnected && mqttWriter.isInitialConnect) {
+        if (!mqttWriter.connected && mqttWriter.isInitialConnect) {
             return
         }
         logger.info("closing MQTT connection")
-        if (mqttWriter.isConnected) {
+        if (mqttWriter.connected) {
             mqttWriter.connection.disconnect()
         }
     }
 
-    fun addParser(parserId: String?, parserService: ParserService) {
+    fun addParser(parserId: String, parserService: ParserService) {
         logger.info("put parserID {} to PARSERS", parserId)
         availableParsers[parserId] = parserService
     }
@@ -266,11 +268,11 @@ class MqttLogger : DataLoggerService, ManagedService {
         availableParsers.remove(parserId)
     }
 
-    fun setSslManager(instance: SslManagerInterface?) {
+    fun setSslManager(instance: SslManagerInterface) {
         sslManager = instance
-        mqttWriter.connection.setSslManager(sslManager)
+        mqttWriter.connection.setSslManager(instance)
         // if sslManager is already loaded, then connect
-        if (sslManager!!.isLoaded) {
+        if (instance.isLoaded) {
             shutdown()
             connect()
         }
@@ -279,7 +281,5 @@ class MqttLogger : DataLoggerService, ManagedService {
 
     companion object {
         private val logger = LoggerFactory.getLogger(MqttLogger::class.java)
-        val id = "mqttlogger"
-            get() = Companion.field
     }
 }

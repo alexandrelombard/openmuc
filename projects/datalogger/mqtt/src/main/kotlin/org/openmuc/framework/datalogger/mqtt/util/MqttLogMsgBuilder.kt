@@ -29,10 +29,10 @@ import org.slf4j.LoggerFactory
 import java.util.stream.Collectors
 
 class MqttLogMsgBuilder(
-    private val channelsToLog: HashMap<String?, MqttLogChannel>,
+    private val channelsToLog: HashMap<String, MqttLogChannel>,
     private val parserService: ParserService?
 ) {
-    fun buildLogMsg(loggingRecordList: List<LoggingRecord?>, isLogMultiple: Boolean): List<MqttLogMsg> {
+    fun buildLogMsg(loggingRecordList: List<LoggingRecord>, isLogMultiple: Boolean): List<MqttLogMsg> {
         return if (isLogMultiple) {
             logMultiple(loggingRecordList)
         } else {
@@ -40,12 +40,12 @@ class MqttLogMsgBuilder(
         }
     }
 
-    private fun logSingle(loggingRecords: List<LoggingRecord?>): List<MqttLogMsg> {
+    private fun logSingle(loggingRecords: List<LoggingRecord>): List<MqttLogMsg> {
         val logMessages: MutableList<MqttLogMsg> = ArrayList()
         for (loggingRecord in loggingRecords) {
             try {
-                val topic = channelsToLog[loggingRecord!!.channelId]!!.topic
-                val message = parserService!!.serialize(loggingRecord)
+                val topic = channelsToLog[loggingRecord.channelId]!!.topic
+                val message = parserService!!.serialize(loggingRecord) ?: byteArrayOf()
                 logMessages.add(MqttLogMsg(loggingRecord.channelId, message, topic))
             } catch (e: SerializationException) {
                 logger.error("failed to parse records {}", e.message)
@@ -54,7 +54,7 @@ class MqttLogMsgBuilder(
         return logMessages
     }
 
-    private fun logMultiple(loggingRecords: List<LoggingRecord?>): List<MqttLogMsg> {
+    private fun logMultiple(loggingRecords: List<LoggingRecord>): List<MqttLogMsg> {
         val logMessages: MutableList<MqttLogMsg> = ArrayList()
         if (hasDifferentTopics()) {
             throw UnsupportedOperationException(
@@ -77,8 +77,8 @@ class MqttLogMsgBuilder(
         } else {
             try {
                 // since all topics are the same, get the topic of
-                val topic = channelsToLog[loggingRecords[0]!!.channelId]!!.topic
-                val message = parserService!!.serialize(loggingRecords)
+                val topic = channelsToLog[loggingRecords[0].channelId]!!.topic
+                val message = parserService!!.serialize(loggingRecords) ?: byteArrayOf()
                 val channelIds = loggingRecords.stream()
                     .map { record: LoggingRecord? -> record!!.channelId }
                     .collect(Collectors.toList())

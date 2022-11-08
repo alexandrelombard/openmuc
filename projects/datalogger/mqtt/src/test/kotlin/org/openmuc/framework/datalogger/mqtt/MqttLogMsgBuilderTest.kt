@@ -52,7 +52,7 @@ class MqttLogMsgBuilderTest {
 
         // 3. prepare records which should be logged
         val records: MutableList<LoggingRecord?> = ArrayList()
-        records.add(LoggingRecord(logChannelMockA!!.id!!, record3!!))
+        records.add(LoggingRecord(logChannelMockA!!.id, record3!!))
 
         // 4. equal to calling logger.log(..) method
         val builder = MqttLogMsgBuilder(channelsToLog, parser)
@@ -78,7 +78,7 @@ class MqttLogMsgBuilderTest {
 
         // 3. prepare records which should be logged
         val records: MutableList<LoggingRecord?> = ArrayList()
-        records.add(LoggingRecord(logChannelMockA!!.id!!, record3!!))
+        records.add(LoggingRecord(logChannelMockA!!.id, record3!!))
 
         // 4. equal to calling logger.log(..) method
         val builder = MqttLogMsgBuilder(channelsToLog, parser)
@@ -108,8 +108,8 @@ class MqttLogMsgBuilderTest {
 
         // 3. prepare records which should be logged
         val records: MutableList<LoggingRecord?> = ArrayList()
-        records.add(LoggingRecord(logChannelMockA!!.id!!, record3!!))
-        records.add(LoggingRecord(logChannelMockB!!.id!!, record5!!))
+        records.add(LoggingRecord(logChannelMockA!!.id, record3!!))
+        records.add(LoggingRecord(logChannelMockB!!.id, record5!!))
 
         // 4. equal to calling logger.log(..) method
         val builder = MqttLogMsgBuilder(channelsToLog, parser)
@@ -149,8 +149,8 @@ class MqttLogMsgBuilderTest {
 
         // 3. prepare records which should be logged
         val records: MutableList<LoggingRecord?> = ArrayList()
-        records.add(LoggingRecord(logChannelMockA!!.id!!, record3!!))
-        records.add(LoggingRecord(logChannelMockB!!.id!!, record5!!))
+        records.add(LoggingRecord(logChannelMockA!!.id, record3!!))
+        records.add(LoggingRecord(logChannelMockB!!.id, record5!!))
 
         // 4. equal to calling logger.log(..) method
         val builder = MqttLogMsgBuilder(channelsToLog, parser)
@@ -188,8 +188,8 @@ class MqttLogMsgBuilderTest {
 
         // 3. prepare records which should be logged
         val records: MutableList<LoggingRecord?> = ArrayList()
-        records.add(LoggingRecord(logChannelMockA!!.id!!, record3!!))
-        records.add(LoggingRecord(logChannelMockC!!.id!!, record7!!))
+        records.add(LoggingRecord(logChannelMockA!!.id, record3!!))
+        records.add(LoggingRecord(logChannelMockC!!.id, record7!!))
 
         // 4. equal to calling logger.log(..) method
         val builder = MqttLogMsgBuilder(channelsToLog, parser)
@@ -209,10 +209,10 @@ class MqttLogMsgBuilderTest {
     }
 
     companion object {
-        private var logChannelMockA: LogChannel? = null
-        private var logChannelMockB: LogChannel? = null
-        private var logChannelMockC: LogChannel? = null
-        private var logChannelMockD: LogChannel? = null
+        private lateinit var logChannelMockA: LogChannel
+        private lateinit var logChannelMockB: LogChannel
+        private lateinit var logChannelMockC: LogChannel
+        private lateinit var logChannelMockD: LogChannel
         private var record3: Record? = null
         private var record5: Record? = null
         private var record7: Record? = null

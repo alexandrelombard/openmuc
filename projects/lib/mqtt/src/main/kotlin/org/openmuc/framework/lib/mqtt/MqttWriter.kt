@@ -35,7 +35,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 open class MqttWriter(connection: MqttConnection, pid: String) {
     val connection: MqttConnection
-    private var connected = false
+    var connected = false
+        private set
     private val cancelReconnect = AtomicBoolean(false)
     private var timeOfConnectionLoss: LocalDateTime? = null
     private val sdf = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
@@ -215,10 +216,6 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
 
     open fun publish(topic: String, message: ByteArray): CompletableFuture<Mqtt3Publish> {
         return connection.client.publishWith().topic(topic).payload(message).send()
-    }
-
-    fun isConnected(): Boolean {
-        return connected
     }
 
     private fun log(message: String, vararg args: Any) {

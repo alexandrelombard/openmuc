@@ -24,7 +24,7 @@ import org.openmuc.framework.datalogger.mqtt.util.MqttChannelLogSettings
 import org.openmuc.framework.datalogger.spi.LogChannel
 
 class MqttLogChannel(var logChannel: LogChannel?) {
-    var topic: String?
+    var topic: String
 
     init {
         topic = MqttChannelLogSettings.getTopic(logChannel!!.loggingSettings)

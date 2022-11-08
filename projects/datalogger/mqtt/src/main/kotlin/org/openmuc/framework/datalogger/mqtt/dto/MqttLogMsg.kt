@@ -20,4 +20,4 @@
  */
 package org.openmuc.framework.datalogger.mqtt.dto
 
-class MqttLogMsg(var channelId: String, var message: ByteArray?, var topic: String?)
+class MqttLogMsg(var channelId: String, var message: ByteArray, var topic: String)
