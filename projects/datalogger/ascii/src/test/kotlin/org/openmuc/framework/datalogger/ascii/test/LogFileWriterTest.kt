@@ -159,12 +159,7 @@ class LogFileWriterTest {
                 ++numErrorFlags
             }
         }
-        val assertT: Boolean
-        assertT = if (receivedRecords == valuesToWrite && numErrorFlags == valuesToWrite - 1) {
-            true
-        } else {
-            false
-        }
+        val assertT = receivedRecords == valuesToWrite && numErrorFlags == valuesToWrite - 1
         println(Thread.currentThread().stackTrace[1].methodName)
         println(" records = $receivedRecords ($valuesToWrite expected)")
         println(" records with error flag 32 = " + numErrorFlags + " (" + (valuesToWrite - 1) + " expected)")
