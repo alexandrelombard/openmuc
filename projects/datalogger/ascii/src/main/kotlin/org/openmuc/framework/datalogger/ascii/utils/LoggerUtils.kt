@@ -313,9 +313,9 @@ object LoggerUtils {
      * the name to search in line
      * @return the column numbers mapped with the name.
      */
-    fun getColumnNumbersByNames(line: String?, names: Array<String>): Map<String, Int> {
-        if (line!!.startsWith(Const.COMMENT_SIGN)) {
-            return mapOf()
+    fun getColumnNumbersByNames(line: String, names: Array<String>): Map<String, Int>? {
+        if (line.startsWith(Const.COMMENT_SIGN)) {
+            return null
         }
         val channelColumnsMap: MutableMap<String, Int> = HashMap()
         val columns = line.split(Const.SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }

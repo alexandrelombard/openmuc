@@ -172,15 +172,15 @@ class LogFileReader(private val path: String, logChannel: LogChannel) {
                 line = raf.readLine()
                 channelsColumnsMap = LoggerUtils.getColumnNumbersByNames(line, ids)
             }
-            unixTimestampColumn = channelsColumnsMap[Const.TIMESTAMP_STRING]!!
+            unixTimestampColumn = channelsColumnsMap[Const.TIMESTAMP_STRING] ?: 0
             firstValueLine = raf.readLine()
             rowSize = firstValueLine.length + 1L // +1 because of "\n"
 
             // rewind the position to the start of the firstValue line
             currentPosition = raf.filePointer - rowSize
             firstTimestamp =
-                (java.lang.Double.valueOf(firstValueLine.split(Const.SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }
-                    .toTypedArray()[unixTimestampColumn])
+                ((firstValueLine.split(Const.SEPARATOR.toRegex()).dropLastWhile { it.isEmpty() }
+                    .toTypedArray()[unixTimestampColumn]).toDouble()
                         * 1000).toLong()
             if (nextFile || startTimestamp < firstTimestamp) {
                 startTimestamp = firstTimestamp

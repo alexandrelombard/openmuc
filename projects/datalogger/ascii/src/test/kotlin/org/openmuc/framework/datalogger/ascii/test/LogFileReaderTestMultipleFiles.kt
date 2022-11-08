@@ -52,7 +52,7 @@ class LogFileReaderTestMultipleFiles {
         val t2 = TestUtils.stringToDate(dateFormat, fileDate2 + " 00:59:" + (60 - loggingInterval / 1000))
             .timeInMillis
         val fr = LogFileReader(TestUtils.TESTFOLDERPATH, channelTestImpl)
-        val records: List<Record?> = fr.getValues(t1, t2)[channelTestImpl.id]!!
+        val records = fr.getValues(t1, t2)[channelTestImpl.id] ?: listOf()
         val hour = 3600
         val expectedRecords = ((hour * 24 + hour * 2) / (loggingInterval / 1000)).toLong()
         print(Thread.currentThread().stackTrace[1].methodName)
