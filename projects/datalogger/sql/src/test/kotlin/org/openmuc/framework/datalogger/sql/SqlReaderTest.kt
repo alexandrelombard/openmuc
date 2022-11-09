@@ -26,23 +26,22 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.invocation.InvocationOnMock
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.datalogger.sql.DbAccess.Companion.getTestInstance
 import java.sql.*
 
 class SqlReaderTest {
-    private var sqlReader: SqlReader? = null
-    private var dbAccess: DbAccess? = null
-    private var dbAccessSpy: DbAccess? = null
-    private var dbConnectorMock: DbConnector? = null
+    private lateinit var sqlReader: SqlReader
+    private lateinit var dbAccess: DbAccess
+    private lateinit var dbAccessSpy: DbAccess
+    private lateinit var dbConnectorMock: DbConnector
     private var connection: Connection? = null
     private val channelId = "testChannel"
     private val valueType = ValueType.DOUBLE
     @BeforeEach
     @Throws(SQLException::class)
     fun setup() {
-        connection = TestConnectionHelper.getConnection()
+        connection = TestConnectionHelper.connection
         dbConnectorMock = Mockito.mock(DbConnector::class.java)
         dbAccess = getTestInstance(dbConnectorMock) // Real DbAccess with mock DbConnector to prevent null
         // pointer exception in queryRecords

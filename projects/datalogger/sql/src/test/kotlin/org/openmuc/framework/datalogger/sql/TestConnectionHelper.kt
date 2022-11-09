@@ -22,7 +22,6 @@ package org.openmuc.framework.datalogger.sql
 
 import org.h2.Driver
 import org.h2.util.OsgiDataSourceFactory
-import org.openmuc.framework.data.Record.value
 import java.lang.reflect.InvocationTargetException
 import java.sql.*
 import java.util.*

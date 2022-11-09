@@ -26,25 +26,24 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.datalogger.spi.LogChannel
 import org.openmuc.framework.datalogger.sql.DbAccess
 import org.openmuc.framework.datalogger.sql.MetaBuilder
 import org.openmuc.framework.datalogger.sql.TableSetup
 import org.openmuc.framework.datalogger.sql.TestConnectionHelper
-import org.openmuc.framework.datalogger.sql.utils.PropertyHandlerProvider.Companion.instance
+import org.openmuc.framework.datalogger.sql.utils.PropertyHandlerProvider
 import org.openmuc.framework.datalogger.sql.utils.Settings
 import org.openmuc.framework.lib.osgi.config.PropertyHandler
 import java.sql.*
 import java.util.*
 
 internal class TableSetupTest {
-    private var tableSetup: TableSetup? = null
-    private var metaBuilder: MetaBuilder? = null
-    private var accessMock: DbAccess? = null
-    private var channelList: MutableList<LogChannel?>? = null
-    private var connection: Connection? = null
+    private lateinit var tableSetup: TableSetup
+    private lateinit var metaBuilder: MetaBuilder
+    private lateinit var accessMock: DbAccess
+    private lateinit var channelList: MutableList<LogChannel>
+    private lateinit var connection: Connection
     @BeforeEach
     @Throws(SQLException::class)
     fun setupInitializer() {
@@ -64,10 +63,10 @@ internal class TableSetupTest {
             PropertyHandler::class.java
         )
         Mockito.`when`(propHandlerMock.getString(Settings.URL)).thenReturn("jdbc:h2")
-        instance!!.propertyHandler = propHandlerMock
+        PropertyHandlerProvider.propertyHandler = propHandlerMock
         tableSetup = TableSetup(channelList, accessMock)
         metaBuilder = MetaBuilder(channelList, accessMock)
-        connection = TestConnectionHelper.getConnection()
+        connection = TestConnectionHelper.connection
     }
 
     private fun getMockedChannel(channelId: String): LogChannel {
@@ -85,7 +84,7 @@ internal class TableSetupTest {
     @Test
     @Throws(SQLException::class)
     fun initNewMetaTable() {
-        metaBuilder!!.writeMetaTable()
+        metaBuilder.writeMetaTable()
         val sqlCaptor = ArgumentCaptor.forClass(
             StringBuilder::class.java
         )
@@ -99,27 +98,27 @@ internal class TableSetupTest {
                 Assertions.assertTrue(sqlConstraint.contains("gridPower") && sqlConstraint.contains("pvPower"))
             }
         }
-        connection!!.close()
+        connection.close()
     }
 
     @Test
     @Throws(SQLException::class)
     fun createOpenmucTables() {
-        tableSetup!!.createOpenmucTables()
+        tableSetup.createOpenmucTables()
         val sqlCaptor = ArgumentCaptor.forClass(
             StringBuilder::class.java
         )
         Mockito.verify(accessMock, Mockito.atLeastOnce()).executeSQL(sqlCaptor.capture())
         val returnedBuilder = sqlCaptor.allValues
-        val expectedConstrains = AssertData.getOpenmucTableConstraints()
-        for (i in channelList!!.indices) {
-            val channelId = channelList!![i]!!.id
-            Assertions.assertTrue(returnedBuilder[i].toString().contains(channelId!!))
+        val expectedConstrains = AssertData.openmucTableConstraints
+        for (i in channelList.indices) {
+            val channelId = channelList[i].id
+            Assertions.assertTrue(returnedBuilder[i].toString().contains(channelId))
 
             // test if the sql statements can be executed without errors
             TestConnectionHelper.executeSQL(connection, returnedBuilder[i].toString())
         }
-        connection!!.close()
+        connection.close()
     }
 
     companion object {

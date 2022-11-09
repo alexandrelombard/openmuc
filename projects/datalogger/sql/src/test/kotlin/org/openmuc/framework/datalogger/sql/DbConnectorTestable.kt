@@ -20,7 +20,6 @@
  */
 package org.openmuc.framework.datalogger.sql
 
-import org.openmuc.framework.data.Record.value
 import java.sql.*
 
 class DbConnectorTestable(override val urlFromProperties: String) : DbConnector() {
@@ -30,7 +29,7 @@ class DbConnectorTestable(override val urlFromProperties: String) : DbConnector(
      * Creates with given url
      */
     init {
-        testableConnection = TestConnectionHelper.getConnection()
+        testableConnection = TestConnectionHelper.connection
     }
 
     @Throws(SQLException::class)
@@ -39,6 +38,6 @@ class DbConnectorTestable(override val urlFromProperties: String) : DbConnector(
     }
 
     override fun initConnector() {}
-    protected override val connectionToDb: Unit
-        protected get() {}
+    override val connectionToDb: Unit
+        get() {}
 }

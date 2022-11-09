@@ -22,6 +22,16 @@ package org.openmuc.framework.datalogger.sql.init
 
 import java.sql.JDBCType
 import java.util.*
+import org.openmuc.framework.datalogger.sql.utils.TabelNames
+import org.openmuc.framework.datalogger.sql.utils.TabelNames.BOOLEAN_VALUE
+import org.openmuc.framework.datalogger.sql.utils.TabelNames.BYTE_ARRAY_VALUE
+import org.openmuc.framework.datalogger.sql.utils.TabelNames.BYTE_VALUE
+import org.openmuc.framework.datalogger.sql.utils.TabelNames.DOUBLE_VALUE
+import org.openmuc.framework.datalogger.sql.utils.TabelNames.FLOAT_VALUE
+import org.openmuc.framework.datalogger.sql.utils.TabelNames.INT_VALUE
+import org.openmuc.framework.datalogger.sql.utils.TabelNames.LONG_VALUE
+import org.openmuc.framework.datalogger.sql.utils.TabelNames.SHORT_VALUE
+import org.openmuc.framework.datalogger.sql.utils.TabelNames.STRING_VALUE
 
 object AssertData {
     val openmucTableConstraints: List<String>

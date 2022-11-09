@@ -28,7 +28,6 @@ import org.mockito.invocation.InvocationOnMock
 import org.openmuc.framework.data.DoubleValue
 import org.openmuc.framework.data.Flag
 import org.openmuc.framework.data.Record
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.data.Value
 import org.openmuc.framework.datalogger.spi.LoggingRecord
 import org.openmuc.framework.datalogger.sql.DbAccess
@@ -36,13 +35,13 @@ import java.sql.*
 import java.util.*
 
 internal class SqlWriterTest {
-    private var sqlWriter: SqlWriter? = null
-    private var dbAccessMock: DbAccess? = null
-    private var connection: Connection? = null
+    private lateinit var sqlWriter: SqlWriter
+    private lateinit var dbAccessMock: DbAccess
+    private lateinit var connection: Connection
     @BeforeEach
     @Throws(SQLException::class)
     fun setup() {
-        connection = TestConnectionHelper.getConnection()
+        connection = TestConnectionHelper.connection
         dbAccessMock = Mockito.mock(DbAccess::class.java)
         Mockito.doAnswer { invocation: InvocationOnMock ->  // pass any executed sql statements to the test connection
             TestConnectionHelper.executeSQL(connection, invocation.getArgument<Any>(0).toString())
@@ -58,15 +57,15 @@ internal class SqlWriterTest {
         TestConnectionHelper.executeSQL(
             connection, String.format( // create table for the tests to write to
                 "CREATE TABLE %s (time TIMESTAMP NOT NULL, " + "flag SMALLINT NOT NULL, \"VALUE\" DOUBLE)",
-                recordList[0]!!.channelId
+                recordList[0].channelId
             )
         )
-        sqlWriter!!.writeEventBasedContainerToDb(recordList)
+        sqlWriter.writeEventBasedContainerToDb(recordList)
         Mockito.verify(dbAccessMock, Mockito.times(5)).executeSQL(ArgumentMatchers.any())
-        connection!!.close()
+        connection.close()
     }
 
-    private fun buildLoggingRecordList(numOfElements: Int): List<LoggingRecord?> {
+    private fun buildLoggingRecordList(numOfElements: Int): List<LoggingRecord> {
         val channelId = "testChannel"
         val value: Value = DoubleValue(5.0)
         val timestamp = 1599569019000L
