@@ -39,7 +39,7 @@ class SqlLoggerService : DataLoggerService, ManagedService {
     private var writer: SqlWriter? = null
     private var reader: SqlReader? = null
     private var dbAccess: DbAccess? = null
-    private var channels: List<LogChannel?>? = null
+    private var channels: List<LogChannel> = listOf()
 
     /**
      * Starts the h2 server if conditions are met and connects to the database.
@@ -50,7 +50,7 @@ class SqlLoggerService : DataLoggerService, ManagedService {
         eventBuffer = ArrayList()
         val pid = SqlLoggerService::class.java.name
         propertyHandler = PropertyHandler(settings, pid)
-        PropertyHandlerProvider.Companion.getInstance().setPropertyHandler(propertyHandler)
+        PropertyHandlerProvider.propertyHandler = propertyHandler
     }
 
     private fun connect() {
@@ -63,7 +63,7 @@ class SqlLoggerService : DataLoggerService, ManagedService {
     }
 
     private fun writeMetaToDb() {
-        val metaBuilder = MetaBuilder(channels, dbAccess)
+        val metaBuilder = MetaBuilder(channels, dbAccess!!)
         metaBuilder.writeMetaTable()
         val tableSetup = TableSetup(channels, dbAccess)
         tableSetup.createOpenmucTables()
@@ -87,7 +87,7 @@ class SqlLoggerService : DataLoggerService, ManagedService {
      * Creates the metadata table to create the tables for each data type and to insert info about all the channel into
      * the metadata table
      */
-    override fun setChannelsToLog(channels: List<LogChannel?>?) {
+    override fun setChannelsToLog(channels: List<LogChannel>) {
         this.channels = channels
         if (dbAccess != null) {
             val tableSetup = TableSetup(channels, dbAccess)
@@ -95,7 +95,7 @@ class SqlLoggerService : DataLoggerService, ManagedService {
         }
     }
 
-    override fun log(containers: List<LoggingRecord?>?, timestamp: Long) {
+    override fun log(containers: List<LoggingRecord>, timestamp: Long) {
         if (writer == null) {
             logger.warn("Sql connection not established!")
             return
@@ -103,10 +103,10 @@ class SqlLoggerService : DataLoggerService, ManagedService {
         writer!!.writeRecordContainerToDb(containers, timestamp)
     }
 
-    override fun logEvent(containers: List<LoggingRecord?>?, timestamp: Long) {
+    override fun logEvent(containers: List<LoggingRecord>, timestamp: Long) {
         if (writer == null) {
             logger.debug("Sql connection not established!")
-            eventBuffer.addAll(containers!!)
+            eventBuffer.addAll(containers)
             return
         }
         writer!!.writeEventBasedContainerToDb(containers)
@@ -120,10 +120,10 @@ class SqlLoggerService : DataLoggerService, ManagedService {
      * @return the queried data
      */
     @Throws(IOException::class)
-    override fun getRecords(channelId: String?, startTime: Long, endTime: Long): List<Record?>? {
-        var records: List<Record?>? = ArrayList()
-        for (temp in channels!!) {
-            if (temp!!.id == channelId) {
+    override fun getRecords(channelId: String, startTime: Long, endTime: Long): List<Record> {
+        var records: List<Record> = ArrayList()
+        for (temp in channels) {
+            if (temp.id == channelId) {
                 records = reader!!.readRecordListFromDb(channelId, temp.valueType, startTime, endTime)
                 break
             }
@@ -142,10 +142,10 @@ class SqlLoggerService : DataLoggerService, ManagedService {
      * @throws IOException
      */
     @Throws(IOException::class)
-    override fun getLatestLogRecord(channelId: String?): Record? {
+    override fun getLatestLogRecord(channelId: String): Record? {
         var record: Record? = null
-        for (temp in channels!!) {
-            if (temp!!.id == channelId) {
+        for (temp in channels) {
+            if (temp.id == channelId) {
                 record = reader!!.readLatestRecordFromDb(channelId, temp.valueType)
                 break
             }
@@ -153,7 +153,7 @@ class SqlLoggerService : DataLoggerService, ManagedService {
         return record
     }
 
-    override fun updated(propertyDict: Dictionary<String?, *>?) {
+    override fun updated(propertyDict: Dictionary<String, *>) {
         val dict = DictionaryPreprocessor(propertyDict)
         if (!dict.wasIntermediateOsgiInitCall()) {
             tryProcessConfig(dict)

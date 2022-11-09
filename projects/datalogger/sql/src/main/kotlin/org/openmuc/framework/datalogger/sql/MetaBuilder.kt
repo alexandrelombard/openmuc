@@ -20,7 +20,6 @@
  */
 package org.openmuc.framework.datalogger.sql
 
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.datalogger.spi.LogChannel
 import org.openmuc.framework.datalogger.sql.utils.PropertyHandlerProvider
 import org.openmuc.framework.datalogger.sql.utils.Settings
@@ -36,8 +35,8 @@ class MetaBuilder(private val channels: List<LogChannel>, private val dbAccess: 
     private val url: String
 
     init {
-        val propertyHandler: PropertyHandler = PropertyHandlerProvider.propertyHandler
-        url = propertyHandler.getString(Settings.URL)
+        val propertyHandler = PropertyHandlerProvider.propertyHandler
+        url = propertyHandler?.getString(Settings.URL)!!
     }
 
     fun writeMetaTable() {
@@ -152,11 +151,11 @@ class MetaBuilder(private val channels: List<LogChannel>, private val dbAccess: 
         sbMetaInsert!!.append(sbMetaInsertValues)
         try {
             if (metaEntriesChanged()) {
-                return sbMetaInsert
+                return sbMetaInsert!!
             }
         } catch (e: SQLException) {
             logger.warn("Exception at reading existing meta entries: {}", e.message)
-            return sbMetaInsert
+            return sbMetaInsert!!
         }
         return StringBuilder()
     }

@@ -171,7 +171,7 @@ open class DbConnector {
      * @return a properties object with the attributes the datasource needs
      */
     private fun setSqlProperties(): Properties {
-        val propertyHandler = PropertyHandlerProvider.propertyHandler
+        val propertyHandler = PropertyHandlerProvider.propertyHandler!!
         val properties = Properties()
         properties.setProperty("url", url)
         properties.setProperty("password", propertyHandler.getString(Settings.PASSWORD))
@@ -268,7 +268,7 @@ open class DbConnector {
             } else {
                 cmd[0] = "sh"
             }
-            val propertyHandler: PropertyHandler = PropertyHandlerProvider.propertyHandler
+            val propertyHandler = PropertyHandlerProvider.propertyHandler!!
             cmd[1] = "-c"
             cmd[2] = ("PGPASSWORD=" + propertyHandler.getString(Settings.PSQL_PASS)
                     + " psql -c 'ALTER EXTENSION timescaledb UPDATE;'  -U postgres -h localhost -d " + dbName)

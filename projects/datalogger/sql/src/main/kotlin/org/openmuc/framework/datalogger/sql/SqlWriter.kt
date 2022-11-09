@@ -33,14 +33,14 @@ class SqlWriter(private val dbAccess: DbAccess) {
         tableListChannel = ArrayList()
     }
 
-    fun writeEventBasedContainerToDb(containers: List<LoggingRecord?>?) {
+    fun writeEventBasedContainerToDb(containers: List<LoggingRecord>) {
         synchronized(tableListChannel) {
             writeAsTableList(containers)
             tableListChannel.clear()
         }
     }
 
-    private fun writeAsTableList(containers: List<LoggingRecord?>?) {
+    private fun writeAsTableList(containers: List<LoggingRecord>) {
         // createTableList();
         addRecordsFromContainersToList(containers)
         for (table in tableListChannel) {
@@ -51,20 +51,23 @@ class SqlWriter(private val dbAccess: DbAccess) {
         }
     }
 
-    private fun addRecordsFromContainersToList(containers: List<LoggingRecord?>?) {
-        for (logRecordContainer in containers!!) {
-            if (logRecordContainer!!.record.timestamp != null) {
-                val recordTs = logRecordContainer.record.timestamp!!
-                val sqlTimestamp = Timestamp(recordTs)
-                addContainerToList(sqlTimestamp, logRecordContainer)
+    private fun addRecordsFromContainersToList(containers: List<LoggingRecord>) {
+        for (logRecordContainer in containers) {
+            logRecordContainer.record.let {
+                val record = it
+                if(record != null) {
+                    val recordTs = record.timestamp ?: 0
+                    val sqlTimestamp = Timestamp(recordTs)
+                    addContainerToList(sqlTimestamp, logRecordContainer)
+                }
             }
         }
     }
 
-    fun writeRecordContainerToDb(containers: List<LoggingRecord?>?, timestamp: Long) {
+    fun writeRecordContainerToDb(containers: List<LoggingRecord>, timestamp: Long) {
         val sqlTimestamp = Timestamp(timestamp)
         // createTableList();
-        for (logRecordContainer in containers!!) {
+        for (logRecordContainer in containers) {
             addContainerToList(sqlTimestamp, logRecordContainer)
         }
         for (table in tableListChannel) {
@@ -84,20 +87,20 @@ class SqlWriter(private val dbAccess: DbAccess) {
      * @param logRecordContainer
      * Container object for the record
      */
-    private fun addContainerToList(sqlTimestamp: Timestamp, logRecordContainer: LoggingRecord?) {
-        val channelId = logRecordContainer!!.channelId
+    private fun addContainerToList(sqlTimestamp: Timestamp, logRecordContainer: LoggingRecord) {
+        val channelId = logRecordContainer.channelId
         val record = logRecordContainer.record
-        if (record.value != null) {
+        if (record?.value != null) {
             val sbChannel = StringBuilder("INSERT INTO $channelId (time,flag,\"VALUE\") VALUES ")
             val sbQuery2 = StringBuilder()
             sbQuery2.append("('")
                 .append(sqlTimestamp)
                 .append("',")
-                .append(logRecordContainer.record.flag.getCode().toInt())
+                .append(logRecordContainer.record?.flag?.getCode()?.toInt())
                 .append(',')
             sbChannel.append(sbQuery2)
             if (record.value != null) {
-                SqlValues.appendValue(record.value, sbChannel)
+                SqlValues.appendValue(record.value!!, sbChannel)
             } else {
                 sbChannel.append("NULL")
             }

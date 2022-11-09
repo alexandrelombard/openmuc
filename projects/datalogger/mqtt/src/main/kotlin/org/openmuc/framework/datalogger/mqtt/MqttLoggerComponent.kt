@@ -46,18 +46,15 @@ class MqttLoggerComponent {
 
         // subscribe for ParserService
         var serviceName = ParserService::class.java.name
-        registrationHandler!!.subscribeForServiceServiceEvent(serviceName) { event: Any ->
-            handleServiceRegistrationEvent(
-                event,
-                context
-            )
+        registrationHandler!!.subscribeForServiceServiceEvent(serviceName) { event: Any? ->
+            handleServiceRegistrationEvent(event!!, context)
         }
 
         // subscribe for SSLManager
         serviceName = SslManagerInterface::class.java.name
         registrationHandler!!.subscribeForService(serviceName) { instance: Any? ->
             if (instance != null) {
-                mqttLogger!!.setSslManager(instance as SslManagerInterface?)
+                mqttLogger!!.setSslManager(instance as SslManagerInterface)
             }
         }
 
