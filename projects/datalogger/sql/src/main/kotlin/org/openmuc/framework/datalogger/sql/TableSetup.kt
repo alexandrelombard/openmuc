@@ -37,8 +37,8 @@ class TableSetup(private val channels: List<LogChannel?>?, private val dbAccess:
     private val url: String
 
     init {
-        val propertyHandler: PropertyHandler = PropertyHandlerProvider.Companion.getInstance().getPropertyHandler()
-        url = propertyHandler.getString(Settings.Companion.URL)
+        val propertyHandler = PropertyHandlerProvider.propertyHandler!!
+        url = propertyHandler.getString(Settings.URL)!!
     }
 
     /**

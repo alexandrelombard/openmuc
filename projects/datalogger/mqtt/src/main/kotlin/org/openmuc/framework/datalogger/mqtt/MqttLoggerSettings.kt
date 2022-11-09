@@ -30,9 +30,9 @@ class MqttLoggerSettings : GenericSettings() {
         properties[HOST] =
             ServiceProperty(HOST, "URL of MQTT broker", "localhost", true)
         properties[SSL] = ServiceProperty(SSL, "usage of ssl true/false", "false", true)
-        properties[USERNAME] = ServiceProperty(USERNAME, "name of your MQTT account", null, false)
+        properties[USERNAME] = ServiceProperty(USERNAME, "name of your MQTT account", "", false)
         properties[PASSWORD] =
-            ServiceProperty(PASSWORD, "password of your MQTT account", null, false)
+            ServiceProperty(PASSWORD, "password of your MQTT account", "", false)
         properties[PARSER] = ServiceProperty(
             PARSER,
             "identifier of needed parser implementation",

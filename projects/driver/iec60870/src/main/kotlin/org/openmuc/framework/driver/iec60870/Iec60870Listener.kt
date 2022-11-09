@@ -57,7 +57,7 @@ class Iec60870Listener : ConnectionEventListener {
                 channelAddresses!!.add(channelAddress)
             } catch (e: ArgumentSyntaxException) {
                 logger.error(
-                    "ChannelId: " + channelRecordContainer.channel.id + "; Message: " + e.message
+                    "ChannelId: " + channelRecordContainer.channel?.id + "; Message: " + e.message
                 )
             }
         }
@@ -110,12 +110,12 @@ class Iec60870Listener : ConnectionEventListener {
 
     override fun connectionClosed(e: IOException) {
         logger.info("Connection was closed by server.")
-        listener?.connectionInterrupted(driverId, connection)
+        listener?.connectionInterrupted(driverId!!, connection!!)
     }
 
     private fun newRecords(i: Int, record: Record) {
         if (logger.isTraceEnabled) {
-            logger.trace("Set new Record: " + record.toString())
+            logger.trace("Set new Record: $record")
         }
         listener?.newRecords(creatNewChannelRecordContainer(containers!![i], record))
     }
@@ -123,7 +123,7 @@ class Iec60870Listener : ConnectionEventListener {
     private fun creatNewChannelRecordContainer(
         container: ChannelRecordContainer,
         record: Record
-    ): List<ChannelRecordContainer?> {
+    ): List<ChannelRecordContainer> {
         val channelRecordContainerList: MutableList<ChannelRecordContainer> = ArrayList()
         container.record = record
         channelRecordContainerList.add(container)

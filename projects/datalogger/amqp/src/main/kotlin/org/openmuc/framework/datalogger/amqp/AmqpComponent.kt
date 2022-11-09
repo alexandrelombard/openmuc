@@ -44,9 +44,9 @@ class AmqpComponent {
         amqpLogger = AmqpLogger()
         registrationHandler = RegistrationHandler(context)
         var serviceName = ParserService::class.java.name
-        registrationHandler!!.subscribeForServiceServiceEvent(serviceName) { event: Any ->
+        registrationHandler!!.subscribeForServiceServiceEvent(serviceName) { event: Any? ->
             handleServiceRegistrationEvent(
-                event,
+                event!!,
                 context
             )
         }

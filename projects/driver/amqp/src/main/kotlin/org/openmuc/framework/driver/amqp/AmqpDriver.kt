@@ -68,7 +68,7 @@ class AmqpDriver : DriverService {
         ScanException::class,
         ScanInterruptedException::class
     )
-    override fun scanForDevices(settings: String?, listener: DriverDeviceScanListener?) {
+    override fun scanForDevices(settings: String, listener: DriverDeviceScanListener?) {
         throw UnsupportedOperationException()
     }
 
@@ -78,9 +78,10 @@ class AmqpDriver : DriverService {
     }
 
     @Throws(ArgumentSyntaxException::class, ConnectionException::class)
-    override fun connect(deviceAddress: String?, settings: String?): Connection? {
+    override fun connect(deviceAddress: String, settings: String): Connection {
         synchronized(this) {
-            connection = AmqpDriverConnection(deviceAddress, settings)
+            val connection = AmqpDriverConnection(deviceAddress, settings)
+            this.connection = connection
             sslManager
             checkForExistingParserService()
             addParserServiceListenerToServiceRegistry()

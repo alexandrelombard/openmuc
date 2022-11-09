@@ -73,12 +73,11 @@ class SlotsDb : DataLoggerService {
 
     override fun log(containers: List<LoggingRecord>, timestamp: Long) {
         for (container in containers) {
-            var value: Double
-            value = if (container.record.value == null) {
+            val value: Double = if (container.record?.value == null) {
                 Double.NaN
             } else {
                 try {
-                    container.record.value!!.asDouble()
+                    container.record?.value?.asDouble() ?: Double.NaN
                 } catch (e: TypeConversionException) {
                     Double.NaN
                 }
@@ -91,7 +90,7 @@ class SlotsDb : DataLoggerService {
             try {
                 val channelId = container.channelId
                 fileObjectProxy!!.appendValue(
-                    channelId, value, timestamp, container.record.flag.getCode(),
+                    channelId, value, timestamp, container.record!!.flag.getCode(),
                     loggingIntervalsById[channelId]!!.toLong()
                 )
             } catch (e: IOException) {
