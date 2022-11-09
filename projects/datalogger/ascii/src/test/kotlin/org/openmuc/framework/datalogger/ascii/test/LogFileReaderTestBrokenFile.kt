@@ -22,6 +22,8 @@ package org.openmuc.framework.datalogger.ascii.test
 
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
 import org.openmuc.framework.data.Record
 import org.openmuc.framework.data.ValueType
@@ -37,6 +39,7 @@ class LogFileReaderTestBrokenFile {
     )
 
     @Test
+    @Order(2)
     fun tc200_logfile_does_not_exist() {
         println("### Begin test tc200_logfile_does_not_exist")
         fileDate = "20131201"
@@ -122,6 +125,7 @@ class LogFileReaderTestBrokenFile {
     // }
     // }
     @Test
+    @Order(1)
     fun tc203_no_file_in_directory() {
         val files = getAllDataFiles(TestUtils.TESTFOLDERPATH)
         Assertions.assertTrue(files.isEmpty())
@@ -131,6 +135,13 @@ class LogFileReaderTestBrokenFile {
         private const val loggingInterval = 1000 // ms
         var loggingTimeOffset = 0 // ms
         private const val Channel0Name = "power"
+        @JvmStatic
+        @BeforeAll
+        fun setUp() {
+            println("set up")
+            TestUtils.deleteTestFolder()
+        }
+
         @JvmStatic
         @AfterAll
         fun tearDown() {

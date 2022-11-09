@@ -97,7 +97,7 @@ class LogFileReaderTestMultipleFiles {
     fun tc_012_test_getLatestFile() {
         val dir = TestUtils.TESTFOLDERPATH
         val files = getAllDataFiles(dir)
-        val expected = "20770709_60000.dat"
+        val expected = "20770906_60000.dat"
         val file = getLatestFile(files)
         val actual = file?.name
         Assertions.assertEquals(expected, actual)
@@ -120,6 +120,7 @@ class LogFileReaderTestMultipleFiles {
         @BeforeAll
         fun setup() {
             println("### Setup() LogFileReaderTestMultipleFiles")
+            TestUtils.deleteTestFolder()
             TestUtils.createTestFolder()
             // drei Dateien
 
