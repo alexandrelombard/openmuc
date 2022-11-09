@@ -78,7 +78,7 @@ open class DbAccess {
     @Throws(SQLException::class)
     fun executeQuery(sb: StringBuilder): ResultSet {
         val statement = dbConnector.createStatementWithConnection()
-        return statement!!.executeQuery(sb.toString())
+        return statement.executeQuery(sb.toString())
     }
 
     fun timeScaleIsActive(): Boolean {

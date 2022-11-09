@@ -25,7 +25,7 @@ import java.util.*
 /**
  * Gets notified when an AMQP message was received
  */
-interface AmqpMessageListener : EventListener {
+fun interface AmqpMessageListener : EventListener {
     /**
      * Call this when a new message was received
      *
@@ -34,5 +34,5 @@ interface AmqpMessageListener : EventListener {
      * @param message
      * the received message
      */
-    fun newMessage(queue: String?, message: ByteArray?)
+    fun newMessage(queue: String, message: ByteArray)
 }

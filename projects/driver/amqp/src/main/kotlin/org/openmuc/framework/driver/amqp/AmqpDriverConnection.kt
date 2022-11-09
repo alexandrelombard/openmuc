@@ -29,7 +29,6 @@ import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.dataaccess.WriteValueContainer
 import org.openmuc.framework.datalogger.spi.LoggingRecord
 import org.openmuc.framework.driver.spi.*
-import org.openmuc.framework.driver.spi.ChannelValueContainer.value
 import org.openmuc.framework.lib.amqp.AmqpConnection
 import org.openmuc.framework.lib.amqp.AmqpReader
 import org.openmuc.framework.lib.amqp.AmqpSettings
@@ -44,7 +43,7 @@ import java.util.concurrent.TimeoutException
 
 class AmqpDriverConnection(deviceAddress: String, settings: String) : Connection {
     private val setting: Setting
-    private var connection: AmqpConnection? = null
+    private val connection: AmqpConnection
     private val writer: AmqpWriter
     private val reader: AmqpReader
     private val parsers = hashMapOf<String, ParserService>()
@@ -54,8 +53,8 @@ class AmqpDriverConnection(deviceAddress: String, settings: String) : Connection
     init {
         setting = Setting(settings)
         val amqpSettings = AmqpSettings(
-            deviceAddress, setting.port, setting.vhost, setting.user,
-            setting.password, setting.ssl, setting.exchange, setting.persistenceDir, setting.maxFileCount,
+            deviceAddress, setting.port, setting.vhost ?: "", setting.user ?: "",
+            setting.password ?: "", setting.ssl, setting.exchange ?: "", setting.persistenceDir, setting.maxFileCount,
             setting.maxFileSize.toLong(), setting.maxBufferSize.toLong(), setting.connectionAliveInterval
         )
         connection = try {
@@ -70,36 +69,36 @@ class AmqpDriverConnection(deviceAddress: String, settings: String) : Connection
     }
 
     @Throws(UnsupportedOperationException::class)
-    override fun scanForChannels(settings: String?): List<ChannelScanInfo?>? {
+    override fun scanForChannels(settings: String): List<ChannelScanInfo> {
         throw UnsupportedOperationException()
     }
 
     @Throws(UnsupportedOperationException::class)
     override fun read(
-        containers: List<ChannelRecordContainer?>?,
+        containers: List<ChannelRecordContainer>,
         containerListHandle: Any?,
         samplingGroup: String?
     ): Any? {
-        for (container in containers!!) {
-            val queue = container!!.channelAddress
+        for (container in containers) {
+            val queue = container.channelAddress
             val message = reader.read(queue)
             if (message != null) {
                 val record = getRecord(message, container.channel!!.valueType)
-                container.setRecord(record)
+                container.record = record
             } else {
-                container.setRecord(Record(Flag.NO_VALUE_RECEIVED_YET))
+                container.record = Record(Flag.NO_VALUE_RECEIVED_YET)
             }
         }
         return null
     }
 
     @Throws(UnsupportedOperationException::class)
-    override fun startListening(containers: List<ChannelRecordContainer?>?, listener: RecordsReceivedListener?) {
-        for (container in containers!!) {
-            val queue = container!!.channelAddress
-            reader.listen(setOf(queue)) { receivedQueue: String?, message: ByteArray ->
+    override fun startListening(containers: List<ChannelRecordContainer>, listener: RecordsReceivedListener?) {
+        for (container in containers) {
+            val queue = container.channelAddress
+            reader.listen(setOf(queue)) { receivedQueue: String, message: ByteArray ->
                 val record = getRecord(message, container.channel!!.valueType)
-                if (recordsIsOld(container.channel!!.id, record)) {
+                if (recordsIsOld(container.channel!!.id, record!!)) {
                     return@listen
                 }
                 addMessageToContainerList(record, container)
@@ -110,16 +109,16 @@ class AmqpDriverConnection(deviceAddress: String, settings: String) : Connection
         }
     }
 
-    private fun recordsIsOld(channelId: String?, record: Record?): Boolean {
+    private fun recordsIsOld(channelId: String, record: Record): Boolean {
         val lastTs = lastLoggedRecords[channelId]
         if (lastTs == null) {
-            lastLoggedRecords[channelId] = record!!.timestamp
+            lastLoggedRecords[channelId] = record.timestamp!!
             return false
         }
-        if (record!!.timestamp == null || record.timestamp!! <= lastTs) {
+        if (record.timestamp == null || record.timestamp!! <= lastTs) {
             return true
         }
-        lastLoggedRecords[channelId] = record.timestamp
+        lastLoggedRecords[channelId] = record.timestamp!!
         return false
     }
 
@@ -130,22 +129,22 @@ class AmqpDriverConnection(deviceAddress: String, settings: String) : Connection
 
     private fun addMessageToContainerList(record: Record?, container: ChannelRecordContainer?) {
         val copiedContainer = container!!.copy()
-        copiedContainer!!.setRecord(record)
+        copiedContainer.record = record
         recordContainerList.add(copiedContainer)
     }
 
     @Throws(UnsupportedOperationException::class)
-    override fun write(containers: List<ChannelValueContainer?>?, containerListHandle: Any?): Any? {
-        for (container in containers!!) {
-            val record = Record(container!!.value, System.currentTimeMillis())
+    override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
+        for (container in containers) {
+            val record = Record(container.value, System.currentTimeMillis())
 
             // ToDo: cleanup data structure
             val channel = (container as WriteValueContainer?)!!.channel
-            val logRecordContainer = LoggingRecord(channel!!.id!!, record)
+            val logRecordContainer = LoggingRecord(channel!!.id, record)
             if (parsers.containsKey(setting.parser)) {
-                var message: ByteArray? = ByteArray(0)
+                var message: ByteArray = ByteArray(0)
                 try {
-                    message = parsers[setting.parser]!!.serialize(logRecordContainer)
+                    message = parsers[setting.parser]!!.serialize(logRecordContainer)!!
                 } catch (e: SerializationException) {
                     logger.error(e.message)
                 }
@@ -162,7 +161,7 @@ class AmqpDriverConnection(deviceAddress: String, settings: String) : Connection
         connection!!.disconnect()
     }
 
-    fun setParser(parserId: String?, parser: ParserService?) {
+    fun setParser(parserId: String, parser: ParserService?) {
         if (parser == null) {
             parsers.remove(parserId)
             return
