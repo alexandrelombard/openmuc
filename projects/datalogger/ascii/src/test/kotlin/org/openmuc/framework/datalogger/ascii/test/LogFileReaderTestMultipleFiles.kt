@@ -97,7 +97,7 @@ class LogFileReaderTestMultipleFiles {
     fun tc_012_test_getLatestFile() {
         val dir = TestUtils.TESTFOLDERPATH
         val files = getAllDataFiles(dir)
-        val expected = "20770906_60000.dat"
+        val expected = "20770709_60000.dat"
         val file = getLatestFile(files)
         val actual = file?.name
         Assertions.assertEquals(expected, actual)
@@ -154,7 +154,7 @@ class LogFileReaderTestMultipleFiles {
             val calendar = TestUtils.stringToDate(dateFormat, fileDate0 + " 23:00:00")
             val hour = 3600
             var i = 0
-            while (i < (hour * 24 + hour * 2 * 1000.0 / loggingInterval)) {
+            while (i < (hour * 24 + hour * 2) * (1000.0 / loggingInterval)) {
                 val container1 = LoggingRecord(
                     Channel0Name,
                     Record(DoubleValue(1.0), calendar.timeInMillis)
