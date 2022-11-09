@@ -83,7 +83,7 @@ class AmqpReader(connection: AmqpConnection) {
     fun listen(queues: Collection<String>, listener: AmqpMessageListener) {
         listeners.add(Listener(queues, listener))
         for (queue in queues) {
-            val deliverCallback = DeliverCallback { consumerTag: String?, message: Delivery ->
+            val deliverCallback = DeliverCallback { _: String?, message: Delivery ->
                 listener.newMessage(queue, message.body)
                 if (logger.isTraceEnabled) {
                     logger.trace("message on queue {} received, payload: {}", queue, String(message.body))
@@ -97,7 +97,7 @@ class AmqpReader(connection: AmqpConnection) {
                     continue
                 }
                 try {
-                    connection.rabbitMqChannel!!.basicConsume(queue, true, deliverCallback) { consumerTag: String? -> }
+                    connection.rabbitMqChannel!!.basicConsume(queue, true, deliverCallback) { _: String? -> }
                 } catch (e: IOException) {
                     logger.error("Could not subscribe for messages: {}", e.message)
                 }
