@@ -436,7 +436,7 @@ class DeviceResourceServlet : GenericServlet() {
         } else {
             try {
                 deviceConfig = driverConfig.addDevice(deviceID)
-                json.setDeviceConfig(deviceConfig, deviceID)
+                json.setDeviceConfig(deviceConfig!!, deviceID)
             } catch (e: IdCollisionException) {
                 // TODO Log exception
             }

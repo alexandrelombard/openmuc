@@ -25,11 +25,8 @@ import org.osgi.service.component.annotations.Component
 
 @Component(service = [WebUiPluginService::class])
 class MediaViewer : WebUiPluginService() {
-    override fun getAlias(): String {
-        return "mediaviewer"
-    }
-
-    override fun getName(): String {
-        return "Media Viewer"
-    }
+    override val alias: String
+        get() = "mediaviewer"
+    override val name: String
+        get() = "Media Viewer"
 }

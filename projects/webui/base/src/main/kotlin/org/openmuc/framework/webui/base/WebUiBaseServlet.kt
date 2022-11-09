@@ -49,7 +49,7 @@ class WebUiBaseServlet(private val webUiBase: WebUiBase) : HttpServlet() {
             val jApplications = JsonArray()
             for (webUiApp in webUiBase.pluginsByAlias.values) {
                 val app = JsonObject()
-                app.addProperty("alias", webUiApp!!.alias)
+                app.addProperty("alias", webUiApp.alias)
                 app.addProperty("name", webUiApp.name)
                 jApplications.add(app)
             }

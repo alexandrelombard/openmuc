@@ -21,7 +21,6 @@
 package org.openmuc.framework.server.restws.test
 
 import org.junit.jupiter.api.Assertions
-import org.openmuc.framework.data.Record.value
 import org.openmuc.framework.data.TypeConversionException
 import org.openmuc.framework.data.Value
 import org.openmuc.framework.data.ValueType

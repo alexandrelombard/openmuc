@@ -123,7 +123,7 @@ class FromJson(jsonString: String?) {
         RestConfigIsNotCorrectException::class,
         MissingJsonObjectException::class
     )
-    fun setDriverConfig(driverConfig: DriverConfig?, id: String) {
+    fun setDriverConfig(driverConfig: DriverConfig, id: String) {
         val jse = jsonObject[Const.CONFIGS]
         if (!jse.isJsonNull) {
             RestDriverConfigMapper.setDriverConfig(driverConfig, gson.fromJson(jse, RestDriverConfig::class.java), id)
@@ -132,18 +132,18 @@ class FromJson(jsonString: String?) {
         }
     }
 
-    fun getStringArrayList(listName: String?): ArrayList<String?>? {
-        var resultList: ArrayList<String?>? = ArrayList()
+    fun getStringArrayList(listName: String): ArrayList<String>? {
+        val resultList: ArrayList<String> = ArrayList()
         val jse = jsonObject[listName]
         if (jse != null && jse.isJsonArray) {
             val jsa = jse.asJsonArray
             val iteratorJsonArray: Iterator<JsonElement> = jsa.iterator()
             while (iteratorJsonArray.hasNext()) {
-                resultList!!.add(iteratorJsonArray.next().toString())
+                resultList.add(iteratorJsonArray.next().toString())
             }
         }
-        if (resultList!!.isEmpty()) {
-            resultList = null
+        if (resultList.isEmpty()) {
+            return null
         }
         return resultList
     }

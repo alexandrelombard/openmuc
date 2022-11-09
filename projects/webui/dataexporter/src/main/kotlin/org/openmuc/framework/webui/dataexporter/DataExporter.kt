@@ -25,11 +25,8 @@ import org.osgi.service.component.annotations.Component
 
 @Component(service = [WebUiPluginService::class])
 class DataExporter : WebUiPluginService() {
-    override fun getAlias(): String {
-        return "dataexporter"
-    }
-
-    override fun getName(): String {
-        return "Data Exporter"
-    }
+    override val alias: String
+        get() = "dataexporter"
+    override val name: String
+        get() = "Data Exporter"
 }

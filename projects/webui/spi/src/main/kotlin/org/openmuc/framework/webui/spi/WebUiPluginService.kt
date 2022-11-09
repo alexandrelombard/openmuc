@@ -25,7 +25,7 @@ import org.osgi.service.component.ComponentContext
 import org.osgi.service.component.annotations.Activate
 
 abstract class WebUiPluginService {
-    var contextBundle: Bundle? = null
+    lateinit var contextBundle: Bundle
         private set
 
     @Activate
@@ -36,12 +36,12 @@ abstract class WebUiPluginService {
     /**
      * @return Name of WebUI-Plugin, displayed in OpenMUC main menu on top
      */
-    abstract val name: String?
+    abstract val name: String
 
     /**
      * @return Alias of the WebUI-Plugin. The Alias is the identifier in the URL.
      */
-    abstract val alias: String?
+    abstract val alias: String
 
     /**
      * add additional resources if needed

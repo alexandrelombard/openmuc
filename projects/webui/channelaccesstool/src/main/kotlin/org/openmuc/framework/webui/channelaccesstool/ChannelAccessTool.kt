@@ -25,11 +25,8 @@ import org.osgi.service.component.annotations.Component
 
 @Component(service = [WebUiPluginService::class])
 class ChannelAccessTool : WebUiPluginService() {
-    override fun getAlias(): String {
-        return "channelaccesstool"
-    }
-
-    override fun getName(): String {
-        return "Channel Access Tool"
-    }
+    override val alias: String
+        get() = "channelaccesstool"
+    override val name: String
+        get() = "Channel Access Tool"
 }

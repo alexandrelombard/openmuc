@@ -560,8 +560,12 @@ class ChannelResourceServlet : GenericServlet() {
         private const val REQUESTED_REST_PATH_IS_NOT_AVAILABLE = "Requested rest path is not available"
         private const val serialVersionUID = -702876016040151438L
         private val logger = LoggerFactory.getLogger(ChannelResourceServlet::class.java)
-        fun writeToChannel(channel: Channel, value: Value?): Flag? {
-            return channel.write(value)
+        fun writeToChannel(channel: Channel, value: Value?): Flag {
+            if(value != null) {
+                return channel.write(value)
+            } else {
+                return Flag.CANNOT_WRITE_NULL_VALUE
+            }
         }
     }
 }

@@ -31,8 +31,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Component
 class WebUiBase {
-    val pluginsByAlias: MutableMap<String, WebUiPluginService?> = ConcurrentHashMap()
-    val pluginsByAliasDeactivated: MutableMap<String, WebUiPluginService?> = ConcurrentHashMap()
+    val pluginsByAlias: MutableMap<String, WebUiPluginService> = ConcurrentHashMap()
+    val pluginsByAliasDeactivated: MutableMap<String, WebUiPluginService> = ConcurrentHashMap()
 
     @Reference
     private val httpService: HttpService? = null
@@ -102,23 +102,27 @@ class WebUiBase {
         this.authService = authService
     }
 
-    protected fun unsetAuthentificationService(authService: AuthenticationService?) {}
+    protected fun unsetAuthentificationService(authService: AuthenticationService) {}
     fun unsetWebUiPluginServiceByAlias(alias: String) {
         val toRemovePlugin = pluginsByAlias.remove(alias)
-        pluginsByAliasDeactivated[alias] = toRemovePlugin
+        if(toRemovePlugin != null) {
+            pluginsByAliasDeactivated[alias] = toRemovePlugin
+        }
     }
 
     fun restoreWebUiPlugin(alias: String) {
         val toAddPlugin = pluginsByAliasDeactivated.remove(alias)
-        pluginsByAlias[alias] = toAddPlugin
+        if (toAddPlugin != null) {
+            pluginsByAlias[alias] = toAddPlugin
+        }
     }
 
-    private fun registerResources(plugin: WebUiPluginService?) {
+    private fun registerResources(plugin: WebUiPluginService) {
         if (servlet == null || httpService == null) {
-            logger.warn("Can't register WebUI plugin {}.", plugin!!.name)
+            logger.warn("Can't register WebUI plugin {}.", plugin.name)
             return
         }
-        val bundleHttpContext = BundleHttpContext(plugin!!.contextBundle)
+        val bundleHttpContext = BundleHttpContext(plugin.contextBundle)
         val aliases: Set<String> = plugin.resources.keys
         for (alias in aliases) {
             try {

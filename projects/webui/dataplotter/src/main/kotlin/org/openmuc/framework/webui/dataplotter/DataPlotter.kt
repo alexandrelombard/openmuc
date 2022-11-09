@@ -25,11 +25,8 @@ import org.osgi.service.component.annotations.Component
 
 @Component(service = [WebUiPluginService::class])
 class DataPlotter : WebUiPluginService() {
-    override fun getAlias(): String {
-        return "dataplotter"
-    }
-
-    override fun getName(): String {
-        return "Data Plotter"
-    }
+    override val alias: String
+        get() = "dataplotter"
+    override val name: String
+        get() = "Data Plotter"
 }
