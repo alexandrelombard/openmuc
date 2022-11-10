@@ -132,6 +132,7 @@ internal class MqttBufferHandlerTest {
         private const val LOREM_IPSUM_1_KB =
             "Imperdiet Volutpat Sit Himenaeos Nunc Potenti Pharetra Porta Bibendum Sem Sociosqu Maecenas Vitae Metus Varius Ut Vulputate Eleifend Netus Scelerisque Ac Lobortis Mi Iaculis In Praesent Rutrum Tristique Aenean Quam Curabitur Consectetur Mattis Suscipit Ac Adipiscing Egestas Sagittis Viverra Nullam Nisi Gravida Leo Himenaeos At Quam In Gravida Rhoncus Neque Consequat Augue Faucibus Nostra In Ullamcorper Donec Nunc Conubia Hendrerit Consectetur Massa Lacinia Tempus Massa Fringilla Ut Est Condimentum Cubilia Fermentum Tincidunt Ac Eu Purus Bibendum Urna Elit Orci Phasellus Viverra Egestas Bibendum Maecenas Mauris Ultrices Elementum Quam Facilisis Mi Mauris Auctor Nibh Cubilia Erat Massa Non Leo Sodales Fames Consectetur Lorem Eros Dui Per Augue Urna Mollis Fames Nisl Sagittis Platea Sem Eget Sagittis Nulla Eget Convallis Venenatis Faucibus Enim Proin Bibendum Egestas Imperdiet Semper Id Molestie Leo Felis Metus Platea Sapien Elementum Risus Curabitur Risus Mi Morbi Pellentesque Nostra Condimentum Nisl In Suscipi"
 
+        @JvmStatic
         @AfterAll
         fun cleanUp() {
             deleteDirectory(FileSystems.getDefault().getPath(DIRECTORY).toFile())

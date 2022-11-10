@@ -57,7 +57,7 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
     }
 
     private fun addConnectedListener() {
-        connection!!.addConnectedListener { context: MqttClientConnectedContext ->
+        connection.addConnectedListener { context: MqttClientConnectedContext ->
 
             // FIXME null checks currently workaround for MqttWriterTest, it is not set there
             var serverHost = "UNKNOWN"
@@ -69,7 +69,7 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
             log("connected to broker {}:{}", serverHost, serverPort)
             connected = true
             val settings = connection.settings
-            if (settings!!.isFirstWillSet) {
+            if (settings.isFirstWillSet) {
                 write(settings.firstWillTopic, settings.firstWillPayload)
             }
             val recovery = Thread({ emptyBuffer() }, "MqttRecovery")
@@ -127,9 +127,9 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
             }
             val messageTuple = buffer.removeNextMessage()
             if (logger.isTraceEnabled) {
-                trace("Resend from memory: {}", String(messageTuple!!.message!!))
+                trace("Resend from memory: {}", String(messageTuple.message))
             }
-            write(messageTuple!!.topic, messageTuple.message)
+            write(messageTuple.topic, messageTuple.message)
             messageCount++
             if (connection.settings.isRecoveryLimitSet && messageCount == chunkSize) {
                 messageCount = 0
@@ -145,7 +145,7 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
     }
 
     private fun addDisconnectedListener() {
-        connection!!.addDisconnectedListener { context: MqttClientDisconnectedContext ->
+        connection.addDisconnectedListener { context: MqttClientDisconnectedContext ->
             if (cancelReconnect.getAndSet(false)) {
                 context.reconnector.reconnect(false)
             }
@@ -201,7 +201,7 @@ open class MqttWriter(connection: MqttConnection, pid: String) {
     }
 
     private fun startPublishing(topic: String, message: ByteArray) {
-        publish(topic, message).whenComplete { publish: Mqtt3Publish?, exception: Throwable? ->
+        publish(topic, message).whenComplete { publish: Mqtt3Publish, exception: Throwable? ->
             if (exception != null) {
                 warn(
                     "Connection issue: {} message could not be sent. Adding message to buffer",

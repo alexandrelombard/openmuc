@@ -42,7 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * Represents a connection to a MQTT broker
  */
-class MqttConnection(
+open class MqttConnection(
     /**
      * @return the settings [MqttSettings] this connection was constructed with
      */

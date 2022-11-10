@@ -27,11 +27,13 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.mockito.ArgumentMatchers
-import org.mockito.Mockito
-import org.mockito.Mockito.mock
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.junit.jupiter.MockitoExtension
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.whenever
+import org.mockito.kotlin.internal.createInstance
+import org.mockito.kotlin.mock
 import org.mockito.stubbing.Answer
 import org.openmuc.framework.lib.mqtt.MqttConnection
 import java.io.File
@@ -40,54 +42,40 @@ import java.nio.file.FileSystems
 
 @ExtendWith(MockitoExtension::class)
 class MqttWriterTest {
-    private var mqttWriter: MqttWriter? = null
+    private lateinit var mqttWriter: MqttWriter
     @BeforeEach
     fun setup() {
-        val connection = mock(MqttConnection::class.java)
-        Mockito.doAnswer(Answer<Void?> { invocation: InvocationOnMock ->
+        val connection = mock<MqttConnection>()
+        doAnswer { invocation: InvocationOnMock ->
             connectedListener = invocation.getArgument(0)
             null
-        }).`when`(connection).addConnectedListener(
-            ArgumentMatchers.any(
-                MqttClientConnectedListener::class.java
-            )
-        )
-        Mockito.doAnswer(Answer<Void?> { invocation: InvocationOnMock ->
+        }.whenever(connection).addConnectedListener(any())
+        doAnswer { invocation: InvocationOnMock ->
             disconnectedListener = invocation.getArgument(0)
             null
-        }).`when`(connection).addDisconnectedListener(
-            ArgumentMatchers.any(
-                MqttClientDisconnectedListener::class.java
-            )
-        )
-        Mockito.`when`(connection.settings)
+        }.whenever(connection).addDisconnectedListener(any())
+        whenever(connection.settings)
             .thenReturn(MqttSettings("localhost", 1883, null, "", false, 1, 1, 2, 5000, 10, DIRECTORY))
         mqttWriter = MqttWriterStub(connection)
-        connectedListener!!.onConnected { mock(MqttClientConfig::class.java) }
+        connectedListener.onConnected { mock<MqttClientConfig>() }
     }
 
     @Test
     @Throws(IOException::class, InterruptedException::class)
     fun testWriteWithReconnectionAndSimulatedDisconnection() {
-        val disconnectedContext = mock(
-            MqttClientDisconnectedContext::class.java
-        )
-        val reconnector = mock(
-            MqttClientReconnector::class.java
-        )
-        Mockito.`when`(reconnector.isReconnect).thenReturn(true)
-        val config = mock(
-            MqttClientConfig::class.java
-        )
-        Mockito.`when`(config.serverHost).thenReturn("test")
-        val cause = mock(Throwable::class.java)
-        Mockito.`when`(cause.message).thenReturn("test")
+        val disconnectedContext = mock<MqttClientDisconnectedContext>()
+        val reconnector = mock<MqttClientReconnector>()
+        whenever(reconnector.isReconnect).thenReturn(true)
+        val config = mock<MqttClientConfig>()
+        whenever(config.serverHost).thenReturn("test")
+        val cause = mock<Throwable>()
+        whenever(cause.message).thenReturn("test")
         val source = MqttDisconnectSource.USER
-        Mockito.`when`(disconnectedContext.reconnector).thenReturn(reconnector)
-        Mockito.`when`(disconnectedContext.clientConfig).thenReturn(config)
-        Mockito.`when`(disconnectedContext.cause).thenReturn(cause)
-        Mockito.`when`(disconnectedContext.source).thenReturn(source)
-        disconnectedListener!!.onDisconnected(disconnectedContext)
+        whenever(disconnectedContext.reconnector).thenReturn(reconnector)
+        whenever(disconnectedContext.clientConfig).thenReturn(config)
+        whenever(disconnectedContext.cause).thenReturn(cause)
+        whenever(disconnectedContext.source).thenReturn(source)
+        disconnectedListener.onDisconnected(disconnectedContext)
         val topic = "topic1"
         val file = FileSystems.getDefault().getPath(DIRECTORY, "topic1", "buffer.0.log").toFile()
         val file1 = FileSystems.getDefault().getPath(DIRECTORY, "topic1", "buffer.1.log").toFile()
@@ -95,23 +83,23 @@ class MqttWriterTest {
                 + "eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur "
                 + "ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat"
                 + " massa quis enim. Donec.")
-        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 300
-        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 600
-        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 900
+        mqttWriter.write(topic, message300bytes.toByteArray()) // 300
+        mqttWriter.write(topic, message300bytes.toByteArray()) // 600
+        mqttWriter.write(topic, message300bytes.toByteArray()) // 900
         // buffer limit not yet reached
         // assertFalse(file.exists() || file1.exists());
-        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 1200 > 1024 write to file => 0
+        mqttWriter.write(topic, message300bytes.toByteArray()) // 1200 > 1024 write to file => 0
         // buffer limit reached, first file written
         Assertions.assertTrue(file.exists() && !file1.exists())
-        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 300
-        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 600
-        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 900
-        mqttWriter!!.write(topic, message300bytes.toByteArray()) // 1200 > 1024 write to file
+        mqttWriter.write(topic, message300bytes.toByteArray()) // 300
+        mqttWriter.write(topic, message300bytes.toByteArray()) // 600
+        mqttWriter.write(topic, message300bytes.toByteArray()) // 900
+        mqttWriter.write(topic, message300bytes.toByteArray()) // 1200 > 1024 write to file
         // buffer limit reached, second file written
         Assertions.assertTrue(file.exists() && file1.exists())
 
         // simulate connection
-        connectedListener!!.onConnected { mock(MqttClientConfig::class.java) }
+        connectedListener.onConnected { mock<MqttClientConfig>() }
 
         // wait for recovery thread to terminate
         Thread.sleep(1000)
@@ -122,8 +110,9 @@ class MqttWriterTest {
 
     companion object {
         private const val DIRECTORY = "/tmp/openmuc/mqtt_writer_test"
-        private var connectedListener: MqttClientConnectedListener? = null
-        private var disconnectedListener: MqttClientDisconnectedListener? = null
+        private var connectedListener: MqttClientConnectedListener = MqttClientConnectedListener {  }
+        private var disconnectedListener: MqttClientDisconnectedListener = MqttClientDisconnectedListener {  }
+        @JvmStatic
         @AfterAll
         fun cleanUp() {
             deleteDirectory(FileSystems.getDefault().getPath(DIRECTORY).toFile())

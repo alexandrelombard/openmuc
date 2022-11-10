@@ -124,31 +124,31 @@ class MqttReader(private val connection: MqttConnection, private val pid: String
     private class SubscribeListenerTuple(val subscribe: Mqtt3Subscribe, val listener: MqttMessageListener)
 
     private fun log(message: String, vararg args: Any) {
-        var message: String? = message
+        var message = message
         message = MessageFormatter.arrayFormat(message, args).message
         logger.info("[{}] {}", pid, message)
     }
 
     private fun debug(message: String, vararg args: Any) {
-        var message: String? = message
+        var message = message
         message = MessageFormatter.arrayFormat(message, args).message
         logger.debug("[{}] {}", pid, message)
     }
 
     private fun warn(message: String, vararg args: Any) {
-        var message: String? = message
+        var message = message
         message = MessageFormatter.arrayFormat(message, args).message
         logger.warn("[{}] {}", pid, message)
     }
 
     private fun error(message: String, vararg args: Any) {
-        var message: String? = message
+        var message = message
         message = MessageFormatter.arrayFormat(message, args).message
         logger.error("[{}] {}", pid, message)
     }
 
     private fun trace(message: String, vararg args: Any) {
-        var message: String? = message
+        var message = message
         message = MessageFormatter.arrayFormat(message, args).message
         logger.trace("[{}] {}", pid, message)
     }

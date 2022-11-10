@@ -196,8 +196,7 @@ class MqttBufferHandler(maxBufferSizeKb: Long, maxFileCount: Int, maxFileSizeKb:
 
     val buffers: Array<String>
         get() {
-            val buffers: Array<String>
-            buffers = if (isFileBufferEnabled) {
+            val buffers: Array<String> = if (isFileBufferEnabled) {
                 filePersistence!!.buffers
             } else {
                 arrayOf()
