@@ -26,9 +26,8 @@ import org.openmuc.framework.driver.spi.ChannelRecordContainer
 
 class SnmpChannelRecordContainer : ChannelRecordContainer {
     private var snmpRecord: Record? = null
-    private var snmpChannel: SnmpChannel? = null
+    private var snmpChannel: SnmpChannel
 
-    internal constructor()
     internal constructor(channel: SnmpChannel) {
         snmpChannel = channel
     }
@@ -38,17 +37,17 @@ class SnmpChannelRecordContainer : ChannelRecordContainer {
         snmpRecord = record
     }
 
-    override val channel: Channel?
+    override val channel: Channel
         get() = snmpChannel
     override val channelAddress: String
-        get() = snmpChannel?.channelAddress ?: ""
+        get() = snmpChannel.channelAddress ?: ""
 
     // TODO Auto-generated method stub
     override var channelHandle: Any?
         get() =// TODO Auto-generated method stub
             null
         set(handle) {
-            snmpChannel = handle as SnmpChannel?
+            snmpChannel = handle as SnmpChannel
         }
 
     override var record: Record? = null
@@ -58,9 +57,6 @@ class SnmpChannelRecordContainer : ChannelRecordContainer {
         }
 
     override fun copy(): ChannelRecordContainer {
-        val clone = SnmpChannelRecordContainer()
-        clone.channelHandle = snmpChannel
-        clone.record = snmpRecord
-        return clone
+        return SnmpChannelRecordContainer(snmpRecord!!, snmpChannel)
     }
 }

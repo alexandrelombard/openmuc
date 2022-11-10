@@ -42,11 +42,11 @@ object SnmpScannerExample {
 
         class TestListener : DriverDeviceScanListener {
             override fun scanProgressUpdate(progress: Int) {}
-            override fun deviceFound(device: DeviceScanInfo?) {
+            override fun deviceFound(scanInfo: DeviceScanInfo) {
                 println("-----------------------------")
                 println("New device found: ")
-                println("Address: " + device!!.deviceAddress)
-                println("Description: " + device.description)
+                println("Address: " + scanInfo.deviceAddress)
+                println("Description: " + scanInfo.description)
                 println("-----------------------------")
             }
         }

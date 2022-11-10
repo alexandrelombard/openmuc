@@ -144,8 +144,12 @@ class ModbusTCPConnection(deviceAddress: String, private val timeoutMs: Int) : M
         for (container in containers) {
             val channel = getModbusChannel(container.channelAddress, EAccess.WRITE)
             try {
-                writeChannel(channel, container.value)
-                container.flag = Flag.VALID
+                container.value.let {
+                    if(it != null) {
+                        writeChannel(channel, it)
+                        container.flag = Flag.VALID
+                    }
+                }
             } catch (e: ModbusIOException) {
                 logger.error("ModbusIOException while writing channel:" + channel.channelAddress, e)
                 disconnect()

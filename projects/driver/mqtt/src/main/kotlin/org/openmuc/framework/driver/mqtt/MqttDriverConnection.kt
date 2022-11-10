@@ -62,7 +62,7 @@ class MqttDriverConnection(host: String, settings: String) : Connection {
     }
 
     @Throws(ArgumentSyntaxException::class)
-    private fun getMqttSettings(host: String?, settings: String?): MqttSettings {
+    private fun getMqttSettings(host: String, settings: String?): MqttSettings {
         var settings = settings
         settings = settings!!.replace(";".toRegex(), "\n")
         try {
@@ -169,14 +169,13 @@ class MqttDriverConnection(host: String, settings: String) : Connection {
             val record = Record(container.value, System.currentTimeMillis())
             val loggingRecord = LoggingRecord(container.channelAddress, record)
             if (parsers.containsKey(settings.getProperty("parser"))) {
-                var message: ByteArray?
-                message = try {
+                val message = try {
                     parsers[settings.getProperty("parser")]!!.serialize(loggingRecord)
                 } catch (e: SerializationException) {
                     logger.error(e.message)
                     continue
                 }
-                mqttWriter.write(container.channelAddress, message)
+                mqttWriter.write(container.channelAddress, message!!)
                 container.flag = Flag.VALID
             } else {
                 logger.error("A parser is needed to write messages and none have been registered.")

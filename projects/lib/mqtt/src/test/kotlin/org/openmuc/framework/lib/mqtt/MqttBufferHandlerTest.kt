@@ -28,9 +28,9 @@ import java.nio.file.FileSystems
 
 internal class MqttBufferHandlerTest {
     private val bufferHandlerWithFilePersistenceEnabled: MqttBufferHandler
-        private get() = MqttBufferHandler(1, 2, 2, DIRECTORY)
+        get() = MqttBufferHandler(1, 2, 2, DIRECTORY)
     private val bufferHandlerWithFilePersistenceDisabled: MqttBufferHandler
-        private get() = MqttBufferHandler(1, 0, 0, "")
+        get() = MqttBufferHandler(1, 0, 0, "")
 
     @Test
     fun addToRAMBuffer() {

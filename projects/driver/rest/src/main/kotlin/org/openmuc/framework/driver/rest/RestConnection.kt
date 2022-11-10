@@ -284,7 +284,7 @@ class RestConnection internal constructor(
     override fun write(containers: List<ChannelValueContainer>, containerListHandle: Any?): Any? {
         for (cont in containers) {
             val value = cont.value
-            val flag = writeChannel(cont.channelAddress, value, value.valueType)
+            val flag = writeChannel(cont.channelAddress, value, value?.valueType ?: ValueType.UNKNOWN)
             cont.flag = flag
         }
         return null

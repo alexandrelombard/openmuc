@@ -30,7 +30,7 @@ class SnmpChannel : Channel {
         private set
     override val description: String? = null
     override val unit: String? = null
-    override val valueType: ValueType? = null
+    override val valueType: ValueType = ValueType.UNKNOWN
     override val samplingInterval = 0
     override val samplingTimeOffset = 0
     override val samplingTimeout = 0
@@ -61,19 +61,19 @@ class SnmpChannel : Channel {
     override val deviceState: DeviceState?
         get() = null
 
-    override fun addListener(listener: RecordListener?) {}
-    override fun removeListener(listener: RecordListener?) {}
+    override fun addListener(listener: RecordListener) {}
+    override fun removeListener(listener: RecordListener) {}
     override val isConnected: Boolean
         get() = false
     override var latestRecord: Record?
         get() = null
-        set(record) {}
+        set(_) {}
 
-    override fun write(value: Value?): Flag? {
-        return null
+    override fun write(value: Value): Flag {
+        return Flag.VALID
     }
 
-    override fun writeFuture(values: List<FutureValue?>?) {}
+    override fun writeFuture(values: MutableList<FutureValue>) {}
     override val writeContainer: WriteValueContainer?
         get() = null
 

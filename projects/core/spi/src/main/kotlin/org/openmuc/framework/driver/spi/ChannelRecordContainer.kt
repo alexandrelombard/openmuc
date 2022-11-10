@@ -21,11 +21,14 @@
 package org.openmuc.framework.driver.spi
 
 import org.openmuc.framework.data.Record
+import org.openmuc.framework.dataaccess.Channel
 import org.openmuc.framework.dataaccess.ReadRecordContainer
 
 interface ChannelRecordContainer : ReadRecordContainer {
     val channelAddress: String
     var channelHandle: Any?
+
+    override val channel: Channel
 
     override var record: Record?
 

@@ -103,26 +103,26 @@ class WMBusInterface {
                     return
                 }
                 val dataRecords = message.variableDataResponse.dataRecords
-                val dibvibs = arrayOfNulls<String>(dataRecords.size)
+                val dibvibs = ArrayList<String>(dataRecords.size)
                 var i = 0
                 for (dataRecord in dataRecords) {
                     val dibHexStr = Hex.encodeHexString(dataRecord.dib)
                     val vibHexStr = Hex.encodeHexString(dataRecord.vib)
                     dibvibs[i++] = MessageFormat.format("{0}:{1}", dibHexStr, vibHexStr)
                 }
-                val containersReceived: MutableList<ChannelRecordContainer?> = LinkedList()
+                val containersReceived = mutableListOf<ChannelRecordContainer>()
                 val timestamp = System.currentTimeMillis()
                 for (container in channelContainers) {
                     i = 0
-                    setRecords(dataRecords, dibvibs, i, containersReceived, timestamp, container)
+                    setRecords(dataRecords, dibvibs.toTypedArray(), i, containersReceived, timestamp, container)
                 }
                 listener!!.newRecords(containersReceived)
             }
         }
 
         private fun setRecords(
-            dataRecords: List<DataRecord>, dibvibs: Array<String?>, i: Int,
-            containersReceived: MutableList<ChannelRecordContainer?>, timestamp: Long,
+            dataRecords: List<DataRecord>, dibvibs: Array<String>, i: Int,
+            containersReceived: MutableList<ChannelRecordContainer>, timestamp: Long,
             container: ChannelRecordContainer?
         ) {
             var i = i

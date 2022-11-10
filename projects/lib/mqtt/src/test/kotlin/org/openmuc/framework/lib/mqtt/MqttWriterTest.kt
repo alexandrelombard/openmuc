@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
+import org.mockito.Mockito.mock
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.stubbing.Answer
@@ -42,7 +43,7 @@ class MqttWriterTest {
     private var mqttWriter: MqttWriter? = null
     @BeforeEach
     fun setup() {
-        val connection = Mockito.mock(MqttConnection::class.java)
+        val connection = mock(MqttConnection::class.java)
         Mockito.doAnswer(Answer<Void?> { invocation: InvocationOnMock ->
             connectedListener = invocation.getArgument(0)
             null
@@ -60,26 +61,26 @@ class MqttWriterTest {
             )
         )
         Mockito.`when`(connection.settings)
-            .thenReturn(MqttSettings("localhost", 1883, null, null, false, 1, 1, 2, 5000, 10, DIRECTORY))
+            .thenReturn(MqttSettings("localhost", 1883, null, "", false, 1, 1, 2, 5000, 10, DIRECTORY))
         mqttWriter = MqttWriterStub(connection)
-        connectedListener!!.onConnected(MqttClientConnectedContext { null })
+        connectedListener!!.onConnected { mock(MqttClientConfig::class.java) }
     }
 
     @Test
     @Throws(IOException::class, InterruptedException::class)
     fun testWriteWithReconnectionAndSimulatedDisconnection() {
-        val disconnectedContext = Mockito.mock(
+        val disconnectedContext = mock(
             MqttClientDisconnectedContext::class.java
         )
-        val reconnector = Mockito.mock(
+        val reconnector = mock(
             MqttClientReconnector::class.java
         )
         Mockito.`when`(reconnector.isReconnect).thenReturn(true)
-        val config = Mockito.mock(
+        val config = mock(
             MqttClientConfig::class.java
         )
         Mockito.`when`(config.serverHost).thenReturn("test")
-        val cause = Mockito.mock(Throwable::class.java)
+        val cause = mock(Throwable::class.java)
         Mockito.`when`(cause.message).thenReturn("test")
         val source = MqttDisconnectSource.USER
         Mockito.`when`(disconnectedContext.reconnector).thenReturn(reconnector)
@@ -110,7 +111,7 @@ class MqttWriterTest {
         Assertions.assertTrue(file.exists() && file1.exists())
 
         // simulate connection
-        connectedListener!!.onConnected(MqttClientConnectedContext { null })
+        connectedListener!!.onConnected { mock(MqttClientConfig::class.java) }
 
         // wait for recovery thread to terminate
         Thread.sleep(1000)

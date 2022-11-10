@@ -24,7 +24,9 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito
+import org.mockito.Mockito.*
 import org.mockito.invocation.InvocationOnMock
 import org.openmuc.framework.data.ValueType
 import org.openmuc.framework.datalogger.sql.DbAccess.Companion.getTestInstance
@@ -42,17 +44,16 @@ class SqlReaderTest {
     @Throws(SQLException::class)
     fun setup() {
         connection = TestConnectionHelper.connection
-        dbConnectorMock = Mockito.mock(DbConnector::class.java)
+        dbConnectorMock = mock(DbConnector::class.java)
         dbAccess = getTestInstance(dbConnectorMock) // Real DbAccess with mock DbConnector to prevent null
         // pointer exception in queryRecords
-        dbAccessSpy = Mockito.spy(dbAccess) // DbAccess with modified executeQuery
-        Mockito.doAnswer { invocation: InvocationOnMock ->
+        dbAccessSpy = spy(dbAccess) // DbAccess with modified executeQuery
+        doAnswer { invocation ->
             TestConnectionHelper.executeQuery(
                 connection,
                 invocation.getArgument<Any>(0).toString()
             )
-        }
-            .`when`(dbAccessSpy).executeQuery(ArgumentMatchers.any())
+        }.`when`(dbAccessSpy).executeQuery(any())
         sqlReader = SqlReader(dbAccessSpy)
     }
 
@@ -60,7 +61,7 @@ class SqlReaderTest {
     @Throws(SQLException::class)
     fun readLatestRecordFromDb() {
         writeTestRecords()
-        val record = sqlReader!!.readLatestRecordFromDb(channelId, valueType)
+        val record = sqlReader.readLatestRecordFromDb(channelId, valueType)
         Assertions.assertTrue(record!!.value!!.asDouble() == 2.0)
         connection!!.close()
     }

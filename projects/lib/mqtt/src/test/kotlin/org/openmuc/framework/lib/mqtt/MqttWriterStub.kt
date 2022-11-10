@@ -26,9 +26,9 @@ import java.util.concurrent.CompletableFuture
 /**
  * MqttWriter stub that simulates successful publishes when connection is simulated as connected
  */
-class MqttWriterStub(connection: MqttConnection?) : MqttWriter(connection!!, "test") {
-    override fun publish(topic: String?, message: ByteArray?): CompletableFuture<Mqtt3Publish?> {
-        val future = CompletableFuture<Mqtt3Publish?>()
+class MqttWriterStub(connection: MqttConnection) : MqttWriter(connection, "test") {
+    override fun publish(topic: String, message: ByteArray): CompletableFuture<Mqtt3Publish> {
+        val future = CompletableFuture<Mqtt3Publish>()
         future.complete(Mqtt3Publish.builder().topic("test").build())
         return future
     }

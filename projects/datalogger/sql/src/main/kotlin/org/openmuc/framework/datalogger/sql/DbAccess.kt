@@ -76,7 +76,7 @@ open class DbAccess {
     }
 
     @Throws(SQLException::class)
-    fun executeQuery(sb: StringBuilder): ResultSet {
+    fun executeQuery(sb: StringBuilder?): ResultSet {
         val statement = dbConnector.createStatementWithConnection()
         return statement.executeQuery(sb.toString())
     }

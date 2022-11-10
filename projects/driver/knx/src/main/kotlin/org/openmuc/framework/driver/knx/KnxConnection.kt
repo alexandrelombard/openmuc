@@ -100,8 +100,8 @@ class KnxConnection internal constructor(deviceAddress: String, settings: String
             }
         }
 
-        if (isKNXIP && isSchemeOk(deviceURI, KnxDriver.Companion.ADDRESS_SCHEME_KNXIP)
-            && isSchemeOk(interfaceURI, KnxDriver.Companion.ADDRESS_SCHEME_KNXIP)
+        if (isKNXIP && isSchemeOk(deviceURI, KnxDriver.ADDRESS_SCHEME_KNXIP)
+            && isSchemeOk(interfaceURI, KnxDriver.ADDRESS_SCHEME_KNXIP)
         ) {
             name = interfaceURI!!.host + " - " + deviceURI.host
             logger.debug("connecting over KNX/IP from " + name.replace("-", "to"))
@@ -244,7 +244,7 @@ class KnxConnection internal constructor(deviceAddress: String, settings: String
                 } else {
                     groupDP = container.channelHandle as KnxGroupDP
                 }
-                val record = read(groupDP, KnxDriver.Companion.timeout)
+                val record = read(groupDP, KnxDriver.timeout)
                 container.record = record
             } catch (e: ArgumentSyntaxException) {
                 container.record = Record(Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID)
@@ -289,8 +289,8 @@ class KnxConnection internal constructor(deviceAddress: String, settings: String
                 } else {
                     groupDP = container.channelHandle as KnxGroupDP
                 }
-                groupDP.knxValue.openMucValue = container.value
-                val state = write(groupDP, KnxDriver.Companion.timeout)
+                groupDP.knxValue.openMucValue = container.value!!
+                val state = write(groupDP, KnxDriver.timeout)
                 if (state) {
                     container.flag = Flag.VALID
                 } else {

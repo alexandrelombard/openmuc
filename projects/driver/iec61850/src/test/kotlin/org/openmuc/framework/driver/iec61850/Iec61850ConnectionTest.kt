@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.openmuc.framework.data.*
-import org.openmuc.framework.dataaccess.Channel
+import org.openmuc.framework.dataaccess.*
 import org.openmuc.framework.driver.spi.ChannelRecordContainer
 import org.openmuc.framework.driver.spi.ChannelValueContainer
 import org.openmuc.framework.driver.spi.ConnectionException
@@ -242,8 +242,91 @@ class Iec61850ConnectionTest : Thread(), ClientEventListener, ServerEventListene
         override var channelHandle: Any? = null
         override var record: Record? = null
 
-        override val channel: Channel?
-            get() = null
+        override val channel: Channel
+            get() = object : Channel {
+                override val id: String
+                    get() = TODO("Not yet implemented")
+                override val channelAddress: String
+                    get() = TODO("Not yet implemented")
+                override val description: String
+                    get() = TODO("Not yet implemented")
+                override val settings: String
+                    get() = TODO("Not yet implemented")
+                override val loggingSettings: String
+                    get() = TODO("Not yet implemented")
+                override val unit: String
+                    get() = TODO("Not yet implemented")
+                override val valueType: ValueType
+                    get() = TODO("Not yet implemented")
+                override val scalingFactor: Double
+                    get() = TODO("Not yet implemented")
+                override val samplingInterval: Int
+                    get() = TODO("Not yet implemented")
+                override val samplingTimeOffset: Int
+                    get() = TODO("Not yet implemented")
+                override val samplingTimeout: Int
+                    get() = TODO("Not yet implemented")
+                override val loggingInterval: Int
+                    get() = TODO("Not yet implemented")
+                override val loggingTimeOffset: Int
+                    get() = TODO("Not yet implemented")
+                override val driverName: String
+                    get() = TODO("Not yet implemented")
+                override val deviceAddress: String
+                    get() = TODO("Not yet implemented")
+                override val deviceName: String
+                    get() = TODO("Not yet implemented")
+                override val deviceDescription: String
+                    get() = TODO("Not yet implemented")
+                override val channelState: ChannelState
+                    get() = TODO("Not yet implemented")
+                override val deviceState: DeviceState
+                    get() = TODO("Not yet implemented")
+
+                override fun addListener(listener: RecordListener) {
+                    TODO("Not yet implemented")
+                }
+
+                override fun removeListener(listener: RecordListener) {
+                    TODO("Not yet implemented")
+                }
+
+                override val isConnected: Boolean
+                    get() = TODO("Not yet implemented")
+                override var latestRecord: Record?
+                    get() = TODO("Not yet implemented")
+                    set(value) {}
+
+                override fun write(value: Value): Flag {
+                    TODO("Not yet implemented")
+                }
+
+                override fun writeFuture(values: MutableList<FutureValue>) {
+                    TODO("Not yet implemented")
+                }
+
+                override val writeContainer: WriteValueContainer
+                    get() = TODO("Not yet implemented")
+
+                override fun read(): Record? {
+                    TODO("Not yet implemented")
+                }
+
+                override val readContainer: ReadRecordContainer
+                    get() = TODO("Not yet implemented")
+
+                override fun getLoggedRecord(time: Long): Record? {
+                    TODO("Not yet implemented")
+                }
+
+                override fun getLoggedRecords(startTime: Long): List<Record> {
+                    TODO("Not yet implemented")
+                }
+
+                override fun getLoggedRecords(startTime: Long, endTime: Long): List<Record> {
+                    TODO("Not yet implemented")
+                }
+            }
 
         override fun copy(): ChannelRecordContainer {
             throw UnsupportedOperationException()
