@@ -51,7 +51,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
         // Check if record container objects exist -> check if basic data attribute exists in server model for channel
         // adress
         // -> model node exists but is no BDA
-        for (container in containers!!) {
+        for (container in containers) {
             setChannelHandleWithFcModelNode(container)
         }
         return if (samplingGroup!!.isNotEmpty()) {
@@ -130,8 +130,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
                 )
                 for (bda in fcModelNode.basicDataAttributes) {
                     for (valueContainer in containers) {
-                        if (valueContainer!!.channelHandle === bda) {
-                            valueContainer!!.flag = Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE
+                        if (valueContainer.channelHandle === bda) {
+                            valueContainer.flag = Flag.DRIVER_ERROR_CHANNEL_NOT_ACCESSIBLE
                         }
                     }
                 }
@@ -141,8 +141,8 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
             }
             for (bda in fcModelNode.basicDataAttributes) {
                 for (valueContainer in containers) {
-                    if (valueContainer!!.channelHandle === bda) {
-                        valueContainer!!.flag = Flag.VALID
+                    if (valueContainer.channelHandle === bda) {
+                        valueContainer.flag = Flag.VALID
                     }
                 }
             }
@@ -251,7 +251,7 @@ class Iec61850Connection(private val clientAssociation: ClientAssociation, priva
 
     private fun setChannelHandleWithFcModelNode(container: ChannelRecordContainer?) {
         if (container!!.channelHandle == null) {
-            val args = container.channelAddress!!.split(":".toRegex(), limit = 3).toTypedArray()
+            val args = container.channelAddress.split(":".toRegex(), limit = 3).toTypedArray()
             if (args.size != 2) {
                 logger.debug("Wrong channel address syntax: {}", container.channelAddress)
                 container.record = Record(Flag.DRIVER_ERROR_CHANNEL_WITH_THIS_ADDRESS_NOT_FOUND)

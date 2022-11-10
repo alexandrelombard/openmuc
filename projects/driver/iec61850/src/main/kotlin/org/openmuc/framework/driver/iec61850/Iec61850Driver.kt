@@ -55,8 +55,7 @@ class Iec61850Driver : DriverService {
         val clientSap = ClientSap()
         clientSap.setTSelLocal(deviceSettings.tSelLocal)
         clientSap.setTSelLocal(deviceSettings.tSelRemote)
-        val clientAssociation: ClientAssociation
-        clientAssociation = try {
+        val clientAssociation: ClientAssociation = try {
             clientSap.associate(
                 deviceAdress.adress, deviceAdress.remotePort,
                 deviceSettings.authentication, null
@@ -64,8 +63,7 @@ class Iec61850Driver : DriverService {
         } catch (e: IOException) {
             throw ConnectionException(e)
         }
-        val serverModel: ServerModel
-        serverModel = try {
+        val serverModel: ServerModel = try {
             clientAssociation.retrieveModel()
         } catch (e: ServiceError) {
             clientAssociation.close()
