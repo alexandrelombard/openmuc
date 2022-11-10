@@ -248,7 +248,7 @@ class KnxConnection internal constructor(deviceAddress: String, settings: String
                 container.record = record
             } catch (e: ArgumentSyntaxException) {
                 container.record = Record(Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID)
-                logger.error(e.message, "Channel-ID: " + container.channel!!.id)
+                logger.error(e.message, "Channel-ID: " + container.channel.id)
             } catch (e1: KNXTimeoutException) {
                 logger.debug(e1.message)
                 container.record = Record(null, System.currentTimeMillis(), Flag.TIMEOUT)
@@ -267,14 +267,14 @@ class KnxConnection internal constructor(deviceAddress: String, settings: String
                     container.channelHandle = createKnxGroupDP(container.channelAddress)
                 } catch (e: ArgumentSyntaxException) {
                     container.record = Record(Flag.DRIVER_ERROR_CHANNEL_ADDRESS_SYNTAX_INVALID)
-                    logger.error(e.message + "Channel-ID: " + container.channel!!.id)
+                    logger.error(e.message + "Channel-ID: " + container.channel.id)
                 } catch (e: KNXException) {
                     logger.warn(e.message)
                 }
             }
         }
         logger.info("Start listening for ", containers.size, " channels")
-        processListener!!.registerOpenMucListener(containers, listener)
+        processListener.registerOpenMucListener(containers, listener)
     }
 
     @Throws(UnsupportedOperationException::class, ConnectionException::class)
