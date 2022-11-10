@@ -30,26 +30,26 @@ import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 
 @Component
-class WebUiBase {
+open class WebUiBase {
     val pluginsByAlias: MutableMap<String, WebUiPluginService> = ConcurrentHashMap()
     val pluginsByAliasDeactivated: MutableMap<String, WebUiPluginService> = ConcurrentHashMap()
 
     @Reference
-    private val httpService: HttpService? = null
+    protected lateinit var httpService: HttpService
 
     @Reference
-    private var authService: AuthenticationService? = null
+    protected lateinit var authService: AuthenticationService
 
     @Volatile
-    private var servlet: WebUiBaseServlet? = null
+    private lateinit var servlet: WebUiBaseServlet
     @Activate
     protected fun activate(context: BundleContext) {
         logger.info("Activating WebUI Base")
         servlet = WebUiBaseServlet(this)
-        servlet!!.setAuthentification(authService)
+        servlet.setAuthentification(authService)
         val bundleHttpContext = BundleHttpContext(context.bundle)
         try {
-            httpService!!.registerResources("/app", "/app", bundleHttpContext)
+            httpService.registerResources("/app", "/app", bundleHttpContext)
             httpService.registerResources("/assets", "/assets", bundleHttpContext)
             httpService.registerResources("/openmuc/css", "/css", bundleHttpContext)
             httpService.registerResources("/openmuc/images", "/images", bundleHttpContext)
@@ -59,6 +59,7 @@ class WebUiBase {
             httpService.registerResources("/conf/webui", "/conf/webui", bundleHttpContext)
             httpService.registerServlet("/", servlet, null, bundleHttpContext)
         } catch (e: Exception) {
+            //
         }
         synchronized(pluginsByAlias) {
             for (plugin in pluginsByAlias.values) {
@@ -70,7 +71,7 @@ class WebUiBase {
     @Deactivate
     protected fun deactivate() {
         logger.info("Deactivating WebUI Base")
-        httpService!!.unregister("/app")
+        httpService.unregister("/app")
         httpService.unregister("/assets")
         httpService.unregister("/openmuc/css")
         httpService.unregister("/openmuc/images")
@@ -98,7 +99,7 @@ class WebUiBase {
     }
 
     @Reference(cardinality = ReferenceCardinality.OPTIONAL, policy = ReferencePolicy.DYNAMIC)
-    protected fun setAuthentificationService(authService: AuthenticationService?) {
+    protected fun setAuthentificationService(authService: AuthenticationService) {
         this.authService = authService
     }
 
@@ -140,7 +141,7 @@ class WebUiBase {
     private fun unregisterResources(plugin: WebUiPluginService) {
         val aliases: Set<String> = plugin.resources.keys
         for (alias in aliases) {
-            httpService!!.unregister("/" + plugin.alias + "/" + alias)
+            httpService.unregister("/" + plugin.alias + "/" + alias)
         }
     }
 
