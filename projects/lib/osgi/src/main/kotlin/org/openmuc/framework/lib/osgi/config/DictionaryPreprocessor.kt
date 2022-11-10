@@ -91,25 +91,17 @@ class DictionaryPreprocessor(newDictionary: MutableMap<String, *>) {
      */
     private fun logDebugPrintDictionary(propertyDict: MutableMap<String, *>) {
         if (logger.isDebugEnabled) {
-            if (propertyDict != null) {
-                val sb = StringBuilder()
-                val keys = propertyDict.keys
-                keys.forEach { key ->
-                    val dictValue = propertyDict[key] as String
-                    if (dictValue != null) {
-                        if (key != null && key.contains("password")) {
-                            sb.append("$key=*****\n")
-                        } else {
-                            sb.append("$key=$dictValue\n")
-                        }
-                    } else {
-                        sb.append("$key=null\n")
-                    }
+            val sb = StringBuilder()
+            val keys = propertyDict.keys
+            keys.forEach { key ->
+                val dictValue = propertyDict[key] as String
+                if (key.contains("password")) {
+                    sb.append("$key=*****\n")
+                } else {
+                    sb.append("$key=$dictValue\n")
                 }
-                logger.debug("Dictionary given by ManagedService updated(): \n{}", sb.toString())
-            } else {
-                logger.debug("Dictionary given by ManagedService updated(): is null")
             }
+            logger.debug("Dictionary given by ManagedService updated(): \n{}", sb.toString())
         }
     }
 

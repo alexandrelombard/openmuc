@@ -42,15 +42,15 @@ open class DbConnector {
     private val url: String
     private var connection: Connection? = null
     private var dataSource: DataSource? = null
-    private var dataSourceFactory: DataSourceFactory? = null
     private var timescaleActive = false
     private var driver: Driver? = null
     private var server: Server? = null
+    private lateinit var dataSourceFactory: DataSourceFactory
 
     init {
-        url = urlFromProperties
-        initConnector()
-        connectionToDb
+        url = this.urlFromProperties
+        this.initConnector()
+        this.connectionToDb
     }
 
     protected open val urlFromProperties: String
@@ -115,7 +115,8 @@ open class DbConnector {
         get() {
             try {
                 logger.info("sql driver")
-                if (connection == null || connection!!.isClosed) {
+                val connection = connection
+                if (connection == null || connection.isClosed) {
                     logger.debug("CONNECTING")
                     val properties = setSqlProperties()
                     logger.info(MessageFormat.format("URL is: {0}", url))
@@ -124,7 +125,7 @@ open class DbConnector {
                     if (logger.isTraceEnabled) {
                         dataSource!!.logWriter = out
                     }
-                    connection = dataSource!!.connection
+                    this.connection = dataSource!!.connection
                     if (url.contains(SqlValues.POSTGRES)) {
                         checkIfTimescaleInstalled()
                     }
@@ -158,9 +159,9 @@ open class DbConnector {
 
     @Synchronized
     @Throws(SQLException::class)
-    private fun getDataSource(dataSourceFactory: DataSourceFactory?, properties: Properties): DataSource? {
+    private fun getDataSource(dataSourceFactory: DataSourceFactory, properties: Properties): DataSource? {
         if (dataSource == null) {
-            dataSource = dataSourceFactory!!.createDataSource(properties)
+            dataSource = dataSourceFactory.createDataSource(properties)
         }
         return dataSource
     }

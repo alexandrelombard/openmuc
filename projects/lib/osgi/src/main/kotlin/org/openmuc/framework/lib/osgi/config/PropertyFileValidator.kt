@@ -85,7 +85,7 @@ class PropertyFileValidator {
         for (key in serviceProperties!!.keys) {
             if (existingProperties!!.stream().noneMatch { s: String ->
                     s.contains(
-                        key!!
+                        key
                     )
                 }) {
                 logger.warn("{} is missing in {}", key, filename)

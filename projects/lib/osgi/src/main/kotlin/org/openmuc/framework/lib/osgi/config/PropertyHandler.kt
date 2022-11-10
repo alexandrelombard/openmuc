@@ -159,7 +159,7 @@ class PropertyHandler(settings: GenericSettings, pid: String) {
 
     private fun hasConfigChanged(oldProperties: HashMap<String, String>): Boolean {
         for ((oldKey, oldValue) in oldProperties) {
-            val property = currentProperties?.get(oldKey)
+            val property = currentProperties[oldKey]
             val newValue = property?.value
             if (oldValue != newValue) {
                 return true

@@ -139,7 +139,7 @@ class RegistrationHandler(private val context: BundleContext) : ServiceListener 
             val newConfig = configurationAdmin!!.getConfiguration(pid)
             val existingProperties: Dictionary<String, *>? = newConfig.properties
             if (existingProperties != null) {
-                val fileName = existingProperties[FELIX_FILE_INSTALL_KEY] as String
+                val fileName = existingProperties[FELIX_FILE_INSTALL_KEY] as String?
                 if (fileName != null) {
                     properties.put(FELIX_FILE_INSTALL_KEY, fileName)
                 }
