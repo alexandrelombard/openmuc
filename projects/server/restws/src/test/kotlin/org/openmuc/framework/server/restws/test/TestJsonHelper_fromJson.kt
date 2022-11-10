@@ -34,15 +34,13 @@ class TestJsonHelper_fromJson {
     fun test_jsonToRecord() {
         var result = true
         val testMethodName = "Test_jsonToRecord"
-        val elements: Set<ValueType> = EnumSet.allOf(
-            ValueType::class.java
-        )
+        val elements = EnumSet.allOf(ValueType::class.java)
+        elements.remove(ValueType.UNKNOWN)
         val it = elements.iterator()
         var record: Record?
         var valueType: ValueType
         var i = 0
         while (it.hasNext()) {
-
             // build json record
             valueType = it.next()
             val jsonString = "{" + sTestRecord + sTestJsonValueArray[i] + Constants.JSON_OBJECT_END + '}'
