@@ -78,6 +78,7 @@ class TestJsonHelper_fromJson {
         private const val stringValueWithTicks = "\"" + Constants.STRING_VALUE + "\""
         private lateinit var sTestJsonValueArray: Array<String>
         private var sTestRecord: String? = null
+        @JvmStatic
         @BeforeAll
         fun setup() {
             val testJsonDoubleValue = "\"value\":" + Constants.DOUBLE_VALUE
