@@ -38,9 +38,9 @@ import java.util.stream.Collectors
  * ToDo: add more tests for different datatypes
  */
 internal class OpenmucParserServiceImplTest {
-    private var parserService: ParserService? = null
+    private lateinit var parserService: ParserService
     @BeforeEach
-    fun setupService(): Unit {
+    fun setupService() {
         parserService = OpenmucParserServiceImpl()
     }
 
@@ -64,7 +64,7 @@ internal class OpenmucParserServiceImplTest {
         val openMucRecords: MutableList<LoggingRecord?> = ArrayList()
         openMucRecords.add(LoggingRecord("channel1", record1))
         openMucRecords.add(LoggingRecord("channel2", record2))
-        val serializedRecord = parserService!!.serialize(openMucRecords)
+        val serializedRecord = parserService.serialize(openMucRecords)
         val serializedJson = String(serializedRecord!!)
         Assertions.assertEquals(controlString, serializedJson)
     }
@@ -77,7 +77,7 @@ internal class OpenmucParserServiceImplTest {
         val timestamp: Long = 1582722316
         val flag = Flag.VALID
         val record = Record(doubleValue, timestamp, flag)
-        val serializedRecord = parserService!!.serialize(LoggingRecord("test", record))
+        val serializedRecord = parserService.serialize(LoggingRecord("test", record))
         val serializedJson = String(serializedRecord!!)
         Assertions.assertEquals(controlString, serializedJson)
     }
@@ -90,7 +90,7 @@ internal class OpenmucParserServiceImplTest {
         val timestamp: Long = 1582722316
         val flag = Flag.VALID
         val record = Record(doubleValue, timestamp, flag)
-        val serializedRecord = parserService!!.serialize(LoggingRecord("test", record))
+        val serializedRecord = parserService.serialize(LoggingRecord("test", record))
         val serializedJson = String(serializedRecord!!)
         Assertions.assertEquals(controlString, serializedJson)
     }
@@ -103,7 +103,7 @@ internal class OpenmucParserServiceImplTest {
         val timestamp: Long = 1582722316
         val flag = Flag.VALID
         val record = Record(byteArrayValue, timestamp, flag)
-        val serializedRecord = parserService!!.serialize(LoggingRecord("test", record))
+        val serializedRecord = parserService.serialize(LoggingRecord("test", record))
         val serializedJson = String(serializedRecord!!)
         Assertions.assertEquals(controlString, serializedJson)
     }
@@ -111,59 +111,28 @@ internal class OpenmucParserServiceImplTest {
     @Test
     fun deserializeTestDoubleValue() {
         val inputString = "{\"timestamp\":1582722316,\"flag\":\"VALID\",\"value\":3.0}"
-        val recordDes = parserService!!.deserialize(inputString.toByteArray(), ValueType.DOUBLE)
+        val recordDes = parserService.deserialize(inputString.toByteArray(), ValueType.DOUBLE)
         Assertions.assertEquals(3.0, recordDes!!.value!!.asDouble())
     }
 
     @Test
     fun deserializeByteArrayValue() {
         val inputString = "{\"timestamp\":1582722316,\"flag\":\"VALID\",\"value\":\"dGVzdA==\"}"
-        val recordDes = parserService!!.deserialize(inputString.toByteArray(), ValueType.BYTE_ARRAY)
+        val recordDes = parserService.deserialize(inputString.toByteArray(), ValueType.BYTE_ARRAY)
         Assertions.assertEquals("test", String(recordDes!!.value!!.asByteArray()))
     }
 
     @Test
     fun deserializeTimestamp() {
         val inputString = "{\"timestamp\":1582722316,\"flag\":\"VALID\",\"value\":3.0}"
-        val recordDes = parserService!!.deserialize(inputString.toByteArray(), ValueType.DOUBLE)
+        val recordDes = parserService.deserialize(inputString.toByteArray(), ValueType.DOUBLE)
         Assertions.assertEquals(1582722316, recordDes!!.timestamp!!.toLong())
     }
 
     @Test
     fun deserializeFlag() {
         val inputString = "{\"timestamp\":1582722316,\"flag\":\"VALID\",\"value\":3.0}"
-        val recordDes = parserService!!.deserialize(inputString.toByteArray(), ValueType.DOUBLE)
+        val recordDes = parserService.deserialize(inputString.toByteArray(), ValueType.DOUBLE)
         Assertions.assertEquals("VALID", recordDes!!.flag.name)
-    }
-
-    @Test
-    fun serialisationAndDeserialisationAreThreadSafe() {
-        // this is pretty hard to test (at least I (dwerner) could not figure out how to in 1h, so I'm giving up now)
-        // the methods should be thread safe if:
-        // 1. there are no members in the class (making the methods inherited by ReactParser effectively static and thus
-        // thread safe)
-        // 2. the inherited methods have the 'synchronized' keyword -> looking for all public methods here, just to be
-        // safe
-        val members = Arrays.stream(
-            OpenmucParserServiceImpl::class.java.declaredFields
-        )
-            .filter { f: Field -> !Modifier.isStatic(f.modifiers) }
-            .collect(Collectors.toSet())
-        if (members.isEmpty()) {
-            println("OpenmucParserServiceImpl does not have non-static members and should be thread safe")
-            return
-        } else {
-            val publicMethods = Arrays.stream(
-                OpenmucParserServiceImpl::class.java.declaredMethods
-            )
-                .filter { m: Method -> Modifier.isPublic(m.modifiers) }
-                .collect(Collectors.toSet())
-            for (method in publicMethods) {
-                Assertions.assertTrue(
-                    Modifier.isSynchronized(method.modifiers),
-                    "Method '$method' should have the 'synchronized' keyword"
-                )
-            }
-        }
     }
 }
